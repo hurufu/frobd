@@ -36,6 +36,13 @@ static int process_msg(const unsigned char* const p, const unsigned char* const 
     const struct frob_header h = frob_header_extract(p, pe);
     fprintf(stderr, "\tTYPE: %02X TOKEN: %02X %02X %02X\n",
             h.type, h.token[0], h.token[1], h.token[2]);
+
+    static int ps = -1;
+    switch (frob_protocol_transition(&ps, h.type)) {
+        case EPROTO:
+            fprintf(stderr, "Out of order message\n");
+            return 1;
+    }
 }
 
 static int frame_loop() {

@@ -4,6 +4,7 @@
 typedef unsigned char byte_t;
 
 enum FrobMessageType {
+    // TODO: Consider converting to base-36
     // Message classes, numbering is arbitrary
     FROB_T = 0x10,
     FROB_D = 0x20,
@@ -70,3 +71,4 @@ struct frob_frame_fsm_state {
 
 int frob_frame_process(struct frob_frame_fsm_state*);
 struct frob_header frob_header_extract(const unsigned char* p, const unsigned char* pe);
+int frob_protocol_transition(int*, const enum FrobMessageType);
