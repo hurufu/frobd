@@ -161,15 +161,15 @@ static bool all_channels_ok(const int (*channel)[CHANNELS_COUNT]) {
     return true;
 }
 
-static int perform_pending_io(struct io_state* const t, int (*channel)[CHANNELS_COUNT]) {
+static void perform_pending_io(struct io_state* const t, int (*channel)[CHANNELS_COUNT]) {
     for (size_t j = 0; j < elementsof(t->set); j++) {
         for (size_t i = 0; i < elementsof(*channel); i++) {
             if (FD_ISSET((*channel)[i], &(t->set)[j])) {
                 switch (j) {
                     ssize_t s;
                     case FD_EXCEPT:
-                        LOGEX("Exceptional data isn't supported");
-                        return -2;
+                        LOGFX("Exceptional data isn't supported");
+                        break;
                     case FD_WRITE:
                         if ((s = write((*channel)[i], t->buf[i], t->cur[i] - t->buf[i])) != t->cur[i] - t->buf[i])
                             LOGF("Can't write %zu bytes to %s channel (fd %d)", t->cur[i] - t->buf[i], channel_to_string(i), (*channel)[i]);
@@ -191,7 +191,6 @@ static int perform_pending_io(struct io_state* const t, int (*channel)[CHANNELS_
             }
         }
     }
-    return 0;
 }
 
 static int event_loop(int (* const channel)[CHANNELS_COUNT], const time_t relative_timeout) {
@@ -200,9 +199,7 @@ static int event_loop(int (* const channel)[CHANNELS_COUNT], const time_t relati
     const int m = get_max_fd(channel);
     struct frob_frame_fsm_state f = { .p = t.buf[ER_MAIN] };
     for (finit(channel, &t); fselect(m, &t.set, relative_timeout); fset(channel, &t.set)) {
-        const int r = perform_pending_io(&t, channel);
-        if (r != 0)
-            return r;
+        perform_pending_io(&t, channel);
 
         if (FD_ISSET((*channel)[ER_MAIN], &t.set[FD_READ])) {
             f.pe = t.cur[ER_MAIN];
