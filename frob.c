@@ -516,11 +516,11 @@ static int event_loop(struct config* const cfg) {
     int ret = 0;
     for (finit(&cfg->channel, &t); (ret = fselect(m, &t.set, cfg->timeout)) > 0; fset(&cfg->channel, &t.set)) {
         perform_pending_io(&t, &cfg->channel, cfg->blocked);
-        if (FD_ISSET(cfg->channel[MR_SIGNAL], &t.set[FD_READ]))
+        if (cfg->channel[MR_SIGNAL] != -1 && FD_ISSET(cfg->channel[MR_SIGNAL], &t.set[FD_READ]))
             process_signal(cfg->blocked, &t, &cfg->channel, &st);
-        if (FD_ISSET(cfg->channel[ER_MASTER], &t.set[FD_READ]))
+        if (cfg->channel[ER_MASTER] != -1 && FD_ISSET(cfg->channel[ER_MASTER], &t.set[FD_READ]))
             process_master(&cfg->channel);
-        if (FD_ISSET(cfg->channel[ER_MAIN], &t.set[FD_READ]))
+        if (cfg->channel[ER_MAIN] != -1 && FD_ISSET(cfg->channel[ER_MAIN], &t.set[FD_READ]))
             process_main(&expected_acks, &t, &f, cfg, &st);
     }
     assertion("Event loop shall end only on error/timeout", ret <= 0);
