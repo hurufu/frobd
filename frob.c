@@ -20,6 +20,8 @@
 
 #define IO_BUF_SIZE (4 * 1024)
 
+#define SIGINFO SIGPWR
+
 // e – external, i - internal, m – manual
 // r - read/input, w - write/output
 // Must be positive, because value is getting mixed with negative error codes
@@ -361,6 +363,9 @@ static void process_signal(sigset_t blocked, struct io_state* const t, int (*cha
         case SIGALRM:
             LOGWX("Can't re-transmit: %s", strerror(ENOSYS));
             break;
+        case SIGINFO:
+            LOGIX("Current stats: %s", strerror(ENOSYS));
+            break;
         default:
             LOGFX("Unexpected signal. Bailing out");
     }
@@ -491,6 +496,7 @@ static int event_loop(struct config* const cfg) {
 static sigset_t adjust_signal_delivery(int* const ch) {
     static const int blocked_signals[] = {
         SIGALRM,
+        SIGINFO,
         SIGINT
     };
     sigset_t s;
