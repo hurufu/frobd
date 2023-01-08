@@ -112,11 +112,9 @@ end_write:
 }
 
 int main() {
-    {
-        FILE* const ios[] = { stdin, stdout };
-        for (size_t i = 0; i < elementsof(ios); i++)
-            setbuf(ios[i], NULL);
-    }
+    FILE* const ios[] = { stdin, stdout };
+    for (size_t i = 0; i < elementsof(ios); i++)
+        setbuf(ios[i], NULL);
 
     return frame_loop();
 }
