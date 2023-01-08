@@ -1,11 +1,11 @@
 #include "frob.h"
 #include <stdio.h>
 
-size_t s_i;
-unsigned char s_working_copy[255];
+static size_t s_i;
+static unsigned char s_working_copy[255];
 
-size_t s_t;
-const unsigned char* s_items[100];
+static size_t s_t;
+static const unsigned char* s_items[100];
 
 %%{
     machine frob_structure;
