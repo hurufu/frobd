@@ -1,0 +1,7 @@
+SIGINT should enter to the interactive console
+SIGQUIT shoult quit
+SIGINFO (?) should display status
+SIGSTP (?) should entery BUSY mode
+SIGUSR1 (?) enter BUSY mode
+Write GUI that uses REPL from SIGINT
+GUI should be able to connect to a remote live ECR or EFT
