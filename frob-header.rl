@@ -84,5 +84,6 @@ struct frob_header frob_header_extract(const byte_t** px, const byte_t* const pe
         const char t[2] = { b[0], b[1] };
         res.token[i++] = unhex(t);
     }
+    *px = p;
     return res;
 }

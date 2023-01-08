@@ -38,14 +38,14 @@ static char* convert_to_printable(const unsigned char* const p, const unsigned c
 }
 
 static int process_msg(const unsigned char* p, const unsigned char* const pe) {
-    struct frob_msg msg;
-
-    msg.header = frob_header_extract(&p, pe);
+    struct frob_msg msg = {
+        .header = frob_header_extract(&p, pe)
+    };
     fprintf(stderr, "\tTYPE: %02X TOKEN: %02X %02X %02X\n",
             msg.header.type, msg.header.token[0], msg.header.token[1], msg.header.token[2]);
 
-    static int ps = -1;
-    switch (frob_protocol_transition(&ps, msg.header.type)) {
+    static int protocol_state = -1;
+    switch (frob_protocol_transition(&protocol_state, msg.header.type)) {
         case EPROTO:
             fprintf(stderr, "Out of order message\n");
             return 1;
