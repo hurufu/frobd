@@ -52,8 +52,9 @@ again:
         if (fwrite(ack, 1, sizeof ack, stdout) != 1)
             goto end_write;
         char buf[4 * (st.pe - st.p)];
-        fprintf(stderr, "< %s\n", convert_to_printable(st.p, st.pe, sizeof buf, buf));
-        fprintf(stderr, "> %s\n", convert_to_printable(ack, ack + sizeof ack, 4, (char[4]){}));
+        fprintf(stderr, "< %s\n> %s\n",
+                convert_to_printable(st.p, st.pe, sizeof buf, buf),
+                convert_to_printable(ack, ack + sizeof ack, 4, (char[4]){}));
     }
 end_read:
     if (feof(stdin))
