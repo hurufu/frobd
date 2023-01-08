@@ -19,7 +19,7 @@ main: main.c frob-frame.c
 %.s: %.c
 	$(CC) -S -o $@ -fverbose-asm -fno-asynchronous-unwind-tables $(CFLAGS) $<
 
-graph-%: frob-msg.rl adjust-%.sed
+graph-%: frob-frame.rl adjust-%.sed
 	ragel -p -V $< | sed -Ef $(word 2,$^) | dot -Tpng | feh -
 clean: F += frob-frame.c frob-msg.c main main.s frob-frame.s frob-msg.s tags cscope.out
 clean:
