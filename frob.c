@@ -169,7 +169,7 @@ static void perform_pending_io(struct io_state* const t, int (*channel)[CHANNELS
                     case FD_WRITE:
                         // FIXME: Retry if we were unable to write all bytes
                         if ((s = write((*channel)[i], t->buf[i], t->cur[i] - t->buf[i])) != t->cur[i] - t->buf[i])
-                            LOGF("Can't write %zu bytes to %s channel (fd %d)", t->cur[i] - t->buf[i], channel_to_string(i), (*channel)[i]);
+                            LOGF("Can't write %td bytes to %s channel (fd %d)", t->cur[i] - t->buf[i], channel_to_string(i), (*channel)[i]);
                         t->cur[i] = t->buf[i];
                         FD_CLR((*channel)[i], &(t->set)[FD_WRITE]);
                         break;
