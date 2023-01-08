@@ -182,7 +182,7 @@ static int extract_s1(const byte_t** const pp, const byte_t* const pe, struct fr
         amount_net = amount >C fs @AmountNet;
         vat = amount >C fs @Vat;
         cashback = amount >C fs @Cashback;
-        currency = a{3} fs @Currency;
+        currency = a{3} >C fs @Currency;
         max_cashback = amount >C fs @MaxCashback;
 
         required = transaction_type ecr_id payment_id amount_gross amount_net vat currency cashback;
