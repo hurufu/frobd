@@ -8,6 +8,7 @@
 
     variable cs (*cs);
 
+    # TODO: Re-use type values from frob.h
     T1 =  1000;
     T2 =  1002;
     T3 =  1003;
