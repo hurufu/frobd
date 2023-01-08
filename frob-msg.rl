@@ -4,12 +4,27 @@
 size_t s_i;
 unsigned char s_working_copy[255];
 
+size_t s_t;
+const unsigned char* s_items[100];
+
 %%{
     machine frob_structure;
     alphtype unsigned char;
 
-    action FS_Start {}
-    action FS_Commit {}
+    action FS_Reset {
+        s_t = 0;
+    }
+    action FS_Start {
+        s_items[s_t++] = fpc;
+    }
+    action FS_End {
+        fc = '\0';
+    }
+    action FS_Commit {
+        for (size_t i = 0; i < s_t; i++) {
+            printf("FIELD: %s\n", s_items[i]);
+        }
+    }
 
     us  = 0x1F;
     fs  = 0x1C;
@@ -21,25 +36,26 @@ unsigned char s_working_copy[255];
     b = [01];
     s = a* us;
 
-    nf = n* fs;
-    af = a* fs;
-    hf = h* fs;
-    bf = b* fs;
-    sf = s* fs;
+    nf = n* >FS_Start fs @FS_End;
+    af = a* >FS_Start fs @FS_End;
+    hf = h* >FS_Start fs @FS_End;
+    bf = b* >FS_Start fs @FS_End;
+    sf = s* >FS_Start fs @FS_End;
 
     T1 = zlen;
     T2 = af af? af? af?;
     T3 = zlen;
     T4 = sf;
 
-    main := ((nf|af|hf|bf|sf) >FS_Start @FS_Commit)*;
+    structure = (nf|af|hf|bf|sf)+;
+    main := structure >FS_Reset %FS_Commit;
 
     write data;
 }%%
 
 static int process_frob_structure(void) {
     int cs;
-    const unsigned char* p = s_working_copy, * const pe = s_working_copy + s_i;
+    unsigned char* p = s_working_copy, * const pe = s_working_copy + s_i, * const eof = pe;
     %%{
         write init;
         write exec;
@@ -51,15 +67,15 @@ static int process_frob_structure(void) {
     alphtype unsigned char;
 
     action Copy {
-        puts("Copy");
+        if (sizeof s_working_copy <= s_i) {
+            fbreak;
+        }
         s_working_copy[s_i++] = fc;
     }
     action Reset {
-        puts("Reset");
         s_i = 0;
     }
     action Commit {
-        puts("Commit");
         if (process_frob_structure()) {
             fbreak;
         }

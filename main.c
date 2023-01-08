@@ -13,15 +13,12 @@ int main() {
     int cs;
     while ((poll_res = poll(pf, elementsof(pf), 100)) > 0) {
         if (pf[0].revents & POLLNVAL) {
-            puts("POLLNVAL");
             break;
         }
         if (pf[0].revents & POLLHUP) {
-            puts("POLLHUP");
             break;
         }
         if (pf[0].revents & POLLRDNORM) {
-            puts("POLLRDNORM");
             unsigned char buf[255];
             const ssize_t s = read(pf[0].fd, buf, sizeof buf);
             if (s <= 0) {

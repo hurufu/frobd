@@ -1,6 +1,6 @@
 .PHONY: index clean graph-% run run-%
 
-CFLAGS ?= -O3 -g0 -Wall -Wextra
+CFLAGS := -Og -ggdb3 -Wall -Wextra -fvar-tracking-assignments
 
 run: run-01 run-02
 run-%: main sample%
