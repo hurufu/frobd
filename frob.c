@@ -13,6 +13,8 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 // FIXME: Reduce number of arguments passed to functions
 
@@ -322,12 +324,23 @@ static bool all_channels_ok(const int (*channel)[CHANNELS_COUNT]) {
     return true;
 }
 
+static void start_master_channel(int* const channel) {
+    LOGWX("Using of master channel is unpredictable: %s", strerror(ENOSYS));
+    const char* const pts = ttyname(STDERR_FILENO);
+    *channel = open(pts, O_RDWR);
+    if (*channel == -1)
+        LOGW("Couldn't start %s channel at %s", channel_to_string(ER_MASTER), pts);
+    else
+        LOGIX("Master channel started at %s, but what will you do with it?", pts);
+}
+
 static void process_signal(sigset_t blocked, struct io_state* const t, int (*channel)[CHANNELS_COUNT]) {
     assert(sizeof (struct signalfd_siginfo) == t->cur[MR_SIGNAL] - t->buf[MR_SIGNAL]);
     const struct signalfd_siginfo* const inf = (struct signalfd_siginfo*)t->buf[MR_SIGNAL];
     switch (inf->ssi_signo) {
         case SIGINT:
-            LOGWX("Couldn't start %s channel: %s", channel_to_string(ER_MASTER), strerror(ENOSYS));
+            start_master_channel(&(*channel)[ER_MASTER]);
+            LOGIX("Press ^C again to exit");
             break;
         case SIGALRM:
             LOGWX("Can't re-transmit: %s", strerror(ENOSYS));
