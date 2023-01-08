@@ -231,6 +231,6 @@ int main() {
     if (!all_channels_ok(&channel))
         return EXIT_FAILURE;
 
-    event_loop(&channel, 1);
+    event_loop(&channel, 0);
     return EXIT_FAILURE;
 }
