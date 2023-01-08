@@ -14,7 +14,7 @@ tags:
 cscope.out:
 	cscope -bR
 
-frob: frob.c $(RL_C)
+frob: frob.c $(RL_C) log.c
 	$(LINK.c) -o $@ $^ $(LDLIBS)
 %.c: %.rl
 	ragel -G2 -L $<

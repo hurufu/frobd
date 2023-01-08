@@ -1,28 +1,16 @@
 #include "frob.h"
 #include "utils.h"
+#include "log.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
 #include <assert.h>
 #include <poll.h>
-#include <err.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
-
-#define SLATE_FOR_DEBUG(Channel, State, Fmt, ...) do {\
-    if ((*(Channel))[EW_DEBUG] >= 0) {\
-        const int snprintf_ret = snprintf((char*)(State)->cur[EW_DEBUG], endof((State)->buf[EW_DEBUG]) - (State)->cur[EW_DEBUG], "D " Fmt "\n", ##__VA_ARGS__);\
-        if (snprintf_ret > 0) {\
-            (State)->cur[EW_DEBUG] += snprintf_ret;\
-            FD_SET((*Channel)[EW_DEBUG], &((State)->set[FD_WRITE]));\
-        }\
-    }\
-} while (0)
-
-#define PRETTY(Arr) to_printable(Arr, endof(Arr), 4*sizeof(Arr), (char[4*sizeof(Arr)]){})
-#define PRETTV(P, Pe, Buf) to_printable(P, Pe, sizeof(Buf), Buf)
 
 /* uint8_t is better than unsigned char to define a byte, because on some
  * platforms (unsigned) char may have more than 8 bit (TI C54xx 16 bit).
@@ -60,6 +48,9 @@ struct io_state {
     byte_t buf[CHANNELS_COUNT][4 * 1024];
 };
 
+
+enum LogLevel g_log_level = LOG_DEBUG;
+
 int frob_forward_msg(const struct frob_msg* const msg) {
     (void)msg;
     // Not implemented;
@@ -92,64 +83,37 @@ static const char* fdset_to_string(const enum OrderedFdSets o) {
     return NULL;
 }
 
-static char* to_printable(const unsigned char* const p, const unsigned char* const pe,
-                                  const size_t s, char b[static const s]) {
-    // TODO: Add support for regional characters, ie from 0x80 to 0xFF
-    // TODO: Rewrite to_printable using libicu
-    char* o = b;
-    for (const unsigned char* x = p; x != pe && o < b + s; x++) {
-        const unsigned char c = *x;
-        if (c <= 0x20) {
-            *o++ = 0xE2;
-            *o++ = 0x90;
-            *o++ = 0x80 + c;
-        } else if (c == 0x7F) {
-            *o++ = 0xE2;
-            *o++ = 0x90;
-            *o++ = 0x80 + 0x31;
-        } else if (c & 0x80) {
-            *o++ = 0xE2;
-            *o++ = 0x90;
-            *o++ = 0x36;
-        } else {
-            *o++ = c;
-        }
-    }
-    *o = 0x00;
-    return b;
-}
-
 static int process_msg(const unsigned char* p, const unsigned char* const pe) {
     struct frob_msg msg = {
         .magic = "FROBCr1",
         .header = frob_header_extract(&p, pe)
     };
-    fprintf(stderr, "\tTYPE: %02X TOKEN: %02X %02X %02X\n",
+    LOGDX("\tTYPE: %02X TOKEN: %02X %02X %02X",
             msg.header.type, msg.header.token[0], msg.header.token[1], msg.header.token[2]);
 
     static int protocol_state = -1;
     switch (frob_protocol_transition(&protocol_state, msg.header.type)) {
         case EPROTO:
-            fprintf(stderr, "Out of order message\n");
+            LOGDX("Out of order message");
             return 1;
     }
 
     switch (frob_body_extract(msg.header.type, &p, pe, &msg.body)) {
         case EBADMSG:
-            fprintf(stderr, "Bad payload\n");
+            LOGDX("Bad payload");
             return 2;
     }
 
     switch (frob_extract_additional_attributes(&p, pe, &msg.attr)) {
         case EBADMSG:
-            fprintf(stderr, "Bad data\n");
+            LOGDX("Bad data");
             return 3;
     }
 
     //assert(p == pe);
 
     if (frob_forward_msg(&msg) != 0) {
-        fprintf(stderr, "Downstream error\n");
+        LOGDX("Downstream error");
         return 4;
     }
 
@@ -253,7 +217,7 @@ static int event_loop(int (* const channel)[CHANNELS_COUNT], const time_t relati
 
             {
                 char tmp[3*(f.pe-f.p)];
-                SLATE_FOR_DEBUG(channel, &t, "%s → %s", PRETTV(f.p, f.pe, tmp), PRETTY(ack));
+                LOGDX("%s → %s", PRETTV(f.p, f.pe, tmp), PRETTY(ack));
             }
 
             if (e == 0)
@@ -275,7 +239,6 @@ int main() {
         [IR_DEVICE ] = -1,
         [EW_MAIN   ] = STDOUT_FILENO,
         [ER_MAIN   ] = STDIN_FILENO,
-        [EW_DEBUG  ] = STDERR_FILENO,
         [ER_MASTER ] = -1
     };
 
@@ -283,6 +246,6 @@ int main() {
         return EXIT_FAILURE;
 
     event_loop(&channel, 1);
-    perror("Exit");
+    LOGW("Exit");
     return EXIT_FAILURE;
 }
