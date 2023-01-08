@@ -5,7 +5,11 @@
 
 #define FROB_MAGIC "FROBCr1"
 
-typedef unsigned char byte_t;
+/* uint8_t is better than unsigned char to define a byte, because on some
+ * platforms (unsigned) char may have more than 8 bit (TI C54xx 16 bit).
+ * The problem is purely theoretical, because I don't target MCUs, but still...
+ */
+typedef uint8_t byte_t;
 
 // TODO: Consider converting to base-36 – downside it will requires 2 bytes
 enum FrobMessageType {

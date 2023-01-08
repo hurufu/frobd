@@ -18,12 +18,6 @@
 
 // FIXME: Reduce number of arguments passed to functions
 
-/* uint8_t is better than unsigned char to define a byte, because on some
- * platforms (unsigned) char may have more than 8 bit (TI C54xx 16 bit).
- * The problem is purely theoretical, because I don't target MCUs, but still...
- */
-typedef uint8_t byte_t;
-
 // e – external, i - internal, m – manual
 // r - read/input, w - write/output
 // Must be positive, because value is getting mixed with negative error codes
@@ -76,6 +70,7 @@ static const char* channel_to_string(const enum OrderedChannels o) {
         case ER_MAIN:    return "MAIN (external input)";
         case ER_MASTER:  return "MASTER (console input)";
         case CHANNELS_COUNT:
+            break;
     }
     return NULL;
 }
@@ -91,6 +86,7 @@ static char channel_to_code(const enum OrderedChannels o) {
         case ER_MAIN:    return 'M';
         case ER_MASTER:  return 'R';
         case CHANNELS_COUNT:
+            break;
     }
     return '-';
 }
@@ -98,9 +94,9 @@ static char channel_to_code(const enum OrderedChannels o) {
 static int forward_message(const struct frob_msg* const msg, const int channel, const int fd, struct io_state* const t) {
     assert(channel >= 0 && channel < CHANNELS_COUNT);
     if (t->cur[channel] + sizeof msg >= t->buf[channel] + sizeof t->buf[channel])
-        return LOGWX("Message forwarding skipped: %s", strerror(ENOBUFS));
+        return LOGWX("Message forwarding skipped: %s", strerror(ENOBUFS)), -1;
     if (fd < 0)
-        return LOGWX("Message forwarding skipped: %s", strerror(EBADF));
+        return LOGWX("Message forwarding skipped: %s", strerror(EBADF)), -1;
     memcpy(t->cur[channel], msg, sizeof *msg);
     t->cur[channel] += sizeof *msg;
     FD_SET(fd, &t->set[FD_WRITE]);
@@ -110,7 +106,7 @@ static int forward_message(const struct frob_msg* const msg, const int channel, 
 static int process_msg(const unsigned char* p, const unsigned char* const pe, struct frob_msg* const msg) {
     msg->header = frob_header_extract(&p, pe);
     if (msg->header.type == 0)
-        return LOGWX("Bad header");
+        return LOGWX("Bad header"), -1;
 
     int e;
     switch (e = frob_body_extract(msg->header.type, &p, pe, &msg->body)) {
@@ -119,7 +115,7 @@ static int process_msg(const unsigned char* p, const unsigned char* const pe, st
         case EBADMSG:
         case ENOSYS:
         case ENOTRECOVERABLE:
-            return LOGEX("Body not parsed: %s", strerror(e));
+            return LOGEX("Body not parsed: %s", strerror(e)), -1;
         default:
             assert(false);
     }
@@ -129,7 +125,7 @@ static int process_msg(const unsigned char* p, const unsigned char* const pe, st
             break;
         case EBADMSG:
         case ENOTRECOVERABLE:
-            return LOGEX("Attrs not parsed: %s", strerror(e));
+            return LOGEX("Attrs not parsed: %s", strerror(e)), -1;
         default:
             assert(false);
 
@@ -146,11 +142,11 @@ static int make_frame(const byte_t* const body, const byte_t (* const token)[3],
 
     const size_t l = strlen((char*)body);
     if (pe - *pp < 1 + 6 + (int)l + 1) // STX + token + body + LRC
-        return LOGWX("Can't construct frame: %s", strerror(ENOBUFS));
+        return LOGWX("Can't construct frame: %s", strerror(ENOBUFS)), -1;
 
     const int r = snprintf((char*)p, pe - p, "\x02%02X%02X%02X", (*token)[0], (*token)[1], (*token)[2]);
     if (r != 7)
-        return LOGW("Can't construct token");
+        return LOGW("Can't construct token"), -1;
     p += r;
     memcpy(p, body, l);
     p += l;
@@ -192,7 +188,7 @@ static int handle_local(const struct preformated_messages* const pm, const struc
             return -1;
     }
     if (make_frame(m, &h->token, &t->cur[EW_MAIN], endof(t->buf[EW_MAIN])) != 0)
-        return LOGWX("Locally generate response skipped");
+        return LOGWX("Locally generate response skipped"), -1;
     FD_SET((*channel)[EW_MAIN], &t->set[FD_WRITE]);
     (*expected_acks)++;
     return 0;

@@ -4,8 +4,8 @@ char* to_printable(const unsigned char* const p, const unsigned char* const pe,
                                   const size_t s, char b[static const s]) {
     // TODO: Add support for regional characters, ie from 0x80 to 0xFF
     // TODO: Rewrite to_printable using libicu
-    char* o = b;
-    for (const unsigned char* x = p; x != pe && o < b + s; x++) {
+    unsigned char* o = (unsigned char*)b;
+    for (const unsigned char* x = p; x != pe && o < (unsigned char*)b + s; x++) {
         const unsigned char c = *x;
         if (c <= 0x20) {
             *o++ = 0xE2;

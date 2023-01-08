@@ -3,7 +3,7 @@
 #include <errno.h>
 #include <stdlib.h>
 
-#define STRTOL(Src) strtol(Src, NULL, 10)
+#define STRTOL(Src) strtol((char*)Src, NULL, 10)
 #define STRBOOL(Src) ((Src)[0] == '1' ? 1 : 0)
 
 %%{
