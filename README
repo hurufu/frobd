@@ -1,5 +1,7 @@
 # frobd - auto responder/bouncer/forwarder that implements FROB ECR-EFT protocol
 
+** Currnetly this project is even less than PoC, don't use yet. **
+
 You can find specification at <frob.pl>
 
 Sending `SIGPWR` will print some internal statistics to the log
