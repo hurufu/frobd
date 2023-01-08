@@ -163,6 +163,7 @@ static int forward_message(const struct frob_msg* const msg, const enum OrderedC
 }
 
 static int process_msg(const unsigned char* p, const unsigned char* const pe, struct frob_msg* const msg) {
+    const byte_t* const start = p;
     msg->header = frob_header_extract(&p, pe);
     if (msg->header.type == 0) {
         LOGEX("Bad header");
@@ -183,8 +184,10 @@ static int process_msg(const unsigned char* p, const unsigned char* const pe, st
     assertion("Complete message shall be processed, ie cursor shall point to the end of message", p == pe);
     return 0;
 bail:
-    LOGDX("\tp:  %s", p);
-    LOGDX("\tpe: %s", pe);
+    char tmp[4*(pe - start)];
+    LOGDX("   %s", PRETTV(start, pe, tmp));
+    LOGDX("p: %*s", (int)(p - start), "^");
+    LOGDX("pe:%*s", (int)(pe - start), "^");
     return -1;
 }
 
