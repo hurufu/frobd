@@ -12,10 +12,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define FS "\x1C"
-#define US "\x1F"
-#define ETX "\x03"
-
 // FIXME: Reduce number of arguments passed to functions
 
 // e – external, i - internal, m – manual

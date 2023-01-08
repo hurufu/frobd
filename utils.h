@@ -3,14 +3,23 @@
 #include <string.h>
 #include <assert.h>
 
+#define STX "\x02"
+#define ETX "\x03"
+#define FS "\x1C"
+#define US "\x1F"
+
 #define COPY(Dest, Start, End) memcpy((Dest), Start, min(End - Start, elementsof(Dest)))
 
-#define APPLY_TO_ARRAY(X, Macro) ({ typeof(X[0]) __attribute__((__unused__)) (*should_be_an_array)[NAIVE_ELEMENTSOF(X)] = &X; Macro; })
+#define APPLY_TO_ARRAY(X, Macro) ({\
+    _Static_assert(sizeof (X) != 0);\
+    typeof(X[0]) __attribute__((__unused__)) (*should_be_an_array)[NAIVE_ELEMENTSOF(X)] = &X;\
+    Macro;\
+})
 #define NAIVE_ELEMENTSOF(Arr) ( sizeof(Arr) / (sizeof((Arr)[0]) ?: 1) )
 
 #define elementsof(Arr) APPLY_TO_ARRAY(Arr, NAIVE_ELEMENTSOF(Arr))
 #define endof(Arr) APPLY_TO_ARRAY(Arr, (Arr) + sizeof (Arr))
-#define lastof(Arr) APPLY_TO_ARRAY(Arr, (Arr)[sizeof (Arr) - 1])
+#define lastof(Arr) APPLY_TO_ARRAY(Arr, &(Arr)[sizeof (Arr) - 1])
 
 #define min(A, B) (A < B ? A : B)
 
