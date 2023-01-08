@@ -363,6 +363,7 @@ static void process_signal(sigset_t blocked, struct io_state* const t, int (*cha
             start_master_channel(channel);
             break;
         case SIGALRM:
+            // TODO: Reschedule last message, but only if underlying fd isn't already closed
             LOGWX("Can't re-transmit: %s", strerror(ENOSYS));
             break;
         case SIGINFO:
@@ -441,9 +442,18 @@ static void perform_pending_io(struct io_state* const t, int (*channel)[CHANNELS
                         if ((s = write((*channel)[i], t->buf[i], t->cur[i] - t->buf[i])) != t->cur[i] - t->buf[i]) {
                             LOGF("Can't write %td bytes to %s channel (fd %d)", t->cur[i] - t->buf[i], channel_to_string(i), (*channel)[i]);
                         } else {
+                            // Not just ACK/NAK alone
+                            if (t->cur[i] - t->buf[i] > 1) {
+                                const unsigned int prev = alarm(3);
+                                // FIXME: Enforce that only single message can be sent at a time until ACK/NAK wasn't received
+                                if (prev != 0)
+                                    LOGWX("Duplicated alram scheduled. Previous was set %us ago", prev);
+                                //assertion("Only singal active timeout is expected", prev == 0);
+                            }
                             char tmp[3*s];
                             LOGDX("← %c %zu\t%s", channel_to_code(i), s, PRETTV(t->buf[i], t->cur[i], tmp));
                         }
+                        // FIXME: This pointer shall be reset only on ACK or last retransmission
                         t->cur[i] = t->buf[i];
                         break;
                     case FD_READ:
