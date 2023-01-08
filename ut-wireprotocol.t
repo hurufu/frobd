@@ -3,6 +3,13 @@
 #include <check.h>
 #include <errno.h>
 
+#define OFFSET_OR_PTR(Start, Value)\
+    _Generic((Value),\
+        int: (Start) + (intptr_t)(Value),\
+        size_t: (Start) + (intptr_t)(Value),\
+        void*: (Value)\
+    )
+
 #define TEST_HEADER(Input, ExpectedType, ...)\
     test_header(elementsof(Input), (byte_t*)Input, ExpectedType, &(byte_t[3]){__VA_ARGS__})
 static void test_header(const size_t bs, const byte_t buf[static bs],
@@ -13,48 +20,41 @@ static void test_header(const size_t bs, const byte_t buf[static bs],
     ck_assert_mem_eq(hdr.token, *expected_token, elementsof(*expected_token));
 }
 
+#define TEST_FRAME(Input, ExpectedRet, ExpectedP, ExpectedPe) do {\
+    byte_t buf[] = Input;\
+    test_frame(elementsof(buf), buf, ExpectedRet, OFFSET_OR_PTR(buf,ExpectedP), OFFSET_OR_PTR(lastof(buf),ExpectedPe));\
+} while (0)
+static void test_frame(const size_t bs, byte_t buf[static bs],
+                       const int expected_return_value,
+                       const byte_t* const expected_p, const byte_t* const expected_pe) {
+    struct frob_frame_fsm_state st = {.p = buf, .pe = buf + bs};
+    const int x = frob_frame_process(&st);
+    ck_assert_int_eq(x, expected_return_value);
+    ck_assert_ptr_eq(st.p, expected_p);
+    ck_assert_ptr_eq(st.pe, expected_pe);
+}
+
 #suite frame_parsing
 
 #test simple_frame_parsed_correctly
-    byte_t buf[] = STX "000102" FS "T1" FS ETX "e";
-    struct frob_frame_fsm_state st = {.p = buf, .pe = lastof(buf)};
-    const int x = frob_frame_process(&st);
-    ck_assert_int_eq(x, 0);
-    ck_assert_ptr_eq(st.p, buf + 1);
-    ck_assert_ptr_eq(st.pe, lastof(buf) - 2);
+    TEST_FRAME(STX "000102" FS "T1" FS ETX "e", 0, 1, -2);
 
 #test frame_with_invalid_lrc_produces_error
-    byte_t buf[] = STX "000102" FS "T1" FS ETX "&";
-    struct frob_frame_fsm_state st = {.p = buf, .pe = lastof(buf)};
-    const int x = frob_frame_process(&st);
-    ck_assert_int_eq(x, EBADMSG);
-    ck_assert_ptr_eq(st.p, buf + 1);
-    ck_assert_ptr_eq(st.pe, lastof(buf) - 2);
+    TEST_FRAME(STX "000102" FS "T1" FS ETX "&", EBADMSG, 1, -2);
 
 #test empty_frame_is_handled_gracefully
     byte_t buf[0];
     struct frob_frame_fsm_state st = {.p = buf, .pe = buf};
     const int x = frob_frame_process(&st);
     ck_assert_int_eq(x, EAGAIN);
-    ck_assert_ptr_eq(st.p, NULL);
-    ck_assert_ptr_eq(st.pe, NULL);
+    ck_assert_ptr_null(st.p);
+    ck_assert_ptr_null(st.pe);
 
 #test incomplete_frame_returns_eagain
-    byte_t buf[] = STX "000102";
-    struct frob_frame_fsm_state st = {.p = buf, .pe = lastof(buf)};
-    const int x = frob_frame_process(&st);
-    ck_assert_int_eq(x, EAGAIN);
-    ck_assert_ptr_eq(st.p, buf + 1);
-    ck_assert_ptr_eq(st.pe, NULL);
+    TEST_FRAME(STX "000102", EAGAIN, 1, NULL);
 
 #test any_junk_before_correct_frame_is_skipped
-    byte_t buf[] = "garbage before" STX "23AB" FS "T2" FS "170" FS "COMPANY" FS
-                   "SAMPLE MESSAGE" FS "02" FS ETX "y";
-    struct frob_frame_fsm_state st = {.p = buf, .pe = lastof(buf)};
-    const int x = frob_frame_process(&st);
-    ck_assert_int_eq(x, 0);
-    ck_assert_ptr_eq(st.p, buf + sizeof ("garbage before"));
-    ck_assert_ptr_eq(st.pe, lastof(buf) - 2);
+    TEST_FRAME("gar\0bage" STX "23AB" FS "T2" FS "170" FS "COMPANY" FS "SAMPLE MESSAGE" FS "02" FS ETX "y", 0, sizeof("gar\0bage"), -2);
 
 #test incomplete_frame_can_be_resumed
     byte_t buf1[] = STX "000102" FS;
