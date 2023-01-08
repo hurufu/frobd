@@ -288,6 +288,12 @@ static void perform_pending_io(struct io_state* const t, int (*channel)[CHANNELS
                         LOGFX("Exceptional data isn't supported");
                         break;
                     case FD_WRITE:
+                        // FIXME: select works on file descriptors and not on channels, so when same fd is assigned to
+                        //        different channels then the first channel (which may be empty) will be used and then
+                        //        the whole fd will be cleared causing data loss on the other channel
+                        if (t->cur[i] == t->buf[i])
+                            continue;
+                        assertion("We shouldn't attempt to write 0 bytes", t->cur[i] > t->buf[i]);
                         // FIXME: Retry if we were unable to write all bytes
                         if ((s = write((*channel)[i], t->buf[i], t->cur[i] - t->buf[i])) != t->cur[i] - t->buf[i]) {
                             LOGF("Can't write %td bytes to %s channel (fd %d)", t->cur[i] - t->buf[i], channel_to_string(i), (*channel)[i]);
@@ -374,7 +380,7 @@ static int event_loop(const struct preformated_messages* const pm, int (* const 
 
 int main() {
     int channel[] = {
-        [IW_PAYMENT] = -1,
+        [IW_PAYMENT] = STDOUT_FILENO,
         [IW_STORAGE] = -1,
         [IW_UI     ] = -1,
         [IW_EVENTS ] = -1,
