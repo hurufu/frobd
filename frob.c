@@ -409,8 +409,11 @@ static void process_main(int* const expected_acks, struct io_state* const t, str
     // FIXME: This is a wrong way of checking ACK/NAK
     for (int i = 0; i < *expected_acks; i++)
         switch (t->cur[ER_MAIN][i]) {
-            case 0x00: // Official ECR-EFT simulator sends null byte at the end
+            case 0x00: // FIXME: This should be removed
+                continue;
             case 0x06: // Positive acknowledge
+                // Disarm any pending re-transmission alarm
+                alarm(0);
                 break;
             case 0x15:
                 LOGWX("Message rejected by remote peer");
@@ -471,7 +474,7 @@ static void perform_pending_io(struct io_state* const t, int (*channel)[CHANNELS
                                 const unsigned int prev = alarm(3);
                                 // FIXME: Enforce that only single message can be sent at a time until ACK/NAK wasn't received
                                 if (prev != 0)
-                                    LOGWX("Duplicated alram scheduled. Previous was set %us ago", prev);
+                                    LOGWX("Duplicated alram scheduled. Previous was ought to be delivered in %us", prev);
                                 //assertion("Only singal active timeout is expected", prev == 0);
                             }
                             char tmp[3*s];
