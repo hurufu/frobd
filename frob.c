@@ -91,8 +91,6 @@ static int process_msg(const unsigned char* p, const unsigned char* const pe, st
     msg->header = frob_header_extract(&p, pe);
     if (msg->header.type == 0)
         return LOGWX("Bad header");
-    LOGDX("\tTYPE: %02X TOKEN: %02X %02X %02X",
-            msg->header.type, msg->header.token[0], msg->header.token[1], msg->header.token[2]);
 
     switch (frob_body_extract(msg->header.type, &p, pe, &msg->body)) {
         case EBADMSG:
@@ -246,8 +244,12 @@ static void perform_pending_io(struct io_state* const t, int (*channel)[CHANNELS
                         break;
                     case FD_WRITE:
                         // FIXME: Retry if we were unable to write all bytes
-                        if ((s = write((*channel)[i], t->buf[i], t->cur[i] - t->buf[i])) != t->cur[i] - t->buf[i])
+                        if ((s = write((*channel)[i], t->buf[i], t->cur[i] - t->buf[i])) != t->cur[i] - t->buf[i]) {
                             LOGF("Can't write %td bytes to %s channel (fd %d)", t->cur[i] - t->buf[i], channel_to_string(i), (*channel)[i]);
+                        } else {
+                            char tmp[3*s];
+                            LOGDX("← %zu\t%s", s, PRETTV(t->buf[i], t->cur[i], tmp));
+                        }
                         t->cur[i] = t->buf[i];
                         FD_CLR((*channel)[i], &(t->set)[FD_WRITE]);
                         break;
@@ -259,6 +261,9 @@ static void perform_pending_io(struct io_state* const t, int (*channel)[CHANNELS
                             close((*channel)[i]);
                             FD_CLR((*channel)[i], &(t->set)[FD_READ]);
                             (*channel)[i] = -1;
+                        } else {
+                            char tmp[3*s];
+                            LOGDX("→ %zu\t%s", s, PRETTV(t->cur[i], t->cur[i] + s, tmp));
                         }
                         t->cur[i] += s;
                         break;
@@ -293,8 +298,6 @@ static int event_loop(const struct preformated_messages* const pm, int (* const 
                 const byte_t ack[] = { e ? 0x15 : 0x06 };
                 *t.cur[EW_MAIN]++ = ack[0];
                 FD_SET((*channel)[EW_MAIN], &t.set[FD_WRITE]);
-                char tmp[3*(f.pe-f.p)];
-                LOGDX("%s → %s", PRETTV(f.p, f.pe, tmp), PRETTY(ack));
                 if (0 == e) {
                     struct frob_msg parsed = { .magic = FROB_MAGIC };
                     if (process_msg(f.p, f.pe, &parsed) != 0)
