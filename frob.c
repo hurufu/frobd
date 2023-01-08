@@ -302,7 +302,6 @@ static void perform_pending_io(struct io_state* const t, int (*channel)[CHANNELS
                             LOGDX("← %c %zu\t%s", channel_to_code(i), s, PRETTV(t->buf[i], t->cur[i], tmp));
                         }
                         t->cur[i] = t->buf[i];
-                        FD_CLR((*channel)[i], &(t->set)[FD_WRITE]);
                         break;
                     case FD_READ:
                         if ((s = read((*channel)[i], t->cur[i], t->buf[i] + sizeof t->buf[i] - t->cur[i])) < 0) {
@@ -322,6 +321,8 @@ static void perform_pending_io(struct io_state* const t, int (*channel)[CHANNELS
             }
         }
     }
+    for (size_t i = 0; i < elementsof(*channel); i++)
+        FD_CLR((*channel)[i], &(t->set)[FD_WRITE]);
 }
 
 static struct frob_frame_fsm_state fnext(byte_t* const cursor, const struct frob_frame_fsm_state prev) {
