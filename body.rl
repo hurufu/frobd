@@ -1,5 +1,6 @@
 #include "frob.h"
 #include "utils.h"
+#include <errno.h>
 
 %%{
     machine common;
@@ -152,6 +153,6 @@ int frob_body_extract(const enum FrobMessageType t,
         case FROB_A1:
         case FROB_A2:
         default:
-            return 1;
+            return ENOSYS;
     }
 }

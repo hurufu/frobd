@@ -113,12 +113,14 @@ static int process_msg(const unsigned char* p, const unsigned char* const pe, st
 
     switch (frob_body_extract(msg->header.type, &p, pe, &msg->body)) {
         case EBADMSG:
-            return LOGDX("Bad payload");
+            return LOGEX("Bad payload");
+        case ENOSYS:
+            return LOGEX("Can't process message: %s", strerror(ENOSYS));
     }
 
     switch (frob_extract_additional_attributes(&p, pe, &msg->attr)) {
         case EBADMSG:
-            return LOGDX("Bad data");
+            return LOGEX("Bad data");
     }
 
     assertion("Complete message shall be processed, ie cursor shall point to the end of message", p == pe);
