@@ -49,12 +49,15 @@ static int extract_t2(const byte_t** const pp, const byte_t* const pe, struct fr
         del = 0x7F;
         a = ascii - cntrl - del;
 
-        version = a{4} >C fs @Version;
-        vendor = a{,20} >C fs @Vendor;
-        type = a{,20} >C fs @Type;
-        id = a{,20} >C fs @Id;
+        version = a+ >C fs @Version;
+        vendor = (a+ >C fs @Vendor) | fs;
+        type = (a+ >C fs @Type) | fs;
+        id = (a+ >C fs @Id) | fs;
 
-        main := version (vendor|fs) (type|fs) (id|fs);
+        main := (version vendor type id) |
+                (version vendor type) |
+                (version vendor) |
+                (version);
 
         write data;
         write init;
