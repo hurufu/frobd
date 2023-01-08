@@ -412,8 +412,6 @@ static void process_main(int* const expected_acks, struct io_state* const t, str
             case 0x00: // FIXME: This should be removed
                 continue;
             case 0x06: // Positive acknowledge
-                // Disarm any pending re-transmission alarm
-                alarm(0);
                 break;
             case 0x15:
                 LOGWX("Message rejected by remote peer");
@@ -423,6 +421,8 @@ static void process_main(int* const expected_acks, struct io_state* const t, str
                 break;
         }
     *expected_acks = 0;
+    // Disarm any pending re-transmission alarm
+    alarm(0);
     int e;
     for (f->pe = t->cur[ER_MAIN]; (e = frob_frame_process(f)) != EAGAIN; *f = fnext(t->cur[ER_MAIN], *f)) {
         assertion("Message length shall be positive", f->pe > f->p);
@@ -573,6 +573,7 @@ int main(const int ac, const char* av[static const ac]) {
     };
     cfg.blocked = adjust_signal_delivery(&cfg.channel[MR_SIGNAL]);
     cfg.timeout = ac == 2 ? atoi(av[1]) : 0;
+    //cfg.channel[IW_PAYMENT] = open("payment", O_WRONLY | O_CLOEXEC);
 
     if (!all_channels_ok(&cfg.channel))
         return EXIT_FAILURE;
