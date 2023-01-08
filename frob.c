@@ -382,9 +382,9 @@ static int event_loop(const struct preformated_messages* const pm, int (* const 
 int main() {
     int channel[] = {
         [IW_PAYMENT] = STDOUT_FILENO,
-        [IW_STORAGE] = -1,
-        [IW_UI     ] = -1,
-        [IW_EVENTS ] = -1,
+        [IW_STORAGE] = STDOUT_FILENO,
+        [IW_UI     ] = STDOUT_FILENO,
+        [IW_EVENTS ] = STDOUT_FILENO,
         [IR_DEVICE ] = -1,
         [EW_MAIN   ] = STDOUT_FILENO,
         [ER_MAIN   ] = STDIN_FILENO,
