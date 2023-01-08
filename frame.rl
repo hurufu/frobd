@@ -30,7 +30,7 @@
 
     frame = stx ((any-etx) @LRC_Byte >Start) ((any-etx) @LRC_Byte )* (etx @LRC_Byte >End) any @LRC_Check;
 
-    main := (any-stx)* frame;
+    main := (any-stx)* frame any*;
 
     write data;
 }%%

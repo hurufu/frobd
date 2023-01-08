@@ -23,7 +23,7 @@
     type_b = 'B' [1-4];
     type = (type_t | type_s | type_a | type_d | type_p | type_k | type_m | type_l | type_b);
 
-    main := (h{2}){1,3} fs >Token type fs >Type;
+    main := h{1,6} fs >Token type fs >Type;
 
     write data;
 
