@@ -1,3 +1,6 @@
-# frobd - Service that implements FROB ECR-EFT protocol
+# frobd - auto responder/bouncer/forwarder that implements FROB ECR-EFT protocol
 
 You can find specification at <frob.pl>
+
+Sending `SIGPWR` will print some internal statistics to the log
+Sending `SIGINT` will enter debug console
