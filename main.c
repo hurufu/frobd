@@ -1,19 +1,28 @@
 #include "frob.h"
-#include <stdio.h>
+#include <poll.h>
+#include <unistd.h>
+
+#define elementsof(Arr) (sizeof(Arr)/sizeof((Arr)[0]))
 
 int main() {
-    ssize_t producer(unsigned char (*const b)[2 * 1024]) {
-        return read(0, *b, sizeof(*b));
+    struct pollfd pf[] = {
+        { .fd = STDIN_FILENO, .events = POLLRDNORM }
+    };
+    int poll_res;
+    int cs;
+    while ((poll_res = poll(pf, elementsof(pf), 5*1000)) > 0) {
+        for (size_t i = 0; i < elementsof(pf); i++) {
+            if (pf[i].revents & POLLRDNORM) {
+                unsigned char buf[255];
+                cs = frob_main(cs, read(pf[i].fd, buf, sizeof buf), buf);
+            }
+        }
     }
-
-    int consumer (const struct FrobMsg* const m) {
-        puts("Ack");
-        fwrite(m, sizeof(struct FrobMsg), 1, stdout);
-        putchar('\n');
-        return 0;
+    switch (poll_res) {
+        case 0:
+            return 1;
+        case -1:
+            return 2;
     }
-
-    const ssize_t ret = frob_match(producer, consumer);
-    perror("DONE");
-    return ret;
+    return 0;
 }

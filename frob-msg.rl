@@ -1,45 +1,16 @@
 #include "frob.h"
 #include <stdio.h>
 
+size_t s_i;
+unsigned char s_working_copy[255];
 
 %%{
-    machine frob;
+    machine frob_structure;
     alphtype unsigned char;
 
-    action File {
-        puts("FILE");
-    }
+    action FS_Start {}
+    action FS_Commit {}
 
-    action Unit {
-        puts("UNIT");
-    }
-
-    action LRC_Start {
-        lrc = 0;
-    }
-
-    action LRC_Byte {
-        lrc ^= fc;
-    }
-
-    action LRC_Check {
-        if (lrc == fc) {
-            puts("ACK");
-        } else {
-            puts("NAK");
-        }
-    }
-
-    action FS_Start {
-        file_start = fpc;
-    }
-
-    action FS_Commit {
-        printf("FILE: %.*s\n", (int)(fpc - file_start), file_start);
-    }
-
-    stx = 0x02;
-    etx = 0x03;
     us  = 0x1F;
     fs  = 0x1C;
     del = 0x7F;
@@ -61,24 +32,43 @@
     T3 = zlen;
     T4 = sf;
 
-    structure = stx ((nf|af|hf|bf|sf) >FS_Start @FS_Commit)* etx any @{ puts("Frame"); };
-    frame = stx >LRC_Start ((any-etx) @LRC_Byte)* (etx @LRC_Byte) any @LRC_Check;
-
-    main := ((any-stx)* (frame & structure))+;
+    main := ((nf|af|hf|bf|sf) >FS_Start @FS_Commit)*;
 
     write data;
 }%%
 
-ssize_t frob_match(const producer_t producer, const consumer_t consumer) {
-    ssize_t s;
-    int cs;
-    unsigned char buf[2 * 1024];
-    unsigned char lrc = 0;
-    const unsigned char* file_start = NULL;
-    %% write init;
-    while ((s = producer(&buf)) > 0) {
-        const unsigned char* p = buf, * const pe = buf + s;
-        %% write exec;
+static ssize_t frob_structure() {
+}
+
+%%{
+    machine frob_frame;
+    alphtype unsigned char;
+
+    action LRC_Start {
+        lrc = 0;
     }
-    return s;
+    action LRC_Byte {
+        lrc ^= fc;
+    }
+    action LRC_Check {
+        puts(lrc == fc ? "ACK" : "NAK");
+    }
+
+    stx = 0x02;
+    etx = 0x03;
+    frame = stx >LRC_Start @Reset ((any-etx) @LRC_Byte @Copy)* (etx @LRC_Byte) any @LRC_Check;
+
+    main := ((any-stx)* frame )+;
+
+    write data;
+}%%
+
+int frob_process_ecr_input(int cs, const size_t s, const unsigned char buf[static const s]) {
+    unsigned char lrc = 0;
+    const unsigned char* p = buf, * const pe = buf + s;
+    %%{
+        write init;
+        write exec;
+    }%%
+    return cs;
 }
