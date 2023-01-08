@@ -165,7 +165,7 @@ static int forward_message(const struct frob_msg* const msg, const enum OrderedC
 static int process_msg(const unsigned char* p, const unsigned char* const pe, struct frob_msg* const msg) {
     msg->header = frob_header_extract(&p, pe);
     if (msg->header.type == 0)
-        return LOGWX("Bad header"), -1;
+        goto bail;
 
     int e;
     switch (e = frob_body_extract(msg->header.type, &p, pe, &msg->body)) {
@@ -174,7 +174,8 @@ static int process_msg(const unsigned char* p, const unsigned char* const pe, st
         case EBADMSG:
         case ENOSYS:
         case ENOTRECOVERABLE:
-            return LOGEX("Body not parsed: %s", strerror(e)), -1;
+            LOGEX("Body not parsed: %s", strerror(e));
+            goto bail;
         default:
             assert(false);
     }
@@ -184,7 +185,8 @@ static int process_msg(const unsigned char* p, const unsigned char* const pe, st
             break;
         case EBADMSG:
         case ENOTRECOVERABLE:
-            return LOGEX("Attrs not parsed: %s", strerror(e)), -1;
+            LOGEX("Attrs not parsed: %s", strerror(e));
+            goto bail;
         default:
             assert(false);
 
@@ -192,6 +194,10 @@ static int process_msg(const unsigned char* p, const unsigned char* const pe, st
 
     assertion("Complete message shall be processed, ie cursor shall point to the end of message", p == pe);
     return 0;
+bail:
+    LOGDX("\tp:  %s", p);
+    LOGDX("\tpe: %s", pe);
+    return -1;
 }
 
 static int make_frame(const byte_t* const body, const byte_t (* const token)[3], byte_t** const pp, byte_t* const pe) {
@@ -564,7 +570,7 @@ int main(const int ac, const char* av[static const ac]) {
     static struct config cfg = {
         .pm = {
             .t2 = FS "T2" FS "170" FS "TEST" FS "SIM" FS "0" FS ETX,
-            .b2 = FS "T2" FS "170" FS "TEST" FS "SIM" FS "0" FS "0" FS "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" FS "00" ETX,
+            .b2 = FS "B2" FS "170" FS "TEST" FS "SIM" FS "0" FS "0" FS "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" FS "00" FS ETX,
             .t4 = FS "T4" FS "160" US "170" US FS ETX,
             .t5 = FS "T5" FS "170" FS ETX,
             .s2 = FS "S2" FS "993" FS FS "M000" FS "T000" FS "N/A" FS FS FS "NONE" FS "Payment endopoint not available" FS ETX,

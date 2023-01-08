@@ -498,8 +498,11 @@ static int extract_b2(const byte_t** const pp, const byte_t* const pe, struct fr
         result = n* >C fs @Result;
         modulus = h* >C fs @Modulus;
         exponent = h* >C fs @Exponent;
+        required = version vendor type id result;
 
-        main := version vendor type id result (modulus exponent)?;
+        main := required |
+                (required modulus) |
+                (required modulus exponent);
 
         write data;
         write init;
