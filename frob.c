@@ -87,6 +87,27 @@ static int forward_message(const struct frob_msg* const msg, const int channel, 
     return 0;
 }
 
+static int process_msg(const unsigned char* p, const unsigned char* const pe, struct frob_msg* const msg) {
+    msg->header = frob_header_extract(&p, pe);
+    if (msg->header.type == 0)
+        return LOGWX("Bad header");
+    LOGDX("\tTYPE: %02X TOKEN: %02X %02X %02X",
+            msg->header.type, msg->header.token[0], msg->header.token[1], msg->header.token[2]);
+
+    switch (frob_body_extract(msg->header.type, &p, pe, &msg->body)) {
+        case EBADMSG:
+            return LOGDX("Bad payload");
+    }
+
+    switch (frob_extract_additional_attributes(&p, pe, &msg->attr)) {
+        case EBADMSG:
+            return LOGDX("Bad data");
+    }
+
+    assertion("Complete message shall be processed, ie cursor shall point to the end of message", p == pe);
+    return 0;
+}
+
 static const byte_t* get_preformatted_buffer(const struct preformated_messages* const pm, const enum FrobMessageType t) {
     switch (t) {
         case FROB_T1: return pm->t2;
@@ -94,13 +115,40 @@ static const byte_t* get_preformatted_buffer(const struct preformated_messages* 
     }
 }
 
-static int handle_local(const struct preformated_messages* const pm, const enum FrobMessageType mt, int (*channel)[CHANNELS_COUNT], struct io_state* const t) {
-    const byte_t* const m = get_preformatted_buffer(pm, mt);
+static int make_frame(const byte_t* const body, const byte_t (* const token)[3], byte_t** const pp, byte_t* const pe) {
+    byte_t* p = *pp;
+
+    assert(pe >= p && pe - p <= 4*1024);
+
+    const size_t l = strlen((char*)body);
+    if (pe - *pp < 1 + 6 + (int)l + 1) // STX + token + body + LRC
+        return LOGWX("Can't construct frame: %s", strerror(ENOBUFS));
+
+    const int r = snprintf((char*)p, pe - p, "\x02%02X%02X%02X", (*token)[0], (*token)[1], (*token)[2]);
+    if (r != 7)
+        return LOGW("Can't construct token");
+    p += r;
+    memcpy(p, body, l);
+    p += l;
+    uint8_t lrc = 0;
+    for (const byte_t* c = *pp + 1; c <= p; c++)
+        lrc ^= *c;
+    *p++ = lrc;
+
+    assert(pe >= p && pe - p <= 4*1024);
+    assertion("Parseable frame is created", frob_frame_process(&(struct frob_frame_fsm_state){.p = *pp, .pe = p}) == 0);
+    assertion("Parseable message within is created", process_msg(*pp + 1, p - 2, &(struct frob_msg){ .magic = FROB_MAGIC }) == 0);
+
+    *pp = p;
+    return 0;
+}
+
+static int handle_local(const struct preformated_messages* const pm, const struct frob_header* const h, int (*channel)[CHANNELS_COUNT], struct io_state* const t) {
+    const byte_t* const m = get_preformatted_buffer(pm, h->type);
     if (!m)
-        return LOGWX("Can't respond to locally handled message: %s", strerror(ENOSYS));
-    const size_t l = strlen((char*)m);
-    memcpy(t->cur[EW_MAIN], m, l);
-    t->cur[EW_MAIN] += l;
+        return LOGWX("There isn't any anwer to reply: %s", strerror(ENOSYS));
+    if (make_frame(m, &h->token, &t->cur[EW_MAIN], endof(t->buf[EW_MAIN])) != 0)
+        return LOGWX("Locally generate response skipped");
     FD_SET((*channel)[EW_MAIN], &t->set[FD_WRITE]);
     return 0;
 }
@@ -131,30 +179,9 @@ static int handle_message(const struct preformated_messages* const pm, const str
     if (ch == -2)
         return -2;
     if (ch == -1)
-        return handle_local(pm, msg->header.type, channel, t);
+        return handle_local(pm, &msg->header, channel, t);
     return forward_message(msg, *(channel)[ch], t);
 };
-
-static int process_msg(const unsigned char* p, const unsigned char* const pe, struct frob_msg* const msg) {
-    msg->header = frob_header_extract(&p, pe);
-    if (msg->header.type == 0)
-        return LOGWX("Bad header");
-    LOGDX("\tTYPE: %02X TOKEN: %02X %02X %02X",
-            msg->header.type, msg->header.token[0], msg->header.token[1], msg->header.token[2]);
-
-    switch (frob_body_extract(msg->header.type, &p, pe, &msg->body)) {
-        case EBADMSG:
-            return LOGDX("Bad payload");
-    }
-
-    switch (frob_extract_additional_attributes(&p, pe, &msg->attr)) {
-        case EBADMSG:
-            return LOGDX("Bad data");
-    }
-
-    assertion("Complete message shall be processed, ie cursor shall point to the end of message", p == pe);
-    return 0;
-}
 
 static void fset(const int (* const channel)[CHANNELS_COUNT], fd_set (* const set)[FD_SET_COUNT]) {
     for (size_t i = 0; i < CHANNELS_COUNT; i++) {
