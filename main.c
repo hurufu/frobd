@@ -9,21 +9,24 @@ static char* convert_to_printable(const unsigned char* const p, const unsigned c
                                   const size_t s, char b[static const s]) {
     // TODO: Add support for regional characters, ie from 0x80 to 0xFF
     // TODO: Rewrite convert_to_printable using libicu
-    static const char special[][4] = {
-        "␀", "␁", "␂", "␃", "␄", "␅", "␆", "␇", "␈", "␉", "␊", "␋", "␌", "␍", "␎", "␏",
-        "␐", "␑", "␒", "␓", "␔", "␕", "␖", "␗", "␘", "␙", "␚", "␛", "␜", "␝", "␞", "␟",
-        "␠",
-        [0x7F] = "␡",
-        [0x80] = "␦"
-    };
     char* o = b;
     for (const unsigned char* x = p; x != pe && o < b + s; x++) {
-        const unsigned char c = (*x & 0x80) ? 0x80 : *x;
-        if (c <= 0x20 || c == 0x7F || c == 0x80)
-            for (int i = 0; i < 3; i++)
-                *o++ = special[c][i];
-        else
+        const unsigned char c = *x;
+        if (c <= 0x20) {
+            *o++ = 0xE2;
+            *o++ = 0x90;
+            *o++ = 0x80 + c;
+        } else if (c == 0x7F) {
+            *o++ = 0xE2;
+            *o++ = 0x90;
+            *o++ = 0x80 + 0x31;
+        } else if (c & 0x80) {
+            *o++ = 0xE2;
+            *o++ = 0x90;
+            *o++ = 0x36;
+        } else {
             *o++ = c;
+        }
     }
     *o = 0x00;
     return b;
