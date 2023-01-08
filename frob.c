@@ -56,6 +56,13 @@ struct preformated_messages {
     byte_t d5[128];
 };
 
+struct config {
+    const struct preformated_messages pm;
+    int channel[CHANNELS_COUNT];
+    time_t timeout;
+    sigset_t blocked;
+};
+
 #ifndef NO_LOGS_ON_STDERR
 enum LogLevel g_log_level = LOG_DEBUG;
 #endif
@@ -392,20 +399,20 @@ static struct frob_frame_fsm_state fnext(byte_t* const cursor, const struct frob
     };
 }
 
-static int event_loop(const struct preformated_messages* const pm, int (* const channel)[CHANNELS_COUNT], const time_t relative_timeout, const sigset_t blocked) {
+static int event_loop(struct config* const cfg) {
     static struct io_state t;
 
-    const int m = get_max_fd(channel);
+    const int m = get_max_fd(&cfg->channel);
     struct frob_frame_fsm_state f = { .p = t.buf[ER_MAIN] };
     int expected_acks = 0;
     int ret = 0;
-    for (finit(channel, &t); (ret = fselect(m, &t.set, relative_timeout)) > 0; fset(channel, &t.set)) {
-        perform_pending_io(&t, channel);
+    for (finit(&cfg->channel, &t); (ret = fselect(m, &t.set, cfg->timeout)) > 0; fset(&cfg->channel, &t.set)) {
+        perform_pending_io(&t, &cfg->channel);
 
-        if (FD_ISSET((*channel)[MR_SIGNAL], &t.set[FD_READ]))
-            process_signal(blocked, &t, channel);
+        if (FD_ISSET((*&cfg->channel)[MR_SIGNAL], &t.set[FD_READ]))
+            process_signal(cfg->blocked, &t, &cfg->channel);
 
-        if (FD_ISSET((*channel)[ER_MAIN], &t.set[FD_READ])) {
+        if (FD_ISSET((*&cfg->channel)[ER_MAIN], &t.set[FD_READ])) {
             // FIXME: This is a wrong way of checking ACK/NAK
             for (int i = 0; i < expected_acks; i++)
                 switch (t.cur[ER_MAIN][i]) {
@@ -426,13 +433,13 @@ static int event_loop(const struct preformated_messages* const pm, int (* const 
                 assertion("Message length shall be positive", f.pe > f.p);
                 const byte_t ack[] = { e ? 0x15 : 0x06 };
                 *t.cur[EW_MAIN]++ = ack[0];
-                FD_SET((*channel)[EW_MAIN], &t.set[FD_WRITE]);
+                FD_SET((*&cfg->channel)[EW_MAIN], &t.set[FD_WRITE]);
                 if (0 == e) {
                     struct frob_msg parsed = { .magic = FROB_MAGIC };
                     if (process_msg(f.p, f.pe, &parsed) != 0)
                         LOGWX("Can't process message");
                     else
-                        if (handle_message(pm, &parsed, channel, &t, &expected_acks) != 0)
+                        if (handle_message(&cfg->pm, &parsed, &cfg->channel, &t, &expected_acks) != 0)
                             LOGWX("Message wasn't handled");
                 } else {
                     LOGWX("Can't parse incoming frame: %s", strerror(e));
@@ -463,34 +470,35 @@ static sigset_t adjust_signal_delivery(int* const ch) {
 }
 
 int main(const int ac, const char* av[static const ac]) {
-    static int channel[] = {
-        [IW_PAYMENT] = STDOUT_FILENO,
-        [IW_STORAGE] = STDOUT_FILENO,
-        [IW_UI     ] = STDOUT_FILENO,
-        [IW_EVENTS ] = STDOUT_FILENO,
-        [IR_DEVICE ] = -1,
-        [EW_MAIN   ] = STDOUT_FILENO,
-        [ER_MAIN   ] = STDIN_FILENO,
-        [ER_MASTER ] = -1,
-        [MR_SIGNAL ] = -1
+    static struct config cfg = {
+        .pm = {
+            .t2 = FS "T2" FS "170" FS "TEST" FS "SIM" FS "0" FS ETX,
+            .t4 = FS "T4" FS "160" US "170" US FS ETX,
+            .t5 = FS "T5" FS "170" FS ETX,
+            .d5 = FS "D5" FS "24" FS "12" FS "6" FS "19" FS "1" FS "1" FS "1"
+                  FS "0" FS "0" FS "0" FS FS FS "4" FS "9999" FS "4" FS "15"
+                  FS "ENTER" US "CANCEL" US "CHECK" US "BACKSPACE" US "DELETE" US "UP" US "DOWN" US "LEFT" US "RIGHT" US
+                  FS "1" FS "1" FS "1" FS "0" FS ETX
+        },
+        .channel = {
+            [IW_PAYMENT] = STDOUT_FILENO,
+            [IW_STORAGE] = STDOUT_FILENO,
+            [IW_UI     ] = STDOUT_FILENO,
+            [IW_EVENTS ] = STDOUT_FILENO,
+            [IR_DEVICE ] = -1,
+            [EW_MAIN   ] = STDOUT_FILENO,
+            [ER_MAIN   ] = STDIN_FILENO,
+            [ER_MASTER ] = -1,
+            [MR_SIGNAL ] = -1
+        }
     };
+    cfg.blocked = adjust_signal_delivery(&cfg.channel[MR_SIGNAL]);
+    cfg.timeout = ac == 2 ? atoi(av[1]) : 0;
 
-    const sigset_t blocked = adjust_signal_delivery(&channel[MR_SIGNAL]);
-    if (!all_channels_ok(&channel))
+    if (!all_channels_ok(&cfg.channel))
         return EXIT_FAILURE;
 
-    static const struct preformated_messages pm = {
-        .t2 = FS "T2" FS "170" FS "TEST" FS "SIM" FS "0" FS ETX,
-        .t4 = FS "T4" FS "160" US "170" US FS ETX,
-        .t5 = FS "T5" FS "170" FS ETX,
-        .d5 = FS "D5" FS "24" FS "12" FS "6" FS "19" FS "1" FS "1" FS "1"
-              FS "0" FS "0" FS "0" FS FS FS "4" FS "9999" FS "4" FS "15"
-              FS "ENTER" US "CANCEL" US "CHECK" US "BACKSPACE" US "DELETE" US "UP" US "DOWN" US "LEFT" US "RIGHT" US
-              FS "1" FS "1" FS "1" FS "0" FS ETX
-    };
-
-    const time_t timeout = ac == 2 ? atoi(av[1]) : 0;
-    if (event_loop(&pm, &channel, timeout, blocked) == 0)
-        return timeout ? EXIT_FAILURE : EXIT_SUCCESS;
+    if (event_loop(&cfg) == 0)
+        return cfg.timeout ? EXIT_FAILURE : EXIT_SUCCESS;
     return EXIT_FAILURE;
 }
