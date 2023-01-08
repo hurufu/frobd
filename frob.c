@@ -316,10 +316,18 @@ static bool all_channels_ok(const int (*channel)[CHANNELS_COUNT]) {
 }
 
 static void process_signal(sigset_t blocked, struct io_state* const t, int (*channel)[CHANNELS_COUNT]) {
-    // TODO: Use this fd to enable master channel on SIGINT
-    // TODO: Use this fd to Handle missing ACK/NAK using SIGALRM
     assert(sizeof (struct signalfd_siginfo) == t->cur[MR_SIGNAL] - t->buf[MR_SIGNAL]);
     const struct signalfd_siginfo* const inf = (struct signalfd_siginfo*)t->buf[MR_SIGNAL];
+    switch (inf->ssi_signo) {
+        case SIGINT:
+            LOGWX("Couldn't start %s channel: %s", channel_to_string(ER_MASTER), strerror(ENOSYS));
+            break;
+        case SIGALRM:
+            LOGWX("Can't re-transmit: %s", strerror(ENOSYS));
+            break;
+        default:
+            LOGFX("Unexpected signal. Bailing out");
+    }
     sigdelset(&blocked, inf->ssi_signo);
     (*channel)[MR_SIGNAL] = signalfd((*channel)[MR_SIGNAL], &blocked, SFD_CLOEXEC);
     sigset_t s;
