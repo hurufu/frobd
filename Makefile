@@ -1,6 +1,7 @@
 .PHONY: index clean graph-% run run-%
 
-CFLAGS := -Og -ggdb3 -Wall -Wextra -fvar-tracking-assignments
+CFLAGS := -Os -g0 -Wall -Wextra -ffat-lto-objects
+LDFLAGS := -flto
 
 run: run-01 run-02 run-T4
 run-%: main sample%
