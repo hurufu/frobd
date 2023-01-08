@@ -62,14 +62,14 @@ static void test_frame(const size_t bs, byte_t buf[static bs],
     int x = frob_frame_process(&st);
     ck_assert_int_eq(x, EAGAIN);
     ck_assert_ptr_eq(st.p, buf1 + 1);
-    ck_assert_ptr_eq(st.pe, NULL);
+    ck_assert_ptr_null(st.pe);
 
     byte_t buf2[] = "T1" FS;
     st.p = buf2;
     st.pe = lastof(buf2);
     x = frob_frame_process(&st);
     ck_assert_int_eq(x, EAGAIN);
-    ck_assert_ptr_eq(st.pe, NULL);
+    ck_assert_ptr_null(st.pe);
     ck_assert_ptr_eq(st.p, buf2);
 
     byte_t buf3[] = ETX "e";
