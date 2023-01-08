@@ -9,7 +9,7 @@ RL_C     := $(RL_FILES:.rl=.c)
 CFILES   := $(RL_C) frob.c log.c
 OFILES   := $(CFILES:.c=.o)
 
-run: run-01 run-02 run-T4 run-S1
+run: run-01 run-02 run-T4 run-S1 run-D4
 run-%: frob sample%
 	./$< <$(word 2,$^) | od -tx1z
 index: tags cscope.out

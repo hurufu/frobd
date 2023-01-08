@@ -109,16 +109,27 @@ static int process_msg(const unsigned char* p, const unsigned char* const pe, st
     if (msg->header.type == 0)
         return LOGWX("Bad header");
 
-    switch (frob_body_extract(msg->header.type, &p, pe, &msg->body)) {
+    int e;
+    switch (e = frob_body_extract(msg->header.type, &p, pe, &msg->body)) {
+        case 0:
+            break;
         case EBADMSG:
-            return LOGEX("Bad payload");
         case ENOSYS:
-            return LOGEX("Can't process message: %s", strerror(ENOSYS));
+        case ENOTRECOVERABLE:
+            return LOGEX("Body not parsed: %s", strerror(e));
+        default:
+            assert(false);
     }
 
-    switch (frob_extract_additional_attributes(&p, pe, &msg->attr)) {
+    switch (e = frob_extract_additional_attributes(&p, pe, &msg->attr)) {
+        case 0:
+            break;
         case EBADMSG:
-            return LOGEX("Bad data");
+        case ENOTRECOVERABLE:
+            return LOGEX("Attrs not parsed: %s", strerror(e));
+        default:
+            assert(false);
+
     }
 
     assertion("Complete message shall be processed, ie cursor shall point to the end of message", p == pe);
@@ -157,18 +168,21 @@ static int handle_local(const struct preformated_messages* const pm, const struc
     const byte_t* m = NULL;
     switch (h->type) {
         case FROB_T1: m = pm->t2; break;
-        case FROB_T2: return 0;
         case FROB_T3: m = pm->t4; break;
         case FROB_T4: m = pm->t5; break;
-        case FROB_T5: return 0;
         case FROB_D4: m = pm->d5; break;
-        case FROB_D5: return 0;
+        case FROB_T2:
+        case FROB_T5:
+        case FROB_D5:
+            LOGIX("Message skipped");
+            return 0;
         case FROB_S1:
         case FROB_S2:
         case FROB_P1:
         case FROB_I1:
         case FROB_A1:
         case FROB_A2:
+            LOGFX("Internal error, message %d shouldn't be handled locally", h->type);
             return -1;
         default:
             LOGWX("There isn't any answer to reply: %s", strerror(ENOSYS));
@@ -241,7 +255,7 @@ static bool fselect(const int nfd, fd_set (* const set)[FD_SET_COUNT], const tim
     const int l = select(nfd, &(*set)[FD_READ], &(*set)[FD_WRITE], &(*set)[FD_EXCEPT], tp);
     if (l == 0)
         if (relative_timeout)
-            LOGWX("Timeout reached");
+            LOGWX("%s", strerror(ETIME));
         else
             LOGWX("Single-shot mode ended");
     else if (l < 0)
@@ -346,6 +360,8 @@ static int event_loop(const struct preformated_messages* const pm, int (* const 
                     else
                         if (handle_message(pm, &parsed, channel, &t, &expected_acks) != 0)
                             LOGWX("Can't handle message");
+                } else {
+                    LOGWX("Can't parse incoming message: %s", strerror(e));
                 }
             }
         }
@@ -372,10 +388,10 @@ int main() {
         .t2 = FS "T2" FS "170" FS "TEST" FS "SIM" FS "0" FS ETX,
         .t4 = FS "T4" FS "160" US "170" US FS ETX,
         .t5 = FS "T5" FS "170" FS ETX,
-        .d5 = FS "D5" FS "24" FS "12" FS "6" FS "19" FS "1" FS "1" FS "1" FS "0" FS "0"
-              FS "0" FS FS FS "4" FS "9999" FS "4" FS "15"
-              FS "ENTER" US "CANCEL" US "CHECK" US "BACKSPACE" US "DELETE" US "UP" US "DOWN" US "LEFT" US "RIGHT"
-              FS "1" FS "1" FS "1" FS "1" FS "1"
+        .d5 = FS "D5" FS "24" FS "12" FS "6" FS "19" FS "1" FS "1" FS "1"
+              FS "0" FS "0" FS "0" FS FS FS "4" FS "9999" FS "4" FS "15"
+              FS "ENTER" US "CANCEL" US "CHECK" US "BACKSPACE" US "DELETE" US "UP" US "DOWN" US "LEFT" US "RIGHT" US
+              FS "1" FS "1" FS "1" FS "0" FS ETX
     };
     const time_t timeout = 0;
     if (event_loop(&pm, &channel, timeout) == 0)

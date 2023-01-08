@@ -1,5 +1,6 @@
 #include "frob.h"
 #include "utils.h"
+#include <errno.h>
 
 %%{
     machine frob_attrs;
@@ -15,7 +16,7 @@
 
     s = a* >C us;
 
-    main := s+ @Unit fs;
+    main := (s+ @Unit fs)?;
 
     write data;
 }%%
@@ -29,5 +30,5 @@ int frob_extract_additional_attributes(const byte_t** pp, const byte_t* pe, char
         write exec;
     }%%
     *pp = p;
-    return cs < %%{ write first_final; }%%;
+    return cs < %%{ write first_final; }%% ? ENOTRECOVERABLE : 0;
 }
