@@ -233,6 +233,7 @@ static int handle_local(const struct preformated_messages* const pm, const struc
         case FROB_T2:
         case FROB_T5:
         case FROB_D5:
+            // FIXME: In most cases skipped message shall be used for some sort of logic, eg T5 shall set version of the protocol
             LOGIX("%s message %s (%#x) skipped", frob_message_destination_to_string(h->type), frob_message_to_string(h->type), h->type);
             return 0;
         case FROB_S1: m = pm->s2; break;
