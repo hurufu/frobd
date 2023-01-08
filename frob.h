@@ -1,4 +1,11 @@
 #include <unistd.h>
+#include <stdbool.h>
 
-int frob_acknowledge(unsigned char);
-int frob_process_ecr_eft_input(size_t s, const unsigned char buf[static s]);
+struct frob_frame_fsm_state {
+    unsigned char lrc;
+    bool not_first;
+    int cs;
+    unsigned char* start, *end;
+};
+
+int frob_frame_process(struct frob_frame_fsm_state*);

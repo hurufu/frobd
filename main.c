@@ -1,33 +1,52 @@
 #include "frob.h"
-#include <poll.h>
-#include <unistd.h>
+#include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
+#include <err.h>
 
-#define elementsof(Arr) (sizeof(Arr)/sizeof((Arr)[0]))
-
-int frob_acknowledge(const unsigned char c) {
-    return write(STDOUT_FILENO, &c, 1);
-}
+#define elementsof(Array) (sizeof(Array)/sizeof((Array)[0]))
 
 int main() {
-    struct pollfd pf[] = {
-        { .fd = STDIN_FILENO, .events = POLLRDNORM }
-    };
-    int poll_res;
-    while ((poll_res = poll(pf, elementsof(pf), 12 * 1000)) > 0) {
-        if (pf[0].revents & POLLRDNORM) {
-            unsigned char buf[32];
-            const ssize_t s = read(pf[0].fd, buf, sizeof buf);
-            if (s <= 0)
-                break;
-            frob_process_ecr_eft_input(s, buf);
-        }
-        if (pf[0].revents & POLLNVAL)
-            break;
-        if (pf[0].revents & POLLHUP)
-            break;
+    static unsigned char buf[4096];
+    const unsigned char* const end = buf + sizeof buf;
+
+    {
+        FILE* const ios[] = { stdin, stdout };
+        for (size_t i = 0; i < elementsof(ios); i++)
+            setbuf(ios[i], NULL);
     }
-    for (size_t i = 0; i < elementsof(pf); i++)
-        close(pf[i].fd);
-    return poll_res == 0 ? 1 : poll_res < 0 ? 2 : 0;
+
+    for (;;) {
+        struct frob_frame_fsm_state st = { .start = buf };
+        const size_t r = fread(st.start, 1, end - st.start, stdin);
+        if (r <= 0)
+            break;
+        st.end = st.start + r;
+        switch (frob_frame_process(&st)) {
+            case EBADMSG:
+nak:
+                if (fwrite((char[]){0x15}, 1, 1, stdout) != 1)
+                    err(3, "NAK failed");
+                continue;
+            case EAGAIN:
+again:
+                st.start = st.end;
+                const size_t s = fread(st.start, 1, end - st.start, stdin);
+                if (s <= 0)
+                    goto end;
+                st.end = st.start + s;
+                switch (frob_frame_process(&st)) {
+                    case EBADMSG:
+                        goto nak;
+                    case EAGAIN:
+                        goto again;
+                }
+        }
+        if (fwrite((char[]){0x06}, 1, 1, stdout) != 1)
+            err(2, "ACK failed");
+    }
+end:
+    if (feof(stdin))
+        return 0;
+    err(5, "Can't read stdin");
 }
