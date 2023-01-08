@@ -3,6 +3,8 @@
 #include "log.h"
 
 #include <stdlib.h>
+#include <signal.h>
+#include <sys/signalfd.h>
 #include <stdio.h>
 #include <errno.h>
 #include <assert.h>
@@ -28,6 +30,7 @@ enum OrderedChannels {
     EW_MAIN,
     ER_MAIN,
     ER_MASTER,
+    MR_SIGNAL,
 
     CHANNELS_COUNT
 };
@@ -67,6 +70,7 @@ static const char* channel_to_string(const enum OrderedChannels o) {
         case EW_MAIN:    return "MAIN (external output)";
         case ER_MAIN:    return "MAIN (external input)";
         case ER_MASTER:  return "MASTER (console input)";
+        case MR_SIGNAL:  return "SIGFD";
         case CHANNELS_COUNT:
             break;
     }
@@ -119,6 +123,7 @@ static char channel_to_code(const enum OrderedChannels o) {
         case EW_MAIN:    return 'M';
         case ER_MAIN:    return 'M';
         case ER_MASTER:  return 'R';
+        case MR_SIGNAL:  return 'I';
         case CHANNELS_COUNT:
             break;
     }
@@ -228,7 +233,7 @@ static int handle_local(const struct preformated_messages* const pm, const struc
     return 0;
 }
 
-static int get_channel(const struct frob_msg* const msg) {
+static int get_destination_channel(const struct frob_msg* const msg) {
     switch (msg->header.type & FROB_DESTINATION_MASK) {
         case FROB_PAYMENT:
             if (msg->header.type == FROB_S1)
@@ -250,7 +255,7 @@ static int get_channel(const struct frob_msg* const msg) {
 
 static int handle_message(const struct preformated_messages* const pm, const struct frob_msg* const msg, int (*channel)[CHANNELS_COUNT], struct io_state* const t, int* const expected_acks) {
     assertion("Magic string shall match", strcmp(msg->magic, FROB_MAGIC) == 0);
-    const int ch = get_channel(msg);
+    const int ch = get_destination_channel(msg);
     if (ch == -2)
         return -2;
     if (ch == -1)
@@ -267,6 +272,7 @@ static void fset(const int (* const channel)[CHANNELS_COUNT], fd_set (* const se
                 case ER_MAIN:
                 case IR_DEVICE:
                 case ER_MASTER:
+                case MR_SIGNAL:
                     FD_SET(c, &(*set)[FD_READ]);
             }
         }
@@ -284,7 +290,6 @@ static void finit(const int (* const channel)[CHANNELS_COUNT], struct io_state* 
 static int fselect(const int nfd, fd_set (* const set)[FD_SET_COUNT], const time_t relative_timeout) {
     struct timeval t = { .tv_sec = relative_timeout };
     struct timeval* const tp = (relative_timeout == (time_t)-1) ? NULL : &t;
-    // TODO: Use pselect and enable master channel on SIGINT
     const int l = select(nfd, &(*set)[FD_READ], &(*set)[FD_WRITE], &(*set)[FD_EXCEPT], tp);
     if (l == 0)
         if (relative_timeout)
@@ -414,6 +419,24 @@ static int event_loop(const struct preformated_messages* const pm, int (* const 
     return ret;
 }
 
+static void adjust_signal_delivery(int* const ch) {
+    static const int blocked_signals[] = {
+        SIGALRM,
+        SIGINT
+    };
+    sigset_t s;
+    sigemptyset(&s);
+    for (size_t i = 0; i < elementsof(blocked_signals); i++)
+        sigaddset(&s, blocked_signals[i]);
+    if (sigprocmask(SIG_BLOCK, &s, NULL) != 0)
+        LOGF("Couldn't adjust signal mask");
+    // TODO: Use this fd to enable master channel on SIGINT
+    // TODO: Use this fd to Handle missing ACK/NAK using SIGALRM
+    *ch = signalfd(-1, &s, SFD_CLOEXEC);
+    if (*ch == -1)
+        LOGF("Couldn't setup sigfd");
+}
+
 int main(const int ac, const char* av[static const ac]) {
     static int channel[] = {
         [IW_PAYMENT] = STDOUT_FILENO,
@@ -423,9 +446,11 @@ int main(const int ac, const char* av[static const ac]) {
         [IR_DEVICE ] = -1,
         [EW_MAIN   ] = STDOUT_FILENO,
         [ER_MAIN   ] = STDIN_FILENO,
-        [ER_MASTER ] = -1
+        [ER_MASTER ] = -1,
+        [MR_SIGNAL ] = -1
     };
 
+    adjust_signal_delivery(&channel[MR_SIGNAL]);
     if (!all_channels_ok(&channel))
         return EXIT_FAILURE;
 
