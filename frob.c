@@ -319,13 +319,6 @@ static int get_max_fd(const int (*channel)[CHANNELS_COUNT]) {
     return max + 1;
 }
 
-static bool all_channels_ok(const int (*channel)[CHANNELS_COUNT]) {
-    for (size_t i = 0; i < elementsof(*channel); i++)
-        if ((*channel)[i] >= FD_SETSIZE)
-            return false;
-    return true;
-}
-
 static void show_prompt(int (*channel)[CHANNELS_COUNT]) {
     static const char prompt[] = "> ";
     // TODO: Schedule for writting in perfrom_pending_io
@@ -508,6 +501,13 @@ static sigset_t adjust_signal_delivery(int* const ch) {
         sigaddset(&s, blocked_signals[i]);
     *ch = setup_signalfd(*ch, s);
     return s;
+}
+
+static bool all_channels_ok(const int (*channel)[CHANNELS_COUNT]) {
+    for (size_t i = 0; i < elementsof(*channel); i++)
+        if ((*channel)[i] >= FD_SETSIZE)
+            return false;
+    return true;
 }
 
 int main(const int ac, const char* av[static const ac]) {
