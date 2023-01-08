@@ -383,7 +383,7 @@ static int event_loop(const struct preformated_messages* const pm, int (* const 
 }
 
 int main() {
-    int channel[] = {
+    static int channel[] = {
         [IW_PAYMENT] = STDOUT_FILENO,
         [IW_STORAGE] = STDOUT_FILENO,
         [IW_UI     ] = STDOUT_FILENO,
@@ -396,7 +396,8 @@ int main() {
 
     if (!all_channels_ok(&channel))
         return EXIT_FAILURE;
-    const struct preformated_messages pm = {
+
+    static const struct preformated_messages pm = {
         .t2 = FS "T2" FS "170" FS "TEST" FS "SIM" FS "0" FS ETX,
         .t4 = FS "T4" FS "160" US "170" US FS ETX,
         .t5 = FS "T5" FS "170" FS ETX,
@@ -405,6 +406,7 @@ int main() {
               FS "ENTER" US "CANCEL" US "CHECK" US "BACKSPACE" US "DELETE" US "UP" US "DOWN" US "LEFT" US "RIGHT" US
               FS "1" FS "1" FS "1" FS "0" FS ETX
     };
+
     const time_t timeout = 0;
     if (event_loop(&pm, &channel, timeout) == 0)
         return timeout ? EXIT_FAILURE : EXIT_SUCCESS;
