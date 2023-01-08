@@ -446,15 +446,15 @@ static int event_loop(struct config* const cfg) {
     for (finit(&cfg->channel, &t); (ret = fselect(m, &t.set, cfg->timeout)) > 0; fset(&cfg->channel, &t.set)) {
         perform_pending_io(&t, &cfg->channel, cfg->blocked);
 
-        if (FD_ISSET((*&cfg->channel)[MR_SIGNAL], &t.set[FD_READ]))
+        if (FD_ISSET(cfg->channel[MR_SIGNAL], &t.set[FD_READ]))
             process_signal(cfg->blocked, &t, &cfg->channel);
 
-        if (FD_ISSET((*&cfg->channel)[ER_MASTER], &t.set[FD_READ])) {
+        if (FD_ISSET(cfg->channel[ER_MASTER], &t.set[FD_READ])) {
             LOGWX("No commands are currently supported: %s", strerror(ENOSYS));
             show_prompt(&cfg->channel);
         }
 
-        if (FD_ISSET((*&cfg->channel)[ER_MAIN], &t.set[FD_READ])) {
+        if (FD_ISSET(cfg->channel[ER_MAIN], &t.set[FD_READ])) {
             // FIXME: This is a wrong way of checking ACK/NAK
             for (int i = 0; i < expected_acks; i++)
                 switch (t.cur[ER_MAIN][i]) {
@@ -475,7 +475,7 @@ static int event_loop(struct config* const cfg) {
                 assertion("Message length shall be positive", f.pe > f.p);
                 const byte_t ack[] = { e ? 0x15 : 0x06 };
                 *t.cur[EW_MAIN]++ = ack[0];
-                FD_SET((*&cfg->channel)[EW_MAIN], &t.set[FD_WRITE]);
+                FD_SET(cfg->channel[EW_MAIN], &t.set[FD_WRITE]);
                 if (0 == e) {
                     struct frob_msg parsed = { .magic = FROB_MAGIC };
                     if (process_msg(f.p, f.pe, &parsed) != 0)
