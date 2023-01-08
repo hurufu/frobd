@@ -315,6 +315,21 @@ static bool all_channels_ok(const int (*channel)[CHANNELS_COUNT]) {
     return true;
 }
 
+static void process_signal(sigset_t blocked, struct io_state* const t, int (*channel)[CHANNELS_COUNT]) {
+    // TODO: Use this fd to enable master channel on SIGINT
+    // TODO: Use this fd to Handle missing ACK/NAK using SIGALRM
+    assert(sizeof (struct signalfd_siginfo) == t->cur[MR_SIGNAL] - t->buf[MR_SIGNAL]);
+    const struct signalfd_siginfo* const inf = (struct signalfd_siginfo*)t->buf[MR_SIGNAL];
+    sigdelset(&blocked, inf->ssi_signo);
+    (*channel)[MR_SIGNAL] = signalfd((*channel)[MR_SIGNAL], &blocked, SFD_CLOEXEC);
+    sigset_t s;
+    sigemptyset(&s);
+    sigaddset(&s, inf->ssi_signo);
+    t->cur[MR_SIGNAL] = t->buf[MR_SIGNAL];
+    if (sigprocmask(SIG_UNBLOCK, &s, NULL) != 0)
+        LOGF("Can't unblock received singal");
+}
+
 static void perform_pending_io(struct io_state* const t, int (*channel)[CHANNELS_COUNT]) {
     for (size_t j = 0; j < elementsof(t->set); j++) {
         for (size_t i = 0; i < elementsof(*channel); i++) {
@@ -369,7 +384,7 @@ static struct frob_frame_fsm_state fnext(byte_t* const cursor, const struct frob
     };
 }
 
-static int event_loop(const struct preformated_messages* const pm, int (* const channel)[CHANNELS_COUNT], const time_t relative_timeout) {
+static int event_loop(const struct preformated_messages* const pm, int (* const channel)[CHANNELS_COUNT], const time_t relative_timeout, const sigset_t blocked) {
     static struct io_state t;
 
     const int m = get_max_fd(channel);
@@ -378,6 +393,9 @@ static int event_loop(const struct preformated_messages* const pm, int (* const 
     int ret = 0;
     for (finit(channel, &t); (ret = fselect(m, &t.set, relative_timeout)) > 0; fset(channel, &t.set)) {
         perform_pending_io(&t, channel);
+
+        if (FD_ISSET((*channel)[MR_SIGNAL], &t.set[FD_READ]))
+            process_signal(blocked, &t, channel);
 
         if (FD_ISSET((*channel)[ER_MAIN], &t.set[FD_READ])) {
             // FIXME: This is a wrong way of checking ACK/NAK
@@ -419,7 +437,7 @@ static int event_loop(const struct preformated_messages* const pm, int (* const 
     return ret;
 }
 
-static void adjust_signal_delivery(int* const ch) {
+static sigset_t adjust_signal_delivery(int* const ch) {
     static const int blocked_signals[] = {
         SIGALRM,
         SIGINT
@@ -430,11 +448,10 @@ static void adjust_signal_delivery(int* const ch) {
         sigaddset(&s, blocked_signals[i]);
     if (sigprocmask(SIG_BLOCK, &s, NULL) != 0)
         LOGF("Couldn't adjust signal mask");
-    // TODO: Use this fd to enable master channel on SIGINT
-    // TODO: Use this fd to Handle missing ACK/NAK using SIGALRM
     *ch = signalfd(-1, &s, SFD_CLOEXEC);
     if (*ch == -1)
         LOGF("Couldn't setup sigfd");
+    return s;
 }
 
 int main(const int ac, const char* av[static const ac]) {
@@ -450,7 +467,7 @@ int main(const int ac, const char* av[static const ac]) {
         [MR_SIGNAL ] = -1
     };
 
-    adjust_signal_delivery(&channel[MR_SIGNAL]);
+    const sigset_t blocked = adjust_signal_delivery(&channel[MR_SIGNAL]);
     if (!all_channels_ok(&channel))
         return EXIT_FAILURE;
 
@@ -465,7 +482,7 @@ int main(const int ac, const char* av[static const ac]) {
     };
 
     const time_t timeout = ac == 2 ? atoi(av[1]) : 0;
-    if (event_loop(&pm, &channel, timeout) == 0)
+    if (event_loop(&pm, &channel, timeout, blocked) == 0)
         return timeout ? EXIT_FAILURE : EXIT_SUCCESS;
     return EXIT_FAILURE;
 }
