@@ -47,12 +47,11 @@ struct io_state {
     byte_t buf[CHANNELS_COUNT][4 * 1024];
 };
 
-
 enum LogLevel g_log_level = LOG_DEBUG;
 
 int frob_forward_msg(const struct frob_msg* const msg) {
     assertion("Magic string shall match", strcmp(msg->magic, "FROBCr1") == 0);
-    LOGIX("Not implemented");
+    LOGIX("Message forwarding isn't implemented");
     return -1;
 };
 
