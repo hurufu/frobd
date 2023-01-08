@@ -328,6 +328,7 @@ static bool all_channels_ok(const int (*channel)[CHANNELS_COUNT]) {
 
 static void show_prompt(const int fd) {
     static const char prompt[] = "> ";
+    // TODO: Schedule for writting in perfrom_pending_io
     write(fd, prompt, elementsof(prompt));
 }
 
