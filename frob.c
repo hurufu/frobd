@@ -369,7 +369,7 @@ static int event_loop(const struct preformated_messages* const pm, int (* const 
                         if (handle_message(pm, &parsed, channel, &t, &expected_acks) != 0)
                             LOGWX("Message wasn't handled");
                 } else {
-                    LOGWX("Can't parse incoming message: %s", strerror(e));
+                    LOGWX("Can't parse incoming frame: %s", strerror(e));
                 }
             }
         }
