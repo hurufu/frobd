@@ -183,6 +183,13 @@ static void perform_pending_io(struct io_state* const t, int (*channel)[CHANNELS
     }
 }
 
+static struct frob_frame_fsm_state fnext(const byte_t* const cursor, const struct frob_frame_fsm_state prev) {
+    return (struct frob_frame_fsm_state){
+        .p = prev.pe + 2,
+        .pe = cursor
+    };
+}
+
 static int event_loop(int (* const channel)[CHANNELS_COUNT], const time_t relative_timeout) {
     static struct io_state t;
 
@@ -192,28 +199,16 @@ static int event_loop(int (* const channel)[CHANNELS_COUNT], const time_t relati
         perform_pending_io(&t, channel);
 
         if (FD_ISSET((*channel)[ER_MAIN], &t.set[FD_READ])) {
-            // FIXME: Needs refactoring, its ugly
-            f.pe = t.cur[ER_MAIN];
             int e;
-            while ((e = frob_frame_process(&f)) != EAGAIN) {
+            for (f.pe = t.cur[ER_MAIN]; (e = frob_frame_process(&f)) != EAGAIN; f = fnext(t.cur[ER_MAIN], f)) {
                 assertion("Message length shall be positive", f.pe > f.p);
                 const byte_t ack[] = { e ? 0x15 : 0x06 };
-                if (write((*channel)[EW_MAIN], ack, sizeof ack) != sizeof ack)
-                    LOGF("Can't acknowledge message");
-
-                {
-                    char tmp[3*(f.pe-f.p)];
-                    LOGDX("%s → %s", PRETTV(f.p, f.pe, tmp), PRETTY(ack));
-                }
-
+                *t.cur[EW_MAIN]++ = ack[0];
+                FD_SET((*channel)[EW_MAIN], &t.set[FD_WRITE]);
+                char tmp[3*(f.pe-f.p)];
+                LOGDX("%s → %s", PRETTV(f.p, f.pe, tmp), PRETTY(ack));
                 if (0 == e)
                     process_msg(f.p, f.pe);
-
-                f.p = f.pe + 2; // End of message + ETX + LRC
-                f.pe = t.cur[ER_MAIN];
-                f.cs = 0;
-                f.lrc = 0;
-                f.not_first = 0;
             }
         }
     }
