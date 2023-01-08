@@ -1,8 +1,8 @@
 .PHONY: index clean graph-% run run-% test tcp
 
 #CPPFLAGS := -DNO_LOGS_ON_STDERR
-OPTLEVEL ?= 0
-CFLAGS    = -O$(OPTLEVEL) -ggdb3 -Wall -Wextra -ffat-lto-objects -mtune=native -march=native
+OPTLEVEL ?= g
+CFLAGS   := -O$(OPTLEVEL) -ggdb3 -Wall -Wextra -ffat-lto-objects -mtune=native -march=native
 CFLAGS   += -fanalyzer -fanalyzer-checker=taint
 # TODO: Remove those warnings only for generated files
 #CFLAGS   += -Wno-implicit-fallthrough -Wno-unused-const-variable -Wno-sign-compare -Wno-unused-variable -Wno-unused-parameter
@@ -26,12 +26,11 @@ tags:
 cscope.out:
 	cscope -bR
 ut: LDLIBS   := -lcheck
-ut: OPTLEVEL := g
 ut: $(UT_O) $(RL_O)
 	$(LINK.o) -o $@ $^ $(LDLIBS)
 frob: $(OFILES)
 	$(LINK.o) -o $@ $^ $(LDLIBS)
-	#strip --strip-unneeded $@
+	strip --strip-unneeded $@
 %.c: %.rl
 	ragel -G2 -L $<
 %.s: %.c
