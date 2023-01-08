@@ -14,6 +14,8 @@
 
 // FIXME: Reduce number of arguments passed to functions
 
+#define IO_BUF_SIZE (4 * 1024)
+
 // e – external, i - internal, m – manual
 // r - read/input, w - write/output
 // Must be positive, because value is getting mixed with negative error codes
@@ -41,7 +43,7 @@ enum OrderedFdSets {
 struct io_state {
     fd_set set[FD_SET_COUNT];
     byte_t* cur[CHANNELS_COUNT];
-    byte_t buf[CHANNELS_COUNT][4 * 1024];
+    byte_t buf[CHANNELS_COUNT][IO_BUF_SIZE];
 };
 
 struct preformated_messages {
@@ -170,7 +172,7 @@ static int process_msg(const unsigned char* p, const unsigned char* const pe, st
 static int make_frame(const byte_t* const body, const byte_t (* const token)[3], byte_t** const pp, byte_t* const pe) {
     byte_t* p = *pp;
 
-    assert(pe >= p && pe - p <= 4*1024);
+    assert(pe >= p && pe - p <= IO_BUF_SIZE);
 
     const size_t l = strlen((char*)body);
     if (pe - *pp < 1 + 6 + (int)l + 1) // STX + token + body + LRC
@@ -187,7 +189,7 @@ static int make_frame(const byte_t* const body, const byte_t (* const token)[3],
         lrc ^= *c;
     *p++ = lrc;
 
-    assert(pe >= p && pe - p <= 4*1024);
+    assert(pe >= p && pe - p <= IO_BUF_SIZE);
     assertion("Parseable frame is created", frob_frame_process(&(struct frob_frame_fsm_state){.p = *pp, .pe = p}) == 0);
     assertion("Parseable message within is created", process_msg(*pp + 1, p - 2, &(struct frob_msg){ .magic = FROB_MAGIC }) == 0);
 
