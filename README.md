@@ -2,10 +2,13 @@
 
 __Currnetly this project is even less than PoC, don't use it yet.__
 
-You can find specification at <frob.pl>
+Publicly available specification can be downloaded
+[here](https://archiwum_mpit.bip.gov.pl/kasy-on-line/kasy-on-line.html).
 
-Sending `SIGPWR` will print some internal statistics to the log
-Sending `SIGINT` will enter debug console
+Signals:
+
+  * Sending `SIGPWR` will print some internal statistics to the log
+  * Sending `SIGINT` will enter debug console
 
 Pros:
 
