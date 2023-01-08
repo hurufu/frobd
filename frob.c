@@ -16,6 +16,8 @@
 #define US "\x1F"
 #define ETX "\x03"
 
+// FIXME: Reduce number of arguments passed to functions
+
 /* uint8_t is better than unsigned char to define a byte, because on some
  * platforms (unsigned) char may have more than 8 bit (TI C54xx 16 bit).
  * The problem is purely theoretical, because I don't target MCUs, but still...
