@@ -45,4 +45,4 @@ clean:
 	$(if $(strip $F),$(RM) -- $F)
 
 tcp: frob
-	s6-tcpserver4 -v2 0.0.0.0 8866 ./$< 1000
+	s6-tcpserver4 -v2 0.0.0.0 5002 ./$< 1000
