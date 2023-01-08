@@ -13,6 +13,7 @@
 #include <stdbool.h>
 
 #define FS "\x1C"
+#define ETX "\x03"
 
 /* uint8_t is better than unsigned char to define a byte, because on some
  * platforms (unsigned) char may have more than 8 bit (TI C54xx 16 bit).
@@ -57,21 +58,6 @@ struct preformated_messages {
 enum LogLevel g_log_level = LOG_DEBUG;
 #endif
 
-static int handle_message(const struct preformated_messages* const pm, const struct frob_msg* const msg, int (*channel)[CHANNELS_COUNT], struct io_state* const t) {
-    assertion("Magic string shall match", strcmp(msg->magic, FROB_MAGIC) == 0);
-    switch (msg->header.type) {
-        case FROB_T1:
-            memcpy(t->cur[EW_MAIN], pm->t2, elementsof(pm->t2));
-            t->cur[EW_MAIN] += elementsof(pm->t2);
-            FD_SET((*channel)[EW_MAIN], &t->set[FD_WRITE]);
-            break;
-        default:
-            LOGWX("Handling of this message type isn't implemented");
-            return -1;
-    }
-    return 0;
-};
-
 static const char* channel_to_string(const enum OrderedChannels o) {
     switch (o) {
         case IW_PAYMENT: return "PAYMENT (internal output)";
@@ -86,6 +72,30 @@ static const char* channel_to_string(const enum OrderedChannels o) {
     }
     return NULL;
 }
+
+static int forward_message(const struct frob_msg* const msg, int (*channel)[CHANNELS_COUNT], struct io_state* const t) {
+    LOGWX("Handling of this message type isn't implemented");
+    return -1;
+}
+
+static const byte_t* get_preformatted_buffer(const struct preformated_messages* const pm, const enum FrobMessageType t) {
+    switch (t) {
+        case FROB_T1: return pm->t2;
+        default: return NULL;
+    }
+}
+
+static int handle_message(const struct preformated_messages* const pm, const struct frob_msg* const msg, int (*channel)[CHANNELS_COUNT], struct io_state* const t) {
+    assertion("Magic string shall match", strcmp(msg->magic, FROB_MAGIC) == 0);
+    const byte_t* const m = get_preformatted_buffer(pm, msg->header.type);
+    if (!m)
+        return forward_message(msg, channel, t);
+    const size_t l = strlen((char*)m);
+    memcpy(t->cur[EW_MAIN], m, l);
+    t->cur[EW_MAIN] += l;
+    FD_SET((*channel)[EW_MAIN], &t->set[FD_WRITE]);
+    return 0;
+};
 
 static int process_msg(const unsigned char* p, const unsigned char* const pe, struct frob_msg* const msg) {
     msg->header = frob_header_extract(&p, pe);
@@ -250,7 +260,7 @@ int main() {
     if (!all_channels_ok(&channel))
         return EXIT_FAILURE;
     const struct preformated_messages pm = {
-        .t2 = FS "T2" FS "170" FS "TEST" FS "SIM" FS "0" FS
+        .t2 = FS "T2" FS "170" FS "TEST" FS "SIM" FS "0" FS ETX
     };
     const time_t timeout = 0;
     if (event_loop(&pm, &channel, timeout) == 0)
