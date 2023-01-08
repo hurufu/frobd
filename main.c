@@ -9,21 +9,53 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 /* uint8_t is better than unsigned char if char has more than 8 bit,
  * eg. TI C54xx, it's only theoretical problem, but still...
  */
 typedef uint8_t byte_t;
 
+// e – external, i - internal, m – manual
+// r - read/input, w - write/output
+enum OrderedChannels {
+    IW_PAYMENT,
+    IW_STORAGE,
+    IW_UI,
+    IW_EVENTS,
+    IR_DEVICE,
+    EW_MAIN,
+    ER_MAIN,
+    ER_MASTER,
+    EW_DEBUG,
+
+    CHANNELS_COUNT
+};
+
+enum OrderedFdSets {
+    FD_EXCEPT,
+    FD_WRITE,
+    FD_READ,
+
+    FD_SET_COUNT
+};
+
+struct io_state {
+    fd_set set[FD_SET_COUNT];
+    byte_t* cur[CHANNELS_COUNT];
+    byte_t buf[CHANNELS_COUNT][4 * 1024];
+};
+
 int frob_forward_msg(const struct frob_msg* const msg) {
+    (void)msg;
     // Not implemented;
     return -1;
 };
 
-static char* convert_to_printable(const unsigned char* const p, const unsigned char* const pe,
+static char* to_printable(const unsigned char* const p, const unsigned char* const pe,
                                   const size_t s, char b[static const s]) {
     // TODO: Add support for regional characters, ie from 0x80 to 0xFF
-    // TODO: Rewrite convert_to_printable using libicu
+    // TODO: Rewrite to_printable using libicu
     char* o = b;
     for (const unsigned char* x = p; x != pe && o < b + s; x++) {
         const unsigned char c = *x;
@@ -45,6 +77,13 @@ static char* convert_to_printable(const unsigned char* const p, const unsigned c
     }
     *o = 0x00;
     return b;
+}
+
+static void debug_communication(const size_t s, byte_t dst[static const s], const byte_t ack, const struct frob_frame_fsm_state* const frob) {
+    char a[4 * (frob->pe - frob->p)], b[4];
+    snprintf((char*)dst, s, "< %s\n> %s\n",
+            to_printable(frob->p, frob->pe, sizeof a, a),
+            to_printable(&ack, &ack + 1, sizeof b, b));
 }
 
 static int process_msg(const unsigned char* p, const unsigned char* const pe) {
@@ -84,177 +123,124 @@ static int process_msg(const unsigned char* p, const unsigned char* const pe) {
     return 0;
 }
 
-static int frame_loop() {
-    static unsigned char buf[4096];
-    static const unsigned char* const end = buf + sizeof buf;
-    for (;;) {
-        unsigned char ack[] = { 0x06 };
-        struct frob_frame_fsm_state st = { .pe = buf };
-        goto again;
-process:
-        switch (frob_frame_process(&st)) {
-            case EAGAIN:
-again:
-                st.p = st.pe;
-                const size_t s = fread(st.p, 1, end - st.p, stdin);
-                if (s <= 0)
-                    goto end_read;
-                st.pe = st.p + s;
-                goto process;
-            case EBADMSG:
-                ack[0] = 0x15;
-        }
-        if (fwrite(ack, 1, sizeof ack, stdout) != 1)
-            goto end_write;
-        char buf[4 * (st.pe - st.p)];
-        fprintf(stderr, "< %s\n> %s\n",
-                convert_to_printable(st.p, st.pe, sizeof buf, buf),
-                convert_to_printable(ack, ack + sizeof ack, 4, (char[4]){}));
-        process_msg(st.p, st.pe);
-    }
-end_read:
-    if (feof(stdin))
-        return 0;
-    return 5;
-end_write:
-    if (feof(stdout))
-        return 1;
-    return 2;
-}
-
-int _main() {
-    FILE* const ios[] = { stdin, stdout };
-    for (size_t i = 0; i < elementsof(ios); i++)
-        setbuf(ios[i], NULL);
-
-    return frame_loop();
-}
-
-// e – external, i - internal, m – manual
-// r - read/input, w - write/output
-enum OrderedChannels {
-    IW_PAYMENT,
-    IW_STORAGE,
-    IW_UI,
-    IW_EVENTS,
-    IR_DEVICE,
-    EW_MAIN,
-    ER_MAIN,
-    ER_MASTER,
-
-    CHANNELS_COUNT
-};
-
-enum OrderedFdSets {
-    FD_EXCEPT,
-    FD_WRITE,
-    FD_READ,
-
-    FD_SET_COUNT
-};
-
-struct params {
-    int channel[CHANNELS_COUNT];
-    time_t timeout;
-};
-
-int _loop(const struct params* const a) {
-    static byte_t buffer[elementsof(a->channel)][4096], * cursor[elementsof(buffer)];
-
-    // Validate file descriptors and select the highest one
-    const int maxfd = ({
-        int max = a->channel[0];
-        for (size_t i = 1; i < elementsof(a->channel); i++)
-            if (a->channel[i] >= FD_SETSIZE)
-                return EINVAL;
-            else if (a->channel[i] > max)
-                max = a->channel[i];
-        max;
-    });
-
-    // Reset each cursor
-    for (size_t i = 0; i < elementsof(cursor); i++)
-        cursor[i] = buffer[i];
-
-    fd_set fdset[FD_SET_COUNT];
-    for (size_t i = 0; i < elementsof(fdset); i++)
-        FD_ZERO(&fdset[i]);
-
-    int r;
-    struct timeval timeout;
-    struct frob_frame_fsm_state main_fsm = { .pe = buffer[ER_MAIN] };
-
-    goto setup;
-
-    while ((r = select(maxfd, &fdset[FD_READ], &fdset[FD_WRITE], &fdset[FD_EXCEPT], &timeout)) > 0) {
-        // Perform actual I/O for each selected channel of every file descriptor set
-        for (size_t j = 0; j < elementsof(fdset); j++)
-            for (size_t i = 0; i < elementsof(a->channel); i++)
-                if (FD_ISSET(a->channel[i], &fdset[j]))
-                    switch (j) {
-                        ssize_t s;
-                        case FD_EXCEPT:
-                            return -2;
-                        case FD_WRITE:
-                            if ((s = write(a->channel[i], buffer[i], cursor[i] - buffer[i])) != cursor[i] - buffer[i])
-                                return -4;
-                            cursor[i] = buffer[i];
-                            FD_CLR(a->channel[i], &fdset[FD_WRITE]);
-                            break;
-                        case FD_READ:
-                            if ((s = read(a->channel[i], cursor[i], buffer[i] + sizeof buffer[i] - cursor[i])) <= 0)
-                                return -3;
-                            cursor[i] += s;
-                            break;
-                    }
-
-        // Process received data on main channel
-        if (FD_ISSET(a->channel[ER_MAIN], &fdset[FD_READ])) {
-            main_fsm.pe = cursor[ER_MAIN];
-            switch (frob_frame_process(&main_fsm)) {
-                case EAGAIN:
-                    break;
-                case EBADMSG:
-                    write(a->channel[EW_MAIN], (byte_t[]){ 0x15 }, 1);
-                    break;
-                case 0:
-                    write(a->channel[EW_MAIN], (byte_t[]){ 0x06 }, 1);
-                    process_msg(main_fsm.p, main_fsm.pe);
-                    main_fsm.pe = buffer[ER_MAIN];
-                    break;
-            }
-        }
-
-setup:
-        // (Re-) Initialize parameters for select
-        main_fsm.p = main_fsm.pe;
-        timeout = (struct timeval){ .tv_sec = a->timeout };
-        for (size_t i = 0; i < elementsof(a->channel); i++) {
-            const int c = a->channel[i];
-            if (c != -1) {
-                FD_SET(c, &fdset[FD_EXCEPT]);
-                if (i == ER_MAIN || i == IR_DEVICE || i == ER_MASTER)
-                    FD_SET(c, &fdset[FD_READ]);
+static void fset(const int (* const channel)[CHANNELS_COUNT], fd_set (* const set)[FD_SET_COUNT]) {
+    for (size_t i = 0; i < CHANNELS_COUNT; i++) {
+        const int c = (*channel)[i];
+        if (c != -1) {
+            FD_SET(c, &(*set)[FD_EXCEPT]);
+            switch (i) {
+                case ER_MAIN:
+                case IR_DEVICE:
+                case ER_MASTER:
+                    FD_SET(c, &(*set)[FD_READ]);
             }
         }
     }
+}
 
-    return r;
+static void finit(const int (* const channel)[CHANNELS_COUNT], struct io_state* const t) {
+    for (size_t i = 0; i < elementsof(t->cur); i++)
+        t->cur[i] = t->buf[i];
+    for (size_t i = 0; i < elementsof(t->set); i++)
+        FD_ZERO(&t->set[i]);
+    fset(channel, &t->set);
+}
+
+static bool fselect(const int nfd, fd_set (* const set)[FD_SET_COUNT], const time_t relative_timeout) {
+    struct timeval t = { .tv_sec = relative_timeout };
+    // TODO: Use pselect and enable master channel on SIGINT
+    return select(nfd, &(*set)[FD_READ], &(*set)[FD_WRITE], &(*set)[FD_EXCEPT], &t) > 0;
+}
+
+static int get_max_fd(const int (*channel)[CHANNELS_COUNT]) {
+    int max = (*channel)[0];
+    for (size_t i = 1; i < elementsof(*channel); i++)
+        if ((*channel)[i] > max)
+            max = (*channel)[i];
+    return max;
+}
+
+static bool all_channels_ok(const int (*channel)[CHANNELS_COUNT]) {
+    for (size_t i = 1; i < elementsof(*channel); i++)
+        if ((*channel)[i] >= FD_SETSIZE)
+            return true;
+    return false;
+}
+
+static int perform_pending_io(struct io_state* const t, const int (*channel)[CHANNELS_COUNT]) {
+    for (size_t j = 0; j < elementsof(t->set); j++)
+        for (size_t i = 0; i < elementsof(*channel); i++)
+            if (FD_ISSET((*channel)[i], &(t->set)[j]))
+                switch (j) {
+                    ssize_t s;
+                    case FD_EXCEPT:
+                        errno = EBADE;
+                        return -2;
+                    case FD_WRITE:
+                        if ((s = write((*channel)[i], t->buf[i], t->cur[i] - t->buf[i])) != t->cur[i] - t->buf[i])
+                            return -4;
+                        t->cur[i] = t->buf[i];
+                        FD_CLR((*channel)[i], &(t->set)[FD_WRITE]);
+                        break;
+                    case FD_READ:
+                        if ((s = read((*channel)[i], t->cur[i], t->buf[i] + sizeof t->buf[i] - t->cur[i])) <= 0)
+                            return -3;
+                        t->cur[i] += s;
+                        break;
+                }
+    return 0;
+}
+
+static int event_loop(const int (* const channel)[CHANNELS_COUNT], const time_t relative_timeout) {
+    static struct io_state t;
+
+    const int m = get_max_fd(channel);
+    struct frob_frame_fsm_state f;
+    for (finit(channel, &t); fselect(m, &t.set, relative_timeout); fset(channel, &t.set)) {
+        const int r = perform_pending_io(&t, channel);
+        if (r != 0)
+            return r;
+
+        if (FD_ISSET((*channel)[ER_MAIN], &t.set[FD_READ])) {
+            f.pe = t.cur[ER_MAIN];
+            const int e = frob_frame_process(&f);
+            if (e == EAGAIN) {
+                f.p = f.pe;
+                continue;
+            }
+            const byte_t ack[] = { e ? 0x15 : 0x06 };
+            if (write((*channel)[EW_MAIN], ack, sizeof ack) != sizeof ack)
+                return -15;
+            f.pe = t.buf[ER_MAIN];
+            if ((*channel)[EW_DEBUG] > 0) {
+                debug_communication(sizeof t.buf[EW_DEBUG], t.buf[EW_DEBUG], ack[0], &f);
+                FD_SET(*channel[EW_DEBUG], &t.set[FD_WRITE]);
+            }
+            if (e == 0)
+                process_msg(f.p, f.pe);
+        }
+    }
+
+    return 0;
 }
 
 int main() {
-    const struct params pr = {
-        .channel = {
-            [IW_PAYMENT] = -1,
-            [IW_STORAGE] = -1,
-            [IW_UI     ] = -1,
-            [IW_EVENTS ] = -1,
-            [IR_DEVICE ] = -1,
-            [EW_MAIN   ] = STDOUT_FILENO,
-            [ER_MAIN   ] = STDIN_FILENO,
-            [ER_MASTER ] = -1
-        },
-        .timeout = 1
+    const int channel[] = {
+        [IW_PAYMENT] = -1,
+        [IW_STORAGE] = -1,
+        [IW_UI     ] = -1,
+        [IW_EVENTS ] = -1,
+        [IR_DEVICE ] = -1,
+        [EW_MAIN   ] = STDOUT_FILENO,
+        [ER_MAIN   ] = STDIN_FILENO,
+        [EW_DEBUG  ] = STDERR_FILENO,
+        [ER_MASTER ] = -1
     };
-    err(_loop(&pr), "Exit");
+
+    if (!all_channels_ok(&channel))
+        return EXIT_FAILURE;
+
+    event_loop(&channel, 5);
+    perror("Exit");
+    return EXIT_FAILURE;
 }
