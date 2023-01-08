@@ -4,7 +4,7 @@
 
 %%{
     machine frob_frame;
-    alphtype unsigned char;
+    include frob_common "common.rl";
 
     access st->;
     variable p st->p;
@@ -26,8 +26,6 @@
         end = fpc;
     }
 
-    stx = 0x02;
-    etx = 0x03;
     frame = stx ((any-etx) @LRC_Byte >Start) ((any-etx) @LRC_Byte )* (etx @LRC_Byte >End) any @LRC_Check;
 
     main := (any-stx)* frame;

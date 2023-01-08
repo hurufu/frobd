@@ -3,11 +3,7 @@
 
 %%{
     machine frob_attrs;
-
-    fs = 0x1C;
-    us = 0x1F;
-    del = 0x7F;
-    a = ascii - cntrl - del;
+    include frob_common "common.rl";
 
     action C {
         c = fpc;

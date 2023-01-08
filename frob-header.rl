@@ -3,7 +3,7 @@
 
 %%{
     machine frob_header;
-    alphtype unsigned char;
+    include frob_common "common.rl";
 
     action Token {
         token_end = fpc;
@@ -11,11 +11,6 @@
     action Type {
         type_end = fpc;
     }
-
-    fs  = 0x1C;
-    del = 0x7F;
-
-    h = xdigit;
 
     type_t = 'T' [1-5];
     type_s = 'S' [12];

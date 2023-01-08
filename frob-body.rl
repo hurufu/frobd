@@ -1,14 +1,17 @@
 #include "frob.h"
 #include "utils.h"
 
+%%{
+    machine common;
+    include frob_common "common.rl";
+    variable p *pp;
+}%%
+
 static int extract_t1(const byte_t** const pp, const byte_t* const pe, struct frob_t1* const out) {
     int cs;
     %%{
         machine frob_t1;
-        alphtype unsigned char;
-        variable p *pp;
-
-        fs  = 0x1C;
+        include common;
 
         main := fs;
 
@@ -24,8 +27,7 @@ static int extract_t2(const byte_t** const pp, const byte_t* const pe, struct fr
     const byte_t* c;
     %%{
         machine frob_t2;
-        alphtype unsigned char;
-        variable p *pp;
+        include common;
 
         action C {
             c = fpc;
@@ -42,10 +44,6 @@ static int extract_t2(const byte_t** const pp, const byte_t* const pe, struct fr
         action Id {
             COPY(out->device_id, c, fpc);
         }
-
-        fs  = 0x1C;
-        del = 0x7F;
-        a = ascii - cntrl - del;
 
         version = a+ >C fs @Version;
         vendor = (a+ >C fs @Vendor) | fs;
@@ -70,10 +68,7 @@ static int extract_t3(const byte_t** const pp, const byte_t* const pe, struct fr
 
     %%{
         machine frob_t3;
-        alphtype unsigned char;
-        variable p *pp;
-
-        fs  = 0x1C;
+        include common;
 
         main := fs;
 
@@ -91,8 +86,7 @@ static int extract_t4(const byte_t** const pp, const byte_t* const pe, struct fr
 
     %%{
         machine frob_t4;
-        alphtype unsigned char;
-        variable p *pp;
+        include common;
 
         action C {
             c = fpc;
@@ -100,11 +94,6 @@ static int extract_t4(const byte_t** const pp, const byte_t* const pe, struct fr
         action VersionPP {
             COPY(out->supported_versions[i++], c, fpc);
         }
-
-        fs  = 0x1C;
-        us  = 0x1F;
-        del = 0x7F;
-        a = ascii - cntrl - del;
 
         version = a+ >C fs @VersionPP;
 
@@ -124,8 +113,7 @@ static int extract_t5(const byte_t** const pp, const byte_t* const pe, struct fr
 
     %%{
         machine frob_t5;
-        alphtype unsigned char;
-        variable p *pp;
+        include common;
 
         action C {
             c = fpc;
@@ -133,10 +121,6 @@ static int extract_t5(const byte_t** const pp, const byte_t* const pe, struct fr
         action Version {
             COPY(out->selected_version, c, fpc);
         }
-
-        fs  = 0x1C;
-        del = 0x7F;
-        a = ascii - cntrl - del;
 
         version = a+ >C fs @Version;
 
