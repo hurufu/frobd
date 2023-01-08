@@ -12,6 +12,14 @@
 #define endof(Arr) APPLY_TO_ARRAY(Arr, (Arr) + sizeof (Arr))
 #define lastof(Arr) APPLY_TO_ARRAY(Arr, (Arr)[sizeof (Arr) - 1])
 
-/** Prints textual description in addtion to regular message
+/** Prints textual description in addtion to regular message.
+ *  @note Implementation was copied from assert.h with slight formatting modification
+ *  @todo Move to a separate assertion.h header
  */
-#define assertion(Msg, Assertion) assert( ((void)(Msg""), Assertion) )
+#define assertion(Msg, Expr)\
+    ((void) sizeof ((Expr) ? 1 : 0), __extension__ ({\
+      if (Expr)\
+        ; /* empty */\
+      else\
+        __assert_fail(#Expr " (" Msg ")", __FILE__, __LINE__, __ASSERT_FUNCTION);\
+}))
