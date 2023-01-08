@@ -149,7 +149,7 @@ static int make_frame(const byte_t* const body, const byte_t (* const token)[3],
     return 0;
 }
 
-static int handle_local(const struct preformated_messages* const pm, const struct frob_header* const h, int (*channel)[CHANNELS_COUNT], struct io_state* const t) {
+static int handle_local(const struct preformated_messages* const pm, const struct frob_header* const h, int (*channel)[CHANNELS_COUNT], struct io_state* const t, int* const expected_acks) {
     const byte_t* m = NULL;
     switch (h->type) {
         case FROB_T1: m = pm->t2; break;
@@ -163,6 +163,7 @@ static int handle_local(const struct preformated_messages* const pm, const struc
     if (make_frame(m, &h->token, &t->cur[EW_MAIN], endof(t->buf[EW_MAIN])) != 0)
         return LOGWX("Locally generate response skipped");
     FD_SET((*channel)[EW_MAIN], &t->set[FD_WRITE]);
+    (*expected_acks)++;
     return 0;
 }
 
@@ -186,13 +187,13 @@ static int get_channel(const struct frob_msg* const msg) {
     return assertion("All channels must be handled", false), -2;
 }
 
-static int handle_message(const struct preformated_messages* const pm, const struct frob_msg* const msg, int (*channel)[CHANNELS_COUNT], struct io_state* const t) {
+static int handle_message(const struct preformated_messages* const pm, const struct frob_msg* const msg, int (*channel)[CHANNELS_COUNT], struct io_state* const t, int* const expected_acks) {
     assertion("Magic string shall match", strcmp(msg->magic, FROB_MAGIC) == 0);
     const int ch = get_channel(msg);
     if (ch == -2)
         return -2;
     if (ch == -1)
-        return handle_local(pm, &msg->header, channel, t);
+        return handle_local(pm, &msg->header, channel, t, expected_acks);
     return forward_message(msg, *(channel)[ch], t);
 };
 
@@ -300,13 +301,24 @@ static int event_loop(const struct preformated_messages* const pm, int (* const 
 
     const int m = get_max_fd(channel);
     struct frob_frame_fsm_state f = { .p = t.buf[ER_MAIN] };
+    int expected_acks = 0;
     for (finit(channel, &t); fselect(m, &t.set, relative_timeout); fset(channel, &t.set)) {
         perform_pending_io(&t, channel);
 
-        // TODO: Check if we have sent message on a main channel, and if so check for ACK/NAK from the other side.
-        // TODO: Retransmit message when needed
-
         if (FD_ISSET((*channel)[ER_MAIN], &t.set[FD_READ])) {
+            for (int i = 0; i < expected_acks; i++)
+                switch (t.cur[ER_MAIN][i]) {
+                    case 0x06:
+                       break;
+                    case 0x15:
+                        // TODO: Retransmit message when needed
+                        LOGWX("Can't retransmit: %s", strerror(ENOSYS));
+                        break;
+                    default:
+                        LOGF("Unexpected character in stream, bailing out");
+                        break;
+                }
+            expected_acks = 0;
             int e;
             for (f.pe = t.cur[ER_MAIN]; (e = frob_frame_process(&f)) != EAGAIN; f = fnext(t.cur[ER_MAIN], f)) {
                 assertion("Message length shall be positive", f.pe > f.p);
@@ -318,7 +330,7 @@ static int event_loop(const struct preformated_messages* const pm, int (* const 
                     if (process_msg(f.p, f.pe, &parsed) != 0)
                         LOGWX("Can't process message");
                     else
-                        if (handle_message(pm, &parsed, channel, &t) != 0)
+                        if (handle_message(pm, &parsed, channel, &t, &expected_acks) != 0)
                             LOGWX("Can't handle message");
                 }
             }
