@@ -57,9 +57,9 @@
                   (S1 (P1? I1)* S2);
 
     all = communication_test | version_negotiation | configuration |
-          transaction | custom_flow | M1* | L1* | key_exchange;
+          transaction | custom_flow | M1 | L1 | key_exchange;
 
-    main = all*;
+    main := all*;
 
     write data;
 }%%
