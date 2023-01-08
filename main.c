@@ -33,7 +33,7 @@ static int frame_loop() {
     static unsigned char buf[4096];
     static const unsigned char* const end = buf + sizeof buf;
     for (;;) {
-        char ack[] = { 0x06 };
+        unsigned char ack[] = { 0x06 };
         struct frob_frame_fsm_state st = { .pe = buf };
         goto again;
 process:
