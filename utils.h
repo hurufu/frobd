@@ -3,4 +3,10 @@
 #include <string.h>
 
 #define COPY(Dest, Start, End) memcpy(Dest, Start, End - Start)
-#define elementsof(Arr) (sizeof(Arr)/sizeof((Arr)[0]))
+
+#define APPLY_TO_ARRAY(X, Macro) ({ typeof(X[0]) __attribute__((__unused__)) (*should_be_an_array)[NAIVE_ELEMENTSOF(X)] = &X; Macro; })
+#define NAIVE_ELEMENTSOF(Arr) ( sizeof(Arr) / (sizeof((Arr)[0]) ?: 1) )
+
+#define elementsof(Arr) APPLY_TO_ARRAY(Arr, NAIVE_ELEMENTSOF(Arr))
+#define endof(Arr) APPLY_TO_ARRAY(Arr, (Arr) + sizeof (Arr))
+#define lastof(Arr) APPLY_TO_ARRAY(Arr, (Arr)[sizeof (Arr) - 1])
