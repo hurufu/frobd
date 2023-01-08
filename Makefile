@@ -8,7 +8,7 @@ RL_C     := $(RL_FILES:.rl=.c)
 
 run: run-01 run-02 run-T4
 run-%: frob sample%
-	./$< <$(word 2,$^)
+	./$< <$(word 2,$^) | od -tx1z
 index: tags cscope.out
 tags:
 	ctags --kinds-C=+p -R .

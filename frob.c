@@ -12,6 +12,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define FS "\x1C"
+
 /* uint8_t is better than unsigned char to define a byte, because on some
  * platforms (unsigned) char may have more than 8 bit (TI C54xx 16 bit).
  * The problem is purely theoretical, because I don't target MCUs, but still...
@@ -47,14 +49,27 @@ struct io_state {
     byte_t buf[CHANNELS_COUNT][4 * 1024];
 };
 
+struct preformated_messages {
+    byte_t t2[32];
+};
+
 #ifndef NO_LOGS_ON_STDERR
 enum LogLevel g_log_level = LOG_DEBUG;
 #endif
 
-int frob_forward_msg(const struct frob_msg* const msg) {
+static int handle_message(const struct preformated_messages* const pm, const struct frob_msg* const msg, int (*channel)[CHANNELS_COUNT], struct io_state* const t) {
     assertion("Magic string shall match", strcmp(msg->magic, "FROBCr1") == 0);
-    LOGIX("Message forwarding isn't implemented");
-    return -1;
+    switch (msg->header.type) {
+        case FROB_T1:
+            memcpy(t->cur[EW_MAIN], pm->t2, elementsof(pm->t2));
+            t->cur[EW_MAIN] += elementsof(pm->t2);
+            FD_SET((*channel)[EW_MAIN], &t->set[FD_WRITE]);
+            break;
+        default:
+            LOGWX("Handling of this message type isn't implemented");
+            return -1;
+    }
+    return 0;
 };
 
 static const char* channel_to_string(const enum OrderedChannels o) {
@@ -72,37 +87,32 @@ static const char* channel_to_string(const enum OrderedChannels o) {
     return NULL;
 }
 
-static void process_msg(const unsigned char* p, const unsigned char* const pe) {
-    struct frob_msg msg = {
-        .magic = "FROBCr1",
-        .header = frob_header_extract(&p, pe)
-    };
+static int process_msg(const unsigned char* p, const unsigned char* const pe, struct frob_msg* const msg) {
+    msg->header = frob_header_extract(&p, pe);
     LOGDX("\tTYPE: %02X TOKEN: %02X %02X %02X",
-            msg.header.type, msg.header.token[0], msg.header.token[1], msg.header.token[2]);
+            msg->header.type, msg->header.token[0], msg->header.token[1], msg->header.token[2]);
 
     static int protocol_state = -1;
-    switch (frob_protocol_transition(&protocol_state, msg.header.type)) {
+    switch (frob_protocol_transition(&protocol_state, msg->header.type)) {
         case EPROTO:
             LOGDX("Out of order message");
-            return;
+            return -1;
     }
 
-    switch (frob_body_extract(msg.header.type, &p, pe, &msg.body)) {
+    switch (frob_body_extract(msg->header.type, &p, pe, &msg->body)) {
         case EBADMSG:
             LOGDX("Bad payload");
-            return;
+            return -1;
     }
 
-    switch (frob_extract_additional_attributes(&p, pe, &msg.attr)) {
+    switch (frob_extract_additional_attributes(&p, pe, &msg->attr)) {
         case EBADMSG:
             LOGDX("Bad data");
-            return;
+            return -1;
     }
 
     assertion("Complete message shall be processed, ie cursor shall point to the end of message", p == pe);
-
-    if (frob_forward_msg(&msg) != 0)
-        LOGDX("Downstream error");
+    return 0;
 }
 
 static void fset(const int (* const channel)[CHANNELS_COUNT], fd_set (* const set)[FD_SET_COUNT]) {
@@ -197,7 +207,7 @@ static struct frob_frame_fsm_state fnext(const byte_t* const cursor, const struc
     };
 }
 
-static int event_loop(int (* const channel)[CHANNELS_COUNT], const time_t relative_timeout) {
+static int event_loop(const struct preformated_messages* const pm, int (* const channel)[CHANNELS_COUNT], const time_t relative_timeout) {
     static struct io_state t;
 
     const int m = get_max_fd(channel);
@@ -214,8 +224,14 @@ static int event_loop(int (* const channel)[CHANNELS_COUNT], const time_t relati
                 FD_SET((*channel)[EW_MAIN], &t.set[FD_WRITE]);
                 char tmp[3*(f.pe-f.p)];
                 LOGDX("%s → %s", PRETTV(f.p, f.pe, tmp), PRETTY(ack));
-                if (0 == e)
-                    process_msg(f.p, f.pe);
+                if (0 == e) {
+                    struct frob_msg parsed = { .magic = "FROBCr1" };
+                    if (process_msg(f.p, f.pe, &parsed) != 0)
+                        LOGWX("Can't process message");
+                    else
+                        if (handle_message(pm, &parsed, channel, &t) != 0)
+                            LOGWX("Can't handle message");
+                }
             }
         }
     }
@@ -237,7 +253,9 @@ int main() {
 
     if (!all_channels_ok(&channel))
         return EXIT_FAILURE;
-
-    event_loop(&channel, 0);
+    const struct preformated_messages pm = {
+        .t2 = FS "T2" FS "170" FS "TEST" FS "SIM" FS "0" FS
+    };
+    event_loop(&pm, &channel, 0);
     return EXIT_FAILURE;
 }
