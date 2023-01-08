@@ -65,7 +65,8 @@ static enum FrobMessageType deserialize_type(const byte_t cla, const byte_t sub)
     return get_class(cla) | hex2nibble(sub);
 }
 
-struct frob_header frob_header_extract(const byte_t* p, const byte_t* const pe) {
+struct frob_header frob_header_extract(const byte_t** px, const byte_t* const pe) {
+    const byte_t* p = *px;
     const byte_t* const start = p;
     const byte_t* token_end = NULL, * type_end = NULL;
     int cs;

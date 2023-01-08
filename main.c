@@ -32,8 +32,8 @@ static char* convert_to_printable(const unsigned char* const p, const unsigned c
     return b;
 }
 
-static int process_msg(const unsigned char* const p, const unsigned char* const pe) {
-    const struct frob_header h = frob_header_extract(p, pe);
+static int process_msg(const unsigned char* p, const unsigned char* const pe) {
+    const struct frob_header h = frob_header_extract(&p, pe);
     fprintf(stderr, "\tTYPE: %02X TOKEN: %02X %02X %02X\n",
             h.type, h.token[0], h.token[1], h.token[2]);
 
@@ -43,6 +43,34 @@ static int process_msg(const unsigned char* const p, const unsigned char* const 
             fprintf(stderr, "Out of order message\n");
             return 1;
     }
+
+    union frob_body b;
+    switch (frob_body_extract(h.type, &p, pe, &b)) {
+        case EBADMSG:
+            fprintf(stderr, "Bad payload");
+            return 2;
+    }
+
+#   if 0
+    struct frob_attr a;
+    switch (frob_extract_additional_attributes(&a)) {
+        case EBADMSG:
+            fprintf(stderr, "Bad data");
+            return 3;
+    }
+
+    const struct frob_msg msg = {
+        .header = h,
+        .body = b,
+        .attr = a
+    };
+
+    if (frob_forward_msg(&msg) != 0) {
+        fprintf(stderr, "Upstream error");
+        return 4;
+    }
+#   endif
+    return 0;
 }
 
 static int frame_loop() {
