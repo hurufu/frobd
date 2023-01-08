@@ -326,10 +326,11 @@ static bool all_channels_ok(const int (*channel)[CHANNELS_COUNT]) {
     return true;
 }
 
-static void show_prompt(const int fd) {
+static void show_prompt(int (*channel)[CHANNELS_COUNT]) {
     static const char prompt[] = "> ";
     // TODO: Schedule for writting in perfrom_pending_io
-    write(fd, prompt, elementsof(prompt));
+    // FIXME: Don't write to readonly channel ER_MASTER
+    write((*channel)[ER_MASTER], prompt, elementsof(prompt));
 }
 
 static void start_master_channel(int (*channel)[CHANNELS_COUNT]) {
@@ -341,8 +342,7 @@ static void start_master_channel(int (*channel)[CHANNELS_COUNT]) {
     else
         LOGIX("Master channel started at %s, but what will you do with it?", pts);
     LOGIX("Press ^C again to exit the program or ^D to close master channel (and go back to normal)...");
-    (*channel)[ER_MASTER] = fd;
-    show_prompt(fd);
+    show_prompt(channel);
 }
 
 static int setup_signalfd(const int ch, const sigset_t blocked) {
@@ -451,7 +451,7 @@ static int event_loop(struct config* const cfg) {
 
         if (FD_ISSET((*&cfg->channel)[ER_MASTER], &t.set[FD_READ])) {
             LOGWX("No commands are currently supported: %s", strerror(ENOSYS));
-            show_prompt((*&cfg->channel)[ER_MASTER]);
+            show_prompt(&cfg->channel);
         }
 
         if (FD_ISSET((*&cfg->channel)[ER_MAIN], &t.set[FD_READ])) {
