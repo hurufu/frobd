@@ -380,7 +380,7 @@ static int event_loop(const struct preformated_messages* const pm, int (* const 
     return ret;
 }
 
-int main() {
+int main(const int ac, const char* av[static const ac]) {
     static int channel[] = {
         [IW_PAYMENT] = STDOUT_FILENO,
         [IW_STORAGE] = STDOUT_FILENO,
@@ -405,7 +405,7 @@ int main() {
               FS "1" FS "1" FS "1" FS "0" FS ETX
     };
 
-    const time_t timeout = 0;
+    const time_t timeout = ac == 2 ? atoi(av[1]) : 0;
     if (event_loop(&pm, &channel, timeout) == 0)
         return timeout ? EXIT_FAILURE : EXIT_SUCCESS;
     return EXIT_FAILURE;
