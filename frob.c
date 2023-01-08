@@ -485,7 +485,7 @@ static int event_loop(struct config* const cfg) {
         if (FD_ISSET(cfg->channel[ER_MAIN], &t.set[FD_READ]))
             process_main(&expected_acks, &t, &f, cfg);
     }
-    assert(ret <= 0);
+    assertion("Event loop shall end only on error/timeout", ret <= 0);
     return ret;
 }
 
