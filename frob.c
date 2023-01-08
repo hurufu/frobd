@@ -355,6 +355,13 @@ static int setup_signalfd(const int ch, const sigset_t blocked) {
     return ret;
 }
 
+static struct frob_frame_fsm_state fnext(byte_t* const cursor, const struct frob_frame_fsm_state prev) {
+    return (struct frob_frame_fsm_state){
+        .p = prev.pe + 2,
+        .pe = cursor
+    };
+}
+
 static void process_signal(sigset_t blocked, struct io_state* const t, int (*channel)[CHANNELS_COUNT]) {
     assert(sizeof (struct signalfd_siginfo) == t->cur[MR_SIGNAL] - t->buf[MR_SIGNAL]);
     const struct signalfd_siginfo* const inf = (struct signalfd_siginfo*)t->buf[MR_SIGNAL];
@@ -379,6 +386,46 @@ static void process_signal(sigset_t blocked, struct io_state* const t, int (*cha
     t->cur[MR_SIGNAL] = t->buf[MR_SIGNAL];
     if (sigprocmask(SIG_UNBLOCK, &s, NULL) != 0)
         LOGF("Can't unblock received singal");
+}
+
+static void process_master(int (*channel)[CHANNELS_COUNT]) {
+    LOGWX("No commands are currently supported: %s", strerror(ENOSYS));
+    show_prompt(channel);
+}
+
+static void process_main(int* const expected_acks, struct io_state* const t, struct frob_frame_fsm_state* const f, struct config* const cfg) {
+    // FIXME: This is a wrong way of checking ACK/NAK
+    for (int i = 0; i < *expected_acks; i++)
+        switch (t->cur[ER_MAIN][i]) {
+            case 0x00: // Official ECR-EFT simulator sends null byte at the end
+            case 0x06: // Positive acknowledge
+               break;
+            case 0x15:
+                // TODO: Retransmit message when needed
+                LOGWX("Can't retransmit: %s", strerror(ENOSYS));
+                break;
+            default:
+                LOGF("Unexpected character [%02X] in stream, bailing out", t->cur[ER_MAIN][i]);
+                break;
+        }
+    *expected_acks = 0;
+    int e;
+    for (f->pe = t->cur[ER_MAIN]; (e = frob_frame_process(f)) != EAGAIN; *f = fnext(t->cur[ER_MAIN], *f)) {
+        assertion("Message length shall be positive", f->pe > f->p);
+        const byte_t ack[] = { e ? 0x15 : 0x06 };
+        *t->cur[EW_MAIN]++ = ack[0];
+        FD_SET(cfg->channel[EW_MAIN], &t->set[FD_WRITE]);
+        if (0 == e) {
+            struct frob_msg parsed = { .magic = FROB_MAGIC };
+            if (process_msg(f->p, f->pe, &parsed) != 0)
+                LOGWX("Can't process message");
+            else
+                if (handle_message(&cfg->pm, &parsed, &cfg->channel, t, expected_acks) != 0)
+                    LOGWX("Message wasn't handled");
+        } else {
+            LOGWX("Can't parse incoming frame: %s", strerror(e));
+        }
+    }
 }
 
 static void perform_pending_io(struct io_state* const t, int (*channel)[CHANNELS_COUNT], const sigset_t blocked) {
@@ -430,67 +477,21 @@ static void perform_pending_io(struct io_state* const t, int (*channel)[CHANNELS
         FD_CLR((*channel)[i], &(t->set)[FD_WRITE]);
 }
 
-static struct frob_frame_fsm_state fnext(byte_t* const cursor, const struct frob_frame_fsm_state prev) {
-    return (struct frob_frame_fsm_state){
-        .p = prev.pe + 2,
-        .pe = cursor
-    };
-}
-
 static int event_loop(struct config* const cfg) {
     static struct io_state t;
-
     const int m = get_max_fd(&cfg->channel);
     struct frob_frame_fsm_state f = { .p = t.buf[ER_MAIN] };
     int expected_acks = 0;
     int ret = 0;
     for (finit(&cfg->channel, &t); (ret = fselect(m, &t.set, cfg->timeout)) > 0; fset(&cfg->channel, &t.set)) {
         perform_pending_io(&t, &cfg->channel, cfg->blocked);
-
         if (FD_ISSET(cfg->channel[MR_SIGNAL], &t.set[FD_READ]))
             process_signal(cfg->blocked, &t, &cfg->channel);
-
-        if (FD_ISSET(cfg->channel[ER_MASTER], &t.set[FD_READ])) {
-            LOGWX("No commands are currently supported: %s", strerror(ENOSYS));
-            show_prompt(&cfg->channel);
-        }
-
-        if (FD_ISSET(cfg->channel[ER_MAIN], &t.set[FD_READ])) {
-            // FIXME: This is a wrong way of checking ACK/NAK
-            for (int i = 0; i < expected_acks; i++)
-                switch (t.cur[ER_MAIN][i]) {
-                    case 0x00: // Official ECR-EFT simulator sends null byte at the end
-                    case 0x06: // Positive acknowledge
-                       break;
-                    case 0x15:
-                        // TODO: Retransmit message when needed
-                        LOGWX("Can't retransmit: %s", strerror(ENOSYS));
-                        break;
-                    default:
-                        LOGF("Unexpected character [%02X] in stream, bailing out", t.cur[ER_MAIN][i]);
-                        break;
-                }
-            expected_acks = 0;
-            int e;
-            for (f.pe = t.cur[ER_MAIN]; (e = frob_frame_process(&f)) != EAGAIN; f = fnext(t.cur[ER_MAIN], f)) {
-                assertion("Message length shall be positive", f.pe > f.p);
-                const byte_t ack[] = { e ? 0x15 : 0x06 };
-                *t.cur[EW_MAIN]++ = ack[0];
-                FD_SET(cfg->channel[EW_MAIN], &t.set[FD_WRITE]);
-                if (0 == e) {
-                    struct frob_msg parsed = { .magic = FROB_MAGIC };
-                    if (process_msg(f.p, f.pe, &parsed) != 0)
-                        LOGWX("Can't process message");
-                    else
-                        if (handle_message(&cfg->pm, &parsed, &cfg->channel, &t, &expected_acks) != 0)
-                            LOGWX("Message wasn't handled");
-                } else {
-                    LOGWX("Can't parse incoming frame: %s", strerror(e));
-                }
-            }
-        }
+        if (FD_ISSET(cfg->channel[ER_MASTER], &t.set[FD_READ]))
+            process_master(&cfg->channel);
+        if (FD_ISSET(cfg->channel[ER_MAIN], &t.set[FD_READ]))
+            process_main(&expected_acks, &t, &f, cfg);
     }
-
     assert(ret <= 0);
     return ret;
 }
