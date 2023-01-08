@@ -188,8 +188,8 @@ static int process_msg(const unsigned char* p, const unsigned char* const pe, st
 bail:
     char tmp[4*(pe - start)];
     LOGDX("   %s", PRETTV(start, pe, tmp));
-    LOGDX("p: %*s", (int)(p - start), "^");
-    LOGDX("pe:%*s", (int)(pe - start), "^");
+    LOGDX("p:  %*s", (int)(p - start), "^");
+    LOGDX("pe: %*s", (int)(pe - start), "^");
     return -1;
 }
 
@@ -202,8 +202,14 @@ static int make_frame(const byte_t* const body, const byte_t (* const token)[3],
     if (pe - *pp < 1 + 6 + (int)l + 1) // STX + token + body + LRC
         return LOGWX("Can't construct frame: %s", strerror(ENOBUFS)), -1;
 
+#   if 0
     const int r = snprintf((char*)p, pe - p, "\x02%02X%02X%02X", (*token)[0], (*token)[1], (*token)[2]);
     if (r != 7)
+#   else
+    // FIXME: Ugly workaround
+    const int r = snprintf((char*)p, pe - p, "\x02%02X%02X", (*token)[0], (*token)[1]);
+    if (r != 5)
+#   endif
         return LOGW("Can't construct token"), -1;
     p += r;
     memcpy(p, body, l);
@@ -568,7 +574,7 @@ int main(const int ac, const char* av[static const ac]) {
             .t4 = FS "T4" FS "160" US "170" US FS ETX,
             .t5 = FS "T5" FS "170" FS ETX,
             .s2 = FS "S2" FS "993" FS FS "M000" FS "T000" FS "N/A" FS FS FS "NONE" FS "Payment endopoint not available" FS ETX,
-            .k0 = FS "K0" FS "999" FS FS ETX,
+            .k0 = FS "K0" FS "0" FS FS ETX,
             .d5 = FS "D5" FS "24" FS "12" FS "6" FS "19" FS "1" FS "1" FS "1"
                   FS "0" FS "0" FS "0" FS FS FS "4" FS "9999" FS "4" FS "15"
                   FS "ENTER" US "CANCEL" US "CHECK" US "BACKSPACE" US "DELETE" US "UP" US "DOWN" US "LEFT" US "RIGHT" US
