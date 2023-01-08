@@ -333,7 +333,16 @@ static void show_prompt(int (*channel)[CHANNELS_COUNT]) {
     write((*channel)[ER_MASTER], prompt, elementsof(prompt));
 }
 
-static void start_master_channel(int (*channel)[CHANNELS_COUNT]) {
+static int setup_signalfd(const int ch, const sigset_t blocked) {
+    if (sigprocmask(SIG_BLOCK, &blocked, NULL) != 0)
+        LOGF("Couldn't adjust signal mask");
+    const int ret = signalfd(ch, &blocked, SFD_CLOEXEC);
+    if (ret == -1)
+        LOGF("Couldn't setup sigfd");
+    return ret;
+}
+
+static void start_master_channel(int (*channel)[CHANNELS_COUNT], sigset_t blocked) {
     LOGWX("Master channel doesn't work: %s", strerror(ENOSYS));
     const char* const pts = ttyname(STDERR_FILENO);
     const int fd = open(pts, O_RDWR);
@@ -343,16 +352,14 @@ static void start_master_channel(int (*channel)[CHANNELS_COUNT]) {
         LOGIX("Master channel started at %s, but what will you do with it?", pts);
     LOGIX("Press ^C again to exit the program or ^D to close master channel (and go back to normal)...");
     (*channel)[ER_MASTER] = fd;
+    sigdelset(&blocked, SIGINT);
+    (*channel)[MR_SIGNAL] = setup_signalfd((*channel)[MR_SIGNAL], blocked);
+    sigset_t s;
+    sigemptyset(&s);
+    sigaddset(&s, SIGINT);
+    if (sigprocmask(SIG_UNBLOCK, &s, NULL) != 0)
+        LOGF("Can't unblock received singal");
     show_prompt(channel);
-}
-
-static int setup_signalfd(const int ch, const sigset_t blocked) {
-    if (sigprocmask(SIG_BLOCK, &blocked, NULL) != 0)
-        LOGF("Couldn't adjust signal mask");
-    const int ret = signalfd(ch, &blocked, SFD_CLOEXEC);
-    if (ret == -1)
-        LOGF("Couldn't setup sigfd");
-    return ret;
 }
 
 static struct frob_frame_fsm_state fnext(byte_t* const cursor, const struct frob_frame_fsm_state prev) {
@@ -378,7 +385,7 @@ static void process_signal(sigset_t blocked, struct io_state* const t, int (*cha
     const struct signalfd_siginfo* const inf = (struct signalfd_siginfo*)t->buf[MR_SIGNAL];
     switch (inf->ssi_signo) {
         case SIGINT:
-            start_master_channel(channel);
+            start_master_channel(channel, blocked);
             break;
         case SIGALRM:
             // TODO: Reschedule last message, but only if underlying fd isn't already closed
@@ -390,14 +397,7 @@ static void process_signal(sigset_t blocked, struct io_state* const t, int (*cha
         default:
             LOGFX("Unexpected signal. Bailing out");
     }
-    sigdelset(&blocked, inf->ssi_signo);
-    (*channel)[MR_SIGNAL] = setup_signalfd((*channel)[MR_SIGNAL], blocked);
-    sigset_t s;
-    sigemptyset(&s);
-    sigaddset(&s, inf->ssi_signo);
     t->cur[MR_SIGNAL] = t->buf[MR_SIGNAL];
-    if (sigprocmask(SIG_UNBLOCK, &s, NULL) != 0)
-        LOGF("Can't unblock received singal");
 }
 
 static void process_master(int (*channel)[CHANNELS_COUNT]) {
