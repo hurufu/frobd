@@ -128,8 +128,9 @@ static void finit(const int (* const channel)[CHANNELS_COUNT], struct io_state* 
 
 static bool fselect(const int nfd, fd_set (* const set)[FD_SET_COUNT], const time_t relative_timeout) {
     struct timeval t = { .tv_sec = relative_timeout };
+    struct timeval* const tp = (relative_timeout == (time_t)-1) ? NULL : &t;
     // TODO: Use pselect and enable master channel on SIGINT
-    const int l = select(nfd, &(*set)[FD_READ], &(*set)[FD_WRITE], &(*set)[FD_EXCEPT], &t);
+    const int l = select(nfd, &(*set)[FD_READ], &(*set)[FD_WRITE], &(*set)[FD_EXCEPT], tp);
     if (l < 0)
         LOGW("Select failed");
     else if (l == 0)
