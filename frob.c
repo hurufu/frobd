@@ -74,6 +74,21 @@ static const char* channel_to_string(const enum OrderedChannels o) {
     return NULL;
 }
 
+static char channel_to_code(const enum OrderedChannels o) {
+    switch (o) {
+        case IW_PAYMENT: return 'P';
+        case IW_STORAGE: return 'S';
+        case IW_UI:      return 'U';
+        case IW_EVENTS:  return 'E';
+        case IR_DEVICE:  return 'D';
+        case EW_MAIN:    return 'M';
+        case ER_MAIN:    return 'M';
+        case ER_MASTER:  return 'R';
+        case CHANNELS_COUNT:
+    }
+    return '-';
+}
+
 static int forward_message(const struct frob_msg* const msg, const int channel, struct io_state* const t) {
     if (channel < 0) {
         return LOGWX("%s", strerror(EBADF));
@@ -248,7 +263,7 @@ static void perform_pending_io(struct io_state* const t, int (*channel)[CHANNELS
                             LOGF("Can't write %td bytes to %s channel (fd %d)", t->cur[i] - t->buf[i], channel_to_string(i), (*channel)[i]);
                         } else {
                             char tmp[3*s];
-                            LOGDX("← %zu\t%s", s, PRETTV(t->buf[i], t->cur[i], tmp));
+                            LOGDX("← %c %zu\t%s", channel_to_code(i), s, PRETTV(t->buf[i], t->cur[i], tmp));
                         }
                         t->cur[i] = t->buf[i];
                         FD_CLR((*channel)[i], &(t->set)[FD_WRITE]);
@@ -263,7 +278,7 @@ static void perform_pending_io(struct io_state* const t, int (*channel)[CHANNELS
                             (*channel)[i] = -1;
                         } else {
                             char tmp[3*s];
-                            LOGDX("→ %zu\t%s", s, PRETTV(t->cur[i], t->cur[i] + s, tmp));
+                            LOGDX("→ %c %zu\t%s", channel_to_code(i), s, PRETTV(t->cur[i], t->cur[i] + s, tmp));
                         }
                         t->cur[i] += s;
                         break;
