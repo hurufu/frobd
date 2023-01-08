@@ -164,32 +164,20 @@ static int forward_message(const struct frob_msg* const msg, const enum OrderedC
 
 static int process_msg(const unsigned char* p, const unsigned char* const pe, struct frob_msg* const msg) {
     msg->header = frob_header_extract(&p, pe);
-    if (msg->header.type == 0)
+    if (msg->header.type == 0) {
+        LOGEX("Bad header");
         goto bail;
-
-    int e;
-    switch (e = frob_body_extract(msg->header.type, &p, pe, &msg->body)) {
-        case 0:
-            break;
-        case EBADMSG:
-        case ENOSYS:
-        case ENOTRECOVERABLE:
-            LOGEX("Body not parsed: %s", strerror(e));
-            goto bail;
-        default:
-            assert(false);
     }
 
-    switch (e = frob_extract_additional_attributes(&p, pe, &msg->attr)) {
-        case 0:
-            break;
-        case EBADMSG:
-        case ENOTRECOVERABLE:
-            LOGEX("Attrs not parsed: %s", strerror(e));
-            goto bail;
-        default:
-            assert(false);
+    int e;
+    if ((e = frob_body_extract(msg->header.type, &p, pe, &msg->body)) != 0) {
+        LOGEX("Body parsing failed: %s", strerror(e));
+        goto bail;
+    }
 
+    if ((e = frob_extract_additional_attributes(&p, pe, &msg->attr)) != 0) {
+        LOGEX("Attributes parsing failed: %s", strerror(e));
+        goto bail;
     }
 
     assertion("Complete message shall be processed, ie cursor shall point to the end of message", p == pe);
