@@ -71,6 +71,42 @@ static const char* channel_to_string(const enum OrderedChannels o) {
     return NULL;
 }
 
+static char frob_message_class_to_char(const enum FrobMessageType m) {
+    switch (m & 0xF0) {
+        case FROB_T: return 'T';
+        case FROB_D: return 'D';
+        case FROB_S: return 'S';
+        case FROB_P: return 'P';
+        case FROB_I: return 'I';
+        case FROB_A: return 'A';
+        case FROB_K: return 'K';
+        case FROB_M: return 'M';
+        case FROB_L: return 'L';
+        case FROB_B: return 'B';
+    }
+    return '?';
+}
+
+static const char* frob_message_destination_to_string(const enum FrobMessageType m) {
+    switch (m & FROB_DESTINATION_MASK) {
+        case FROB_LOCAL: return "Local";
+        case FROB_PAYMENT: return "Payment";
+        case FROB_STORAGE: return "Storage";
+        case FROB_MAPPED: return "Mapped";
+        case FROB_UI: return "UI";
+        case FROB_EVENT: return "Event";
+    }
+    return NULL;
+}
+
+static const char* frob_message_to_string(const enum FrobMessageType m) {
+    static char buf[3];
+    buf[0] = frob_message_class_to_char(m);
+    buf[1] = (m & 0x0F) + '0';
+    buf[2] = '\0';
+    return buf;
+}
+
 static char channel_to_code(const enum OrderedChannels o) {
     switch (o) {
         case IW_PAYMENT: return 'P';
@@ -169,7 +205,7 @@ static int handle_local(const struct preformated_messages* const pm, const struc
         case FROB_T2:
         case FROB_T5:
         case FROB_D5:
-            LOGIX("Message %#x skipped", h->type);
+            LOGIX("%s message %s (%#x) skipped", frob_message_destination_to_string(h->type), frob_message_to_string(h->type), h->type);
             return 0;
         case FROB_S1:
         case FROB_S2:
