@@ -12,6 +12,6 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build frobd
-      run: make frobd
+      run: make frob
     - name: Run unit tests
       run: make test
