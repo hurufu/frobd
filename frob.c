@@ -411,10 +411,9 @@ static void process_main(int* const expected_acks, struct io_state* const t, str
         switch (t->cur[ER_MAIN][i]) {
             case 0x00: // Official ECR-EFT simulator sends null byte at the end
             case 0x06: // Positive acknowledge
-               break;
+                break;
             case 0x15:
-                // TODO: Retransmit message when needed
-                LOGWX("Can't retransmit: %s", strerror(ENOSYS));
+                LOGWX("Message rejected by remote peer");
                 break;
             default:
                 LOGF("Unexpected character [%02X] in stream, bailing out", t->cur[ER_MAIN][i]);

@@ -47,7 +47,7 @@ static void test_frame(const size_t bs, byte_t buf[static bs],
     struct frob_frame_fsm_state st = {.p = buf, .pe = buf};
     const int x = frob_frame_process(&st);
     ck_assert_int_eq(x, EAGAIN);
-    ck_assert_ptr_null(st.p);
+    ck_assert_ptr_eq(st.p, buf);
     ck_assert_ptr_null(st.pe);
 
 #test incomplete_frame_returns_eagain

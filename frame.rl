@@ -37,7 +37,7 @@
 
 int frob_frame_process(struct frob_frame_fsm_state* const st) {
     // It's better to crash with NULL pointer dereference than have an UB
-    unsigned char* start = NULL, * end = NULL;
+    unsigned char* start = st->p, * end = NULL;
     if (!st->not_first) {
         %% write init;
         st->lrc = 0;
