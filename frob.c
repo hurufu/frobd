@@ -256,6 +256,7 @@ int main() {
     const struct preformated_messages pm = {
         .t2 = FS "T2" FS "170" FS "TEST" FS "SIM" FS "0" FS
     };
-    event_loop(&pm, &channel, 0);
-    return EXIT_FAILURE;
+    const time_t timeout = 0;
+    if (event_loop(&pm, &channel, timeout) == 0)
+        return timeout ? EXIT_FAILURE : EXIT_SUCCESS;
 }
