@@ -344,14 +344,15 @@ static int event_loop(const struct preformated_messages* const pm, int (* const 
             // FIXME: This is a wrong way of checking ACK/NAK
             for (int i = 0; i < expected_acks; i++)
                 switch (t.cur[ER_MAIN][i]) {
-                    case 0x06:
+                    case 0x00: // Official ECR-EFT simulator sends null byte at the end
+                    case 0x06: // Positive acknowledge
                        break;
                     case 0x15:
                         // TODO: Retransmit message when needed
                         LOGWX("Can't retransmit: %s", strerror(ENOSYS));
                         break;
                     default:
-                        LOGF("Unexpected character in stream, bailing out");
+                        LOGF("Unexpected character [%02X] in stream, bailing out", t.cur[ER_MAIN][i]);
                         break;
                 }
             expected_acks = 0;
