@@ -442,7 +442,7 @@ static void perform_pending_io(struct io_state* const t, int (*channel)[CHANNELS
                         if ((s = write((*channel)[i], t->buf[i], t->cur[i] - t->buf[i])) != t->cur[i] - t->buf[i]) {
                             LOGF("Can't write %td bytes to %s channel (fd %d)", t->cur[i] - t->buf[i], channel_to_string(i), (*channel)[i]);
                         } else {
-                            // Not just ACK/NAK alone
+                            // Not just ACK/NAK alone – very bad heuristic
                             if (t->cur[i] - t->buf[i] > 1) {
                                 const unsigned int prev = alarm(3);
                                 // FIXME: Enforce that only single message can be sent at a time until ACK/NAK wasn't received
