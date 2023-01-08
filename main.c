@@ -1,9 +1,14 @@
 #include "frob.h"
+#include "utils.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
+#include <assert.h>
 
-#define elementsof(Array) (sizeof(Array)/sizeof((Array)[0]))
+int frob_forward_msg(const struct frob_msg* const msg) {
+    // Not implemented;
+    return -1;
+};
 
 static char* convert_to_printable(const unsigned char* const p, const unsigned char* const pe,
                                   const size_t s, char b[static const s]) {
@@ -33,43 +38,38 @@ static char* convert_to_printable(const unsigned char* const p, const unsigned c
 }
 
 static int process_msg(const unsigned char* p, const unsigned char* const pe) {
-    const struct frob_header h = frob_header_extract(&p, pe);
+    struct frob_msg msg;
+
+    msg.header = frob_header_extract(&p, pe);
     fprintf(stderr, "\tTYPE: %02X TOKEN: %02X %02X %02X\n",
-            h.type, h.token[0], h.token[1], h.token[2]);
+            msg.header.type, msg.header.token[0], msg.header.token[1], msg.header.token[2]);
 
     static int ps = -1;
-    switch (frob_protocol_transition(&ps, h.type)) {
+    switch (frob_protocol_transition(&ps, msg.header.type)) {
         case EPROTO:
             fprintf(stderr, "Out of order message\n");
             return 1;
     }
 
-    union frob_body b;
-    switch (frob_body_extract(h.type, &p, pe, &b)) {
+    switch (frob_body_extract(msg.header.type, &p, pe, &msg.body)) {
         case EBADMSG:
             fprintf(stderr, "Bad payload");
             return 2;
     }
 
-#   if 0
-    struct frob_attr a;
-    switch (frob_extract_additional_attributes(&a)) {
+    switch (frob_extract_additional_attributes(&p, pe, &msg.attr)) {
         case EBADMSG:
             fprintf(stderr, "Bad data");
             return 3;
     }
 
-    const struct frob_msg msg = {
-        .header = h,
-        .body = b,
-        .attr = a
-    };
+    assert(p == pe);
 
     if (frob_forward_msg(&msg) != 0) {
-        fprintf(stderr, "Upstream error");
+        fprintf(stderr, "Downstream error");
         return 4;
     }
-#   endif
+
     return 0;
 }
 

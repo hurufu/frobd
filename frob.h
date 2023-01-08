@@ -1,4 +1,5 @@
-#include <unistd.h>
+#pragma once
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -210,6 +211,12 @@ union frob_body {
     struct frob_a2 a2;
 };
 
+struct frob_msg {
+    struct frob_header header;
+    union frob_body body;
+    char attr[10][16];
+};
+
 struct frob_frame_fsm_state {
     unsigned char lrc;
     bool not_first;
@@ -221,3 +228,4 @@ int frob_frame_process(struct frob_frame_fsm_state*);
 struct frob_header frob_header_extract(const unsigned char** p, const unsigned char* pe);
 int frob_protocol_transition(int*, const enum FrobMessageType);
 int frob_body_extract(enum FrobMessageType, const unsigned char** p, const unsigned char* pe, union frob_body*);
+int frob_extract_additional_attributes(const byte_t**, const byte_t*, char (* const out)[10][16]);

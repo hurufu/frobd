@@ -1,7 +1,5 @@
 #include "frob.h"
-#include <string.h>
-
-#define COPY(Dest, Start, End) memcpy(Dest, Start, End - Start)
+#include "utils.h"
 
 static int extract_t1(const byte_t** const pp, const byte_t* const pe, struct frob_t1* const out) {
     int cs;
