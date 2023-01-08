@@ -8,7 +8,9 @@ Add line edit interface using rlwrap program.
 #### Signal handling
 
   - [x] SIGINT should enter the interactive console
-  - [ ] SIGQUIT should gracefully quit (without core dump)
+  - [ ] SIGQUIT should gracefully quit without core dump, because there are
+        plenty of signals that generate core dumps, and this signal can be sent
+        from the controling terminal (in comparison to SIGTERM)
   - [x] SIGINFO/SIGPWR should display status or statistics
   - [ ] SIGSTP/SIGUSR1 should enter "busy" mode - can be used for synchronization
         between different instances
