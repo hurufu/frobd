@@ -69,3 +69,54 @@
     ck_assert_int_eq(x, 0);
     ck_assert_ptr_eq(st.p, buf3);
     ck_assert_ptr_eq(st.pe, buf3);
+
+#suite header_parsing
+
+#test simple_header_parsed_correctly
+    const byte_t* buf = "000102" FS "T1" FS;
+    const struct frob_header hdr = frob_header_extract(&buf, buf + strlen(buf));
+    ck_assert_int_eq(hdr.type, FROB_T1);
+    const byte_t expected[] = { 0x00, 0x01, 0x02 };
+    ck_assert_mem_eq(hdr.token, expected, sizeof (expected));
+
+#test empty_token_is_rejected
+    const byte_t* buf = "" FS "T1" FS;
+    const struct frob_header hdr = frob_header_extract(&buf, buf + strlen(buf));
+    ck_assert_int_eq(hdr.type, 0);
+    const byte_t expected[3] = {};
+    ck_assert_mem_eq(hdr.token, expected, sizeof (expected));
+
+#test short_token_is_padded
+    const byte_t* buf = "AA" FS "T1" FS;
+    const struct frob_header hdr = frob_header_extract(&buf, buf + strlen(buf));
+    ck_assert_int_eq(hdr.type, FROB_T1);
+    const byte_t expected[] = { 0xAA, 0x00, 0x00 };
+    ck_assert_mem_eq(hdr.token, expected, sizeof (expected));
+
+#test incomplete_hex_is_padded
+    const byte_t* buf = "B" FS "T1" FS;
+    const struct frob_header hdr = frob_header_extract(&buf, buf + strlen(buf));
+    ck_assert_int_eq(hdr.type, FROB_T1);
+    const byte_t expected[] = { 0xB0, 0x00, 0x00 };
+    ck_assert_mem_eq(hdr.token, expected, sizeof (expected));
+
+#test incomplete_message_type_is_rejected
+    const byte_t* buf = "" FS "T" FS;
+    const struct frob_header hdr = frob_header_extract(&buf, buf + strlen(buf));
+    ck_assert_int_eq(hdr.type, 0);
+    const byte_t expected[3] = {};
+    ck_assert_mem_eq(hdr.token, expected, sizeof (expected));
+
+#test empty_message_type_is_rejected
+    const byte_t* buf = "ABCDEF" FS "" FS;
+    const struct frob_header hdr = frob_header_extract(&buf, buf + strlen(buf));
+    ck_assert_int_eq(hdr.type, 0);
+    const byte_t expected[3] = {};
+    ck_assert_mem_eq(hdr.token, expected, sizeof (expected));
+
+#test complete_but_non_existent_message_type_is_rejected
+    const byte_t* buf = "123456" FS "T7" FS;
+    const struct frob_header hdr = frob_header_extract(&buf, buf + strlen(buf));
+    ck_assert_int_eq(hdr.type, 0);
+    const byte_t expected[3] = {};
+    ck_assert_mem_eq(hdr.token, expected, sizeof (expected));
