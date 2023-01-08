@@ -127,8 +127,8 @@ static int forward_message(const struct frob_msg* const msg, const enum OrderedC
     assert(channel >= 0 && channel < CHANNELS_COUNT);
     if (t->cur[channel] + sizeof msg >= t->buf[channel] + sizeof t->buf[channel])
         return LOGWX("Message forwarding skipped: %s", strerror(ENOBUFS)), -1;
-    if (fd < 0)
-        return LOGWX("Message forwarding skipped: %s", strerror(EBADF)), -1;
+    if (fd < 0 || fd >= FD_SETSIZE)
+        return LOGWX("Message forwarding skipped for fd %d: %s", fd, strerror(EBADF)), -1;
     memcpy(t->cur[channel], msg, sizeof *msg);
     t->cur[channel] += sizeof *msg;
     FD_SET(fd, &t->set[FD_WRITE]);
