@@ -192,25 +192,29 @@ static int event_loop(int (* const channel)[CHANNELS_COUNT], const time_t relati
         perform_pending_io(&t, channel);
 
         if (FD_ISSET((*channel)[ER_MAIN], &t.set[FD_READ])) {
+            // FIXME: Needs refactoring, its ugly
             f.pe = t.cur[ER_MAIN];
-            const int e = frob_frame_process(&f);
-            if (e == EAGAIN) {
-                f.p = f.pe;
-                continue;
+            int e;
+            while ((e = frob_frame_process(&f)) != EAGAIN) {
+                assertion("Message length shall be positive", f.pe > f.p);
+                const byte_t ack[] = { e ? 0x15 : 0x06 };
+                if (write((*channel)[EW_MAIN], ack, sizeof ack) != sizeof ack)
+                    LOGF("Can't acknowledge message");
+
+                {
+                    char tmp[3*(f.pe-f.p)];
+                    LOGDX("%s → %s", PRETTV(f.p, f.pe, tmp), PRETTY(ack));
+                }
+
+                if (0 == e)
+                    process_msg(f.p, f.pe);
+
+                f.p = f.pe + 2; // End of message + ETX + LRC
+                f.pe = t.cur[ER_MAIN];
+                f.cs = 0;
+                f.lrc = 0;
+                f.not_first = 0;
             }
-            const byte_t ack[] = { e ? 0x15 : 0x06 };
-            if (write((*channel)[EW_MAIN], ack, sizeof ack) != sizeof ack)
-                return -15;
-
-            {
-                char tmp[3*(f.pe-f.p)];
-                LOGDX("%s → %s", PRETTV(f.p, f.pe, tmp), PRETTY(ack));
-            }
-
-            if (e == 0)
-                process_msg(f.p, f.pe);
-
-            f.pe = f.p = t.buf[ER_MAIN];
         }
     }
 
