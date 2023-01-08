@@ -25,7 +25,8 @@
 }%%
 
 int frob_extract_additional_attributes(const byte_t** pp, const byte_t* pe, char (* const out)[10][16]) {
-    int cs, i = 0;
+    int cs;
+    size_t i = 0;
     const byte_t* c, * p = *pp;
     %%{
         write init;

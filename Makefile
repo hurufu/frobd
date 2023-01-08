@@ -2,6 +2,7 @@
 
 #CPPFLAGS := -DNO_LOGS_ON_STDERR
 CFLAGS   := -Os -ggdb3 -Wall -Wextra -ffat-lto-objects -mtune=native -march=native
+CFLAGS   += -fanalyzer -fanalyzer-checker=taint
 LDFLAGS  := -flto
 RL_FILES := $(wildcard *.rl)
 RL_C     := $(RL_FILES:.rl=.c)

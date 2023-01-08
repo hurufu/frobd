@@ -1,5 +1,6 @@
-#include <errno.h>
 #include "frob.h"
+#include <errno.h>
+#include <stddef.h>
 
 %%{
     machine frob_frame;
@@ -35,7 +36,8 @@
 }%%
 
 int frob_frame_process(struct frob_frame_fsm_state* const st) {
-    const unsigned char* start, * end;
+    // It's better to crash with NULL pointer dereference than have an UB
+    unsigned char* start = NULL, * end = NULL;
     if (!st->not_first) {
         %% write init;
         st->lrc = 0;

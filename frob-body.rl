@@ -85,7 +85,7 @@ static int extract_t3(const byte_t** const pp, const byte_t* const pe, struct fr
     return cs < %%{ write first_final; }%%;
 }
 
-static extract_t4(const byte_t** const pp, const byte_t* const pe, struct frob_t4* const out) {
+static int extract_t4(const byte_t** const pp, const byte_t* const pe, struct frob_t4* const out) {
     int cs, i = 0;
     const byte_t* c;
 

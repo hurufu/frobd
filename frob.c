@@ -200,7 +200,7 @@ static void perform_pending_io(struct io_state* const t, int (*channel)[CHANNELS
     }
 }
 
-static struct frob_frame_fsm_state fnext(const byte_t* const cursor, const struct frob_frame_fsm_state prev) {
+static struct frob_frame_fsm_state fnext(byte_t* const cursor, const struct frob_frame_fsm_state prev) {
     return (struct frob_frame_fsm_state){
         .p = prev.pe + 2,
         .pe = cursor

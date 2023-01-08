@@ -1,4 +1,5 @@
 #include "frob.h"
+#include <stddef.h>
 
 %%{
     machine frob_header;
@@ -39,6 +40,8 @@ static unsigned char hex2nibble(const char h) {
         case 'a' ... 'f': return h - 'a' + 10;
         case '0' ... '9': return h - '0';
     }
+    // FIXME: Any better idea what to do with bad hexadecimal number?
+    return '\0';
 }
 
 static unsigned char unhex(const char h[static const 2]) {
@@ -66,7 +69,7 @@ static enum FrobMessageType deserialize_type(const byte_t cla, const byte_t sub)
 }
 
 struct frob_header frob_header_extract(const byte_t** px, const byte_t* const pe) {
-    const byte_t* p = *px, * const start = p, * token_end, * type_end;
+    const byte_t* p = *px, * const start = p, * token_end = NULL, * type_end = NULL;
     int cs;
     %%{
         write init;
