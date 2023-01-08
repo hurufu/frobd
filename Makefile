@@ -14,7 +14,7 @@ cscope.out:
 main: main.c frob-msg.c
 	$(LINK.c) -o $@ $^ $(LDLIBS)
 %.c: %.rl
-	ragel -G2 $<
+	ragel $<
 %.s: %.c
 	$(CC) -S -o $@ -fverbose-asm -fno-asynchronous-unwind-tables $(CFLAGS) $<
 
