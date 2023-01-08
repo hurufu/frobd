@@ -175,7 +175,7 @@ static int handle_local(const struct preformated_messages* const pm, const struc
         case FROB_T2:
         case FROB_T5:
         case FROB_D5:
-            LOGIX("Message skipped");
+            LOGIX("Message %#x skipped", h->type);
             return 0;
         case FROB_S1:
         case FROB_S2:
