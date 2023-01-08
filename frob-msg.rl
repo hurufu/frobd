@@ -99,12 +99,11 @@ static int process_frob_structure(void) {
     write data;
 }%%
 
-int frob_process_ecr_eft_input(int cs, const size_t s, const unsigned char buf[static const s]) {
-    unsigned char lrc = 0;
+int frob_process_ecr_eft_input(const size_t s, const unsigned char buf[static const s]) {
+    static int cs = frob_frame_start;
+    static unsigned char lrc = 0;
+
     const unsigned char* p = buf, * const pe = buf + s;
-    %%{
-        write init;
-        write exec;
-    }%%
+    %% write exec;
     return cs;
 }

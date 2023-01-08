@@ -10,8 +10,7 @@ int main() {
         { .fd = STDIN_FILENO, .events = POLLRDNORM }
     };
     int poll_res;
-    int cs;
-    while ((poll_res = poll(pf, elementsof(pf), 100)) > 0) {
+    while ((poll_res = poll(pf, elementsof(pf), 12 * 1000)) > 0) {
         if (pf[0].revents & POLLNVAL) {
             break;
         }
@@ -19,12 +18,12 @@ int main() {
             break;
         }
         if (pf[0].revents & POLLRDNORM) {
-            unsigned char buf[255];
+            unsigned char buf[1];
             const ssize_t s = read(pf[0].fd, buf, sizeof buf);
             if (s <= 0) {
                 break;
             }
-            cs = frob_process_ecr_eft_input(cs, s, buf);
+            frob_process_ecr_eft_input(s, buf);
         }
     }
     for (size_t i = 0; i < elementsof(pf); i++) {
