@@ -1,4 +1,4 @@
-.PHONY: index clean graph-% run run-% test
+.PHONY: index clean graph-% run run-% test tcp
 
 #CPPFLAGS := -DNO_LOGS_ON_STDERR
 CFLAGS   := -O0 -ggdb3 -Wall -Wextra -ffat-lto-objects -mtune=native -march=native
@@ -42,3 +42,6 @@ graph-%: frob-frame.rl adjust-%.sed
 clean: F += $(wildcard $(RL_C) $(RL_C:.c=.s) $(UT_O) $(UT_T:.t=.c) $(UT_T:.t=.s) $(OFILES) frob frob.s log.s tags cscope.out ut)
 clean:
 	$(if $(strip $F),$(RM) -- $F)
+
+tcp: frob
+	s6-tcpserver4 -v2 0.0.0.0 8866 ./$< 1000
