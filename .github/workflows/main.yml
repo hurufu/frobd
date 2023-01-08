@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+    - name: Instal dependencies
+      run: apt-get install ragel
     - name: Build frobd
       run: make frob
     - name: Run unit tests
