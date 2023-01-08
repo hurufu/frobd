@@ -24,6 +24,7 @@ cscope.out:
 	cscope -bR
 ut: CPPFLAGS := -DNO_LOGS_ON_STDERR
 ut: LDLIBS   := -lcheck
+ut: CFLAGS   += -Og -ggdb3
 ut: $(UT_O) $(RL_O)
 	$(LINK.o) -o $@ $^ $(LDLIBS)
 frob: $(OFILES)
