@@ -1,6 +1,6 @@
 # frobd - auto responder/bouncer/forwarder that implements FROB ECR-EFT protocol
 
-** Currnetly this project is even less than PoC, don't use yet. **
+__Currnetly this project is even less than PoC, don't use yet.__
 
 You can find specification at <frob.pl>
 
