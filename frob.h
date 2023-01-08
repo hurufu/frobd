@@ -77,6 +77,8 @@ enum FrobMessageType {
 
 struct frob_header {
     enum FrobMessageType type;
+    // FIXME: Replace token with a char[6] type, because otherwise it isn't
+    // possible to respond with exactly the same token, if it is shorter than 6
     unsigned char token[3];
 };
 
