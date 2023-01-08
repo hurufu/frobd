@@ -3,6 +3,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define FROB_MAGIC "FROBCr1"
+
 typedef unsigned char byte_t;
 
 enum FrobMessageType {
@@ -222,7 +224,7 @@ union frob_body {
 };
 
 struct frob_msg {
-    const char magic[8]; // Shall be set to "FROBCr1"
+    const char magic[8]; // Shall be set to FROB_MAGIC
     struct frob_header header;
     union frob_body body;
     char attr[10][16];

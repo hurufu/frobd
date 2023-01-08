@@ -58,7 +58,7 @@ enum LogLevel g_log_level = LOG_DEBUG;
 #endif
 
 static int handle_message(const struct preformated_messages* const pm, const struct frob_msg* const msg, int (*channel)[CHANNELS_COUNT], struct io_state* const t) {
-    assertion("Magic string shall match", strcmp(msg->magic, "FROBCr1") == 0);
+    assertion("Magic string shall match", strcmp(msg->magic, FROB_MAGIC) == 0);
     switch (msg->header.type) {
         case FROB_T1:
             memcpy(t->cur[EW_MAIN], pm->t2, elementsof(pm->t2));
@@ -225,7 +225,7 @@ static int event_loop(const struct preformated_messages* const pm, int (* const 
                 char tmp[3*(f.pe-f.p)];
                 LOGDX("%s → %s", PRETTV(f.p, f.pe, tmp), PRETTY(ack));
                 if (0 == e) {
-                    struct frob_msg parsed = { .magic = "FROBCr1" };
+                    struct frob_msg parsed = { .magic = FROB_MAGIC };
                     if (process_msg(f.p, f.pe, &parsed) != 0)
                         LOGWX("Can't process message");
                     else
