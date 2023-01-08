@@ -1,9 +1,10 @@
 .PHONY: index clean graph-% run run-%
 
-CFLAGS  := -O0 -ggdb3 -Wall -Wextra -ffat-lto-objects -mtune=native -march=native
-LDFLAGS := -flto
-RL_FILES:= $(wildcard *.rl)
-RL_C    := $(RL_FILES:.rl=.c)
+#CPPFLAGS := -DNO_LOGS_ON_STDERR
+CFLAGS   := -O0 -ggdb3 -Wall -Wextra -ffat-lto-objects -mtune=native -march=native
+LDFLAGS  := -flto
+RL_FILES := $(wildcard *.rl)
+RL_C     := $(RL_FILES:.rl=.c)
 
 run: run-01 run-02 run-T4
 run-%: frob sample%
