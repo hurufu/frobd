@@ -67,6 +67,13 @@ struct config {
     sigset_t blocked;
 };
 
+struct stats {
+    unsigned int received_good,
+                 received_bad_lrc,
+                 received_bad_parse,
+                 received_bad_handled;
+};
+
 #ifndef NO_LOGS_ON_STDERR
 enum LogLevel g_log_level = LOG_DEBUG;
 #endif
@@ -355,7 +362,7 @@ static struct frob_frame_fsm_state fnext(byte_t* const cursor, const struct frob
     };
 }
 
-static void process_signal(sigset_t blocked, struct io_state* const t, int (*channel)[CHANNELS_COUNT]) {
+static void process_signal(sigset_t blocked, struct io_state* const t, int (*channel)[CHANNELS_COUNT], const struct stats* const st) {
     assert(sizeof (struct signalfd_siginfo) == t->cur[MR_SIGNAL] - t->buf[MR_SIGNAL]);
     const struct signalfd_siginfo* const inf = (struct signalfd_siginfo*)t->buf[MR_SIGNAL];
     switch (inf->ssi_signo) {
@@ -367,7 +374,10 @@ static void process_signal(sigset_t blocked, struct io_state* const t, int (*cha
             LOGWX("Can't re-transmit: %s", strerror(ENOSYS));
             break;
         case SIGINFO:
-            LOGIX("Current stats: %s", strerror(ENOSYS));
+            LOGIX("Current stats:");
+            LOGIX("\tReceived messages: %u (good %u / bad lrc %u + parse %u + handling %u)",
+                    st->received_good + st->received_bad_lrc + st->received_bad_parse + st->received_bad_handled,
+                    st->received_good, st->received_bad_lrc, st->received_bad_parse, st->received_bad_handled);
             break;
         default:
             LOGFX("Unexpected signal. Bailing out");
@@ -387,7 +397,7 @@ static void process_master(int (*channel)[CHANNELS_COUNT]) {
     show_prompt(channel);
 }
 
-static void process_main(int* const expected_acks, struct io_state* const t, struct frob_frame_fsm_state* const f, struct config* const cfg) {
+static void process_main(int* const expected_acks, struct io_state* const t, struct frob_frame_fsm_state* const f, struct config* const cfg, struct stats* const st) {
     // FIXME: This is a wrong way of checking ACK/NAK
     for (int i = 0; i < *expected_acks; i++)
         switch (t->cur[ER_MAIN][i]) {
@@ -411,13 +421,20 @@ static void process_main(int* const expected_acks, struct io_state* const t, str
         FD_SET(cfg->channel[EW_MAIN], &t->set[FD_WRITE]);
         if (0 == e) {
             struct frob_msg parsed = { .magic = FROB_MAGIC };
-            if (process_msg(f->p, f->pe, &parsed) != 0)
+            if (process_msg(f->p, f->pe, &parsed) != 0) {
                 LOGWX("Can't process message");
-            else
-                if (handle_message(&cfg->pm, &parsed, &cfg->channel, t, expected_acks) != 0)
+                st->received_bad_parse++;
+            } else {
+                if (handle_message(&cfg->pm, &parsed, &cfg->channel, t, expected_acks) != 0) {
                     LOGWX("Message wasn't handled");
+                    st->received_bad_handled++;
+                } else {
+                    st->received_good++;
+                }
+            }
         } else {
             LOGWX("Can't parse incoming frame: %s", strerror(e));
+            st->received_bad_lrc++;
         }
     }
 }
@@ -484,16 +501,17 @@ static int event_loop(struct config* const cfg) {
     static struct io_state t;
     const int m = get_max_fd(&cfg->channel);
     struct frob_frame_fsm_state f = { .p = t.buf[ER_MAIN] };
+    struct stats st = {};
     int expected_acks = 0;
     int ret = 0;
     for (finit(&cfg->channel, &t); (ret = fselect(m, &t.set, cfg->timeout)) > 0; fset(&cfg->channel, &t.set)) {
         perform_pending_io(&t, &cfg->channel, cfg->blocked);
         if (FD_ISSET(cfg->channel[MR_SIGNAL], &t.set[FD_READ]))
-            process_signal(cfg->blocked, &t, &cfg->channel);
+            process_signal(cfg->blocked, &t, &cfg->channel, &st);
         if (FD_ISSET(cfg->channel[ER_MASTER], &t.set[FD_READ]))
             process_master(&cfg->channel);
         if (FD_ISSET(cfg->channel[ER_MAIN], &t.set[FD_READ]))
-            process_main(&expected_acks, &t, &f, cfg);
+            process_main(&expected_acks, &t, &f, cfg, &st);
     }
     assertion("Event loop shall end only on error/timeout", ret <= 0);
     return ret;
