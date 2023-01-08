@@ -1,6 +1,6 @@
 .PHONY: index clean graph-% run run-%
 
-CFLAGS  := -Os -g0 -Wall -Wextra -ffat-lto-objects -mtune=native -march=native
+CFLAGS  := -O0 -ggdb3 -Wall -Wextra -ffat-lto-objects -mtune=native -march=native
 LDFLAGS := -flto
 RL_FILES:= $(wildcard *.rl)
 RL_C    := $(RL_FILES:.rl=.c)
@@ -16,7 +16,6 @@ cscope.out:
 
 frob: frob.c $(RL_C)
 	$(LINK.c) -o $@ $^ $(LDLIBS)
-	strip --strip-unneeded $@
 %.c: %.rl
 	ragel -G2 -L $<
 %.s: %.c
