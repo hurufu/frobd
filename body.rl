@@ -75,14 +75,14 @@ static int extract_t3(const byte_t** const pp, const byte_t* const pe, struct fr
         machine frob_t3;
         include common;
 
-        main := fs;
+        main := fs?;
 
         write data;
         write init;
         write exec;
     }%%
 
-    return cs < %%{ write first_final; }%%;
+    return cs < %%{ write first_final; }%% ? EBADMSG : 0;
 }
 
 static int extract_t4(const byte_t** const pp, const byte_t* const pe, struct frob_t4* const out) {

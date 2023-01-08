@@ -110,3 +110,14 @@ enum LogLevel g_log_level = LOG_DEBUG;
 
 #test complete_but_non_existent_message_type_is_rejected
     TEST_HEADER("123456" FS "T7" FS, 0);
+
+#suite body_parsing
+
+#test empty_body_is_handled
+    byte_t buf[0];
+    byte_t* p = buf;
+    union frob_body body = {}, empty = {};
+    const int ret = frob_body_extract(FROB_T3, &p, p, &body);
+    ck_assert_int_eq(ret, 0);
+    ck_assert_ptr_eq(p, buf);
+    ck_assert_mem_eq(&body, &empty, sizeof empty);

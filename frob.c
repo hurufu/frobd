@@ -208,7 +208,7 @@ static int make_frame(const byte_t* const body, const byte_t (* const token)[3],
     memcpy(p, body, l);
     p += l;
     uint8_t lrc = 0;
-    for (const byte_t* c = *pp + 1; c <= p; c++)
+    for (const byte_t* c = *pp + 1; c < p; c++)
         lrc ^= *c;
     *p++ = lrc;
 
