@@ -64,7 +64,7 @@ struct FrobMessage {
     del = 0x7F;
 
     n = [0-9];
-    a = ^cntrl | del;
+    a = ascii - cntrl - del;
     h = xdigit;
     b = [01];
     s = a* us;
@@ -177,51 +177,5 @@ static int process_frob_structure(void) {
         write init;
         write exec;
     }%%
-    return 0;
-}
-
-%%{
-    machine frob_frame;
-    alphtype unsigned char;
-
-    action Copy {
-        if (sizeof s_working_copy <= s_i)
-            fbreak;
-        s_working_copy[s_i++] = fc;
-    }
-    action Reset {
-        s_i = 0;
-    }
-    action LRC_Start {
-        lrc = 0;
-    }
-    action LRC_Byte {
-        lrc ^= fc;
-    }
-    action LRC_Check_And_Commit {
-        const bool ok = lrc == fc;
-        if (frob_acknowledge(ok ? 0x06 : 0x15) != 1)
-            fbreak;
-        if (ok)
-            process_frob_structure();
-    }
-
-    stx = 0x02;
-    etx = 0x03;
-    frame = stx >LRC_Start @Reset ((any-etx) @LRC_Byte @Copy)* (etx @LRC_Byte) any @LRC_Check_And_Commit;
-
-    main := ((any-stx)* frame )+;
-
-    write data;
-}%%
-
-int frob_process_input(const size_t s, const unsigned char buf[static const s]) {
-    static int cs = frob_frame_start;
-    static unsigned char lrc = 0;
-
-    const unsigned char* p = buf, * const pe = buf + s;
-    %% write exec;
-
-    // TODO: Invent a good way to pass error to the caller
     return 0;
 }

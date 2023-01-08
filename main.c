@@ -29,6 +29,12 @@ static char* convert_to_printable(const unsigned char* const p, const unsigned c
     return b;
 }
 
+static int process_msg(const unsigned char* const p, const unsigned char* const pe) {
+    const struct frob_header h = frob_header_extract(p, pe);
+    fprintf(stderr, "\tTYPE: %02X TOKEN: %02X %02X %02X\n",
+            h.type, h.token[0], h.token[1], h.token[2]);
+}
+
 static int frame_loop() {
     static unsigned char buf[4096];
     static const unsigned char* const end = buf + sizeof buf;
@@ -55,6 +61,7 @@ again:
         fprintf(stderr, "< %s\n> %s\n",
                 convert_to_printable(st.p, st.pe, sizeof buf, buf),
                 convert_to_printable(ack, ack + sizeof ack, 4, (char[4]){}));
+        process_msg(st.p, st.pe);
     }
 end_read:
     if (feof(stdin))
