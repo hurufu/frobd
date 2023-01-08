@@ -324,8 +324,12 @@ static bool all_channels_ok(const int (*channel)[CHANNELS_COUNT]) {
     return true;
 }
 
-static void start_master_channel(int (*channel)[CHANNELS_COUNT]) {
+static void show_prompt(const int fd) {
     static const char prompt[] = "> ";
+    write(fd, prompt, elementsof(prompt));
+}
+
+static void start_master_channel(int (*channel)[CHANNELS_COUNT]) {
     LOGWX("Master channel doesn't work: %s", strerror(ENOSYS));
     const char* const pts = ttyname(STDERR_FILENO);
     const int fd = open(pts, O_RDWR);
@@ -335,7 +339,7 @@ static void start_master_channel(int (*channel)[CHANNELS_COUNT]) {
         LOGIX("Master channel started at %s, but what will you do with it?", pts);
     LOGIX("Press ^C again to exit...");
     (*channel)[ER_MASTER] = fd;
-    write(fd, prompt, elementsof(prompt));
+    show_prompt(fd);
 }
 
 static void process_signal(sigset_t blocked, struct io_state* const t, int (*channel)[CHANNELS_COUNT]) {
@@ -427,6 +431,11 @@ static int event_loop(struct config* const cfg) {
 
         if (FD_ISSET((*&cfg->channel)[MR_SIGNAL], &t.set[FD_READ]))
             process_signal(cfg->blocked, &t, &cfg->channel);
+
+        if (FD_ISSET((*&cfg->channel)[ER_MASTER], &t.set[FD_READ])) {
+            LOGWX("No commands are currently supported: %s", strerror(ENOSYS));
+            show_prompt((*&cfg->channel)[ER_MASTER]);
+        }
 
         if (FD_ISSET((*&cfg->channel)[ER_MAIN], &t.set[FD_READ])) {
             // FIXME: This is a wrong way of checking ACK/NAK
