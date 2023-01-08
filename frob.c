@@ -342,6 +342,15 @@ static void start_master_channel(int (*channel)[CHANNELS_COUNT]) {
     show_prompt(fd);
 }
 
+static int setup_signalfd(const int ch, const sigset_t blocked) {
+    if (sigprocmask(SIG_BLOCK, &blocked, NULL) != 0)
+        LOGF("Couldn't adjust signal mask");
+    const int ret = signalfd(ch, &blocked, SFD_CLOEXEC);
+    if (ret == -1)
+        LOGF("Couldn't setup sigfd");
+    return ret;
+}
+
 static void process_signal(sigset_t blocked, struct io_state* const t, int (*channel)[CHANNELS_COUNT]) {
     assert(sizeof (struct signalfd_siginfo) == t->cur[MR_SIGNAL] - t->buf[MR_SIGNAL]);
     const struct signalfd_siginfo* const inf = (struct signalfd_siginfo*)t->buf[MR_SIGNAL];
@@ -356,7 +365,7 @@ static void process_signal(sigset_t blocked, struct io_state* const t, int (*cha
             LOGFX("Unexpected signal. Bailing out");
     }
     sigdelset(&blocked, inf->ssi_signo);
-    (*channel)[MR_SIGNAL] = signalfd((*channel)[MR_SIGNAL], &blocked, SFD_CLOEXEC);
+    (*channel)[MR_SIGNAL] = setup_signalfd((*channel)[MR_SIGNAL], blocked);
     sigset_t s;
     sigemptyset(&s);
     sigaddset(&s, inf->ssi_signo);
@@ -365,7 +374,7 @@ static void process_signal(sigset_t blocked, struct io_state* const t, int (*cha
         LOGF("Can't unblock received singal");
 }
 
-static void perform_pending_io(struct io_state* const t, int (*channel)[CHANNELS_COUNT]) {
+static void perform_pending_io(struct io_state* const t, int (*channel)[CHANNELS_COUNT], const sigset_t blocked) {
     for (size_t j = 0; j < elementsof(t->set); j++) {
         for (size_t i = 0; i < elementsof(*channel); i++) {
             if (FD_ISSET((*channel)[i], &(t->set)[j])) {
@@ -397,6 +406,8 @@ static void perform_pending_io(struct io_state* const t, int (*channel)[CHANNELS
                             LOGIX("Channel %s (fd %d) was closed", channel_to_string(i), (*channel)[i]);
                             close((*channel)[i]);
                             FD_CLR((*channel)[i], &(t->set)[FD_READ]);
+                            if (ER_MASTER == i)
+                                (*channel)[MR_SIGNAL] = setup_signalfd((*channel)[MR_SIGNAL], blocked);
                             (*channel)[i] = -1;
                         } else {
                             char tmp[3*s];
@@ -427,7 +438,7 @@ static int event_loop(struct config* const cfg) {
     int expected_acks = 0;
     int ret = 0;
     for (finit(&cfg->channel, &t); (ret = fselect(m, &t.set, cfg->timeout)) > 0; fset(&cfg->channel, &t.set)) {
-        perform_pending_io(&t, &cfg->channel);
+        perform_pending_io(&t, &cfg->channel, cfg->blocked);
 
         if (FD_ISSET((*&cfg->channel)[MR_SIGNAL], &t.set[FD_READ]))
             process_signal(cfg->blocked, &t, &cfg->channel);
@@ -486,11 +497,7 @@ static sigset_t adjust_signal_delivery(int* const ch) {
     sigemptyset(&s);
     for (size_t i = 0; i < elementsof(blocked_signals); i++)
         sigaddset(&s, blocked_signals[i]);
-    if (sigprocmask(SIG_BLOCK, &s, NULL) != 0)
-        LOGF("Couldn't adjust signal mask");
-    *ch = signalfd(-1, &s, SFD_CLOEXEC);
-    if (*ch == -1)
-        LOGF("Couldn't setup sigfd");
+    *ch = setup_signalfd(*ch, s);
     return s;
 }
 
