@@ -1,33 +1,40 @@
 #include "frob.h"
+#include <stdio.h>
 
 static struct FrobMsg s_m;
-static consumer_t s_consumer;
+static const unsigned char* s_p;
 
-static int crc(const unsigned char* const p) {
-    return *p;
-}
-
-static void text(const unsigned char* const p) {
+static int crc(const unsigned char p) {
+    fprintf(stderr, "CRC : %#04x\n", p);
+    return p;
 }
 
 static void file(const unsigned char* const p) {
+    fprintf(stderr, "FILE: %.*s\n", (int)(p-s_p), s_p);
+    s_p = p;
 }
 
 static void unit(const unsigned char* const p) {
+    fprintf(stderr, "UNIT: %s\n", p);
 }
+
+static void start(const unsigned char* const p) {
+    s_p = p;
+}
+
 
 %%{
     machine frob;
     alphtype unsigned char;
 
     action CRC {
-        if (crc(fpc) != 0) {
+        if (crc(fc) != 0) {
             fbreak;
         }
     }
 
-    action Text {
-        text(fpc);
+    action Start {
+        start(fpc);
     }
 
     action File {
@@ -36,10 +43,6 @@ static void unit(const unsigned char* const p) {
 
     action Unit {
         unit(fpc);
-    }
-
-    action Number {
-        number(fpc);
     }
 
     stx = 0x02;
@@ -65,7 +68,7 @@ static void unit(const unsigned char* const p) {
     T3 = zlen;
     T4 = sf;
 
-    msg := stx (nf|af|hf|bf|sf)* etx @CRC any @Text;
+    msg := (stx (nf|af|hf|bf|sf)* etx %CRC any) >Start;
 }%%
 
 %% write data;
@@ -75,7 +78,6 @@ ssize_t frob_match(const producer_t producer, const consumer_t consumer) {
     unsigned char buf[2 * 1024];
     int cs;
     %% write init;
-    s_consumer = consumer;
     s_m = (struct FrobMsg){ };
     while ((s = producer(&buf)) > 0) {
         const unsigned char* p = buf, * const pe = buf + s;

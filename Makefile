@@ -2,7 +2,7 @@
 
 CFLAGS ?= -O3 -g0 -Wall -Wextra
 
-run: run-01
+run: run-01 run-02
 run-%: main sample%
 	./$< <$(word 2,$^)
 index: tags cscope.out
