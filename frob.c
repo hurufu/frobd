@@ -362,6 +362,17 @@ static struct frob_frame_fsm_state fnext(byte_t* const cursor, const struct frob
     };
 }
 
+static void print_stats(const struct stats* const st) {
+    const unsigned int bad = st->received_bad_lrc + st->received_bad_parse + st->received_bad_handled;
+    const double ratio = (double)st->received_good / (bad + st->received_good);
+    const unsigned total = st->received_good + bad;
+    LOGIX("Current stats:");
+    LOGIX("	Received messages");
+    LOGIX("	Total	Ratio	Good	LRC	parse	handling");
+    LOGIX("	%u	%.5f	%u	%u	%u	%u", total, ratio, st->received_good,
+            st->received_bad_lrc, st->received_bad_parse, st->received_bad_handled);
+}
+
 static void process_signal(sigset_t blocked, struct io_state* const t, int (*channel)[CHANNELS_COUNT], const struct stats* const st) {
     assert(sizeof (struct signalfd_siginfo) == t->cur[MR_SIGNAL] - t->buf[MR_SIGNAL]);
     const struct signalfd_siginfo* const inf = (struct signalfd_siginfo*)t->buf[MR_SIGNAL];
@@ -374,10 +385,7 @@ static void process_signal(sigset_t blocked, struct io_state* const t, int (*cha
             LOGWX("Can't re-transmit: %s", strerror(ENOSYS));
             break;
         case SIGINFO:
-            LOGIX("Current stats:");
-            LOGIX("\tReceived messages: %u (good %u / bad lrc %u + parse %u + handling %u)",
-                    st->received_good + st->received_bad_lrc + st->received_bad_parse + st->received_bad_handled,
-                    st->received_good, st->received_bad_lrc, st->received_bad_parse, st->received_bad_handled);
+            print_stats(st);
             break;
         default:
             LOGFX("Unexpected signal. Bailing out");
