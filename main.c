@@ -2,13 +2,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
-#include <err.h>
 
 #define elementsof(Array) (sizeof(Array)/sizeof((Array)[0]))
 
 int main() {
     static unsigned char buf[4096];
-    const unsigned char* const end = buf + sizeof buf;
+    static const unsigned char* const end = buf + sizeof buf;
 
     {
         FILE* const ios[] = { stdin, stdout };
@@ -17,33 +16,32 @@ int main() {
     }
 
     for (;;) {
+        char ack = 0x06;
         struct frob_frame_fsm_state st = { .end = buf };
         goto again;
+process:
         switch (frob_frame_process(&st)) {
-            case EBADMSG:
-nak:
-                if (fwrite((char[]){0x15}, 1, 1, stdout) != 1)
-                    err(3, "NAK failed");
-                continue;
             case EAGAIN:
 again:
                 st.start = st.end;
                 const size_t s = fread(st.start, 1, end - st.start, stdin);
                 if (s <= 0)
-                    goto end;
+                    goto end_read;
                 st.end = st.start + s;
-                switch (frob_frame_process(&st)) {
-                    case EBADMSG:
-                        goto nak;
-                    case EAGAIN:
-                        goto again;
-                }
+                goto process;
+            case EBADMSG:
+nak:
+                ack = 0x15;
         }
-        if (fwrite((char[]){0x06}, 1, 1, stdout) != 1)
-            err(2, "ACK failed");
+        if (fwrite(&ack, 1, 1, stdout) != 1)
+            goto end_write;
     }
-end:
+end_read:
     if (feof(stdin))
         return 0;
-    err(5, "Can't read stdin");
+    return 5;
+end_write:
+    if (feof(stdout))
+        return 1;
+    return 2;
 }
