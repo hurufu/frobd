@@ -6,7 +6,7 @@ RL_FILES:= $(wildcard *.rl)
 RL_C    := $(RL_FILES:.rl=.c)
 
 run: run-01 run-02 run-T4
-run-%: main sample%
+run-%: frob sample%
 	./$< <$(word 2,$^)
 index: tags cscope.out
 tags:
@@ -14,7 +14,7 @@ tags:
 cscope.out:
 	cscope -bR
 
-main: main.c $(RL_C)
+frob: frob.c $(RL_C)
 	$(LINK.c) -o $@ $^ $(LDLIBS)
 	strip --strip-unneeded $@
 %.c: %.rl
@@ -24,6 +24,6 @@ main: main.c $(RL_C)
 
 graph-%: frob-frame.rl adjust-%.sed
 	ragel -p -V $< | sed -Ef $(word 2,$^) | dot -Tpng | feh -
-clean: F += $(wildcard $(RL_C) $(RL_C:.c=.s) main main.s tags cscope.out)
+clean: F += $(wildcard $(RL_C) $(RL_C:.c=.s) frob frob.s tags cscope.out)
 clean:
 	$(if $(strip $F),$(RM) -- $F)
