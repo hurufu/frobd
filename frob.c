@@ -378,6 +378,7 @@ static int event_loop(const struct preformated_messages* const pm, int (* const 
         }
     }
 
+    assert(ret <= 0);
     return ret;
 }
 
