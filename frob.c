@@ -215,6 +215,9 @@ static int event_loop(const struct preformated_messages* const pm, int (* const 
     for (finit(channel, &t); fselect(m, &t.set, relative_timeout); fset(channel, &t.set)) {
         perform_pending_io(&t, channel);
 
+        // TODO: Check if we have sent message on a main channel, and if so check for ACK/NAK from the other side.
+        // TODO: Retransmit message when needed
+
         if (FD_ISSET((*channel)[ER_MAIN], &t.set[FD_READ])) {
             int e;
             for (f.pe = t.cur[ER_MAIN]; (e = frob_frame_process(&f)) != EAGAIN; f = fnext(t.cur[ER_MAIN], f)) {
