@@ -17,10 +17,12 @@ Pros:
       * Suitable for use on highly constrained devices
       * Uses compilation time configurable buffer for incomming data
       * No memory leaks (duh!)
-  * Good (but opinionated) programming style
+  * Good (but opinionated) programming style[^1]
       * Only single global variable - `g_log_level`
 
 Cons:
 
   * Written in C
   * A little bit late to the party
+
+[^1]: Yet to be achieved
