@@ -38,6 +38,7 @@ int frob_frame_process(struct frob_frame_fsm_state* const st) {
     const unsigned char* start, * end;
     if (!st->not_first) {
         %% write init;
+        st->lrc = 0;
     }
     st->not_first = true;
 
