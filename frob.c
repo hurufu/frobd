@@ -74,14 +74,14 @@ static int handle_message(const struct preformated_messages* const pm, const str
 
 static const char* channel_to_string(const enum OrderedChannels o) {
     switch (o) {
-        case IW_PAYMENT: return "IW_PAYMENT";
-        case IW_STORAGE: return "IW_STORAGE";
-        case IW_UI:      return "IW_UI";
-        case IW_EVENTS:  return "IW_EVENTS";
-        case IR_DEVICE:  return "IR_DEVICE";
-        case EW_MAIN:    return "EW_MAIN";
-        case ER_MAIN:    return "ER_MAIN";
-        case ER_MASTER:  return "ER_MASTER";
+        case IW_PAYMENT: return "PAYMENT (internal output)";
+        case IW_STORAGE: return "STORAGE (internal output)";
+        case IW_UI:      return "UI (internal output)";
+        case IW_EVENTS:  return "EVENTS (internal output)";
+        case IR_DEVICE:  return "DEVICE (internal input)";
+        case EW_MAIN:    return "MAIN (external output)";
+        case ER_MAIN:    return "MAIN (external input)";
+        case ER_MASTER:  return "MASTER (console input)";
         case CHANNELS_COUNT:
     }
     return NULL;
