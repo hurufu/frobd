@@ -51,7 +51,8 @@ struct io_state {
 enum LogLevel g_log_level = LOG_DEBUG;
 
 int frob_forward_msg(const struct frob_msg* const msg) {
-    LOGIX("Not implemented %p", msg);
+    assertion("Magic string shall match", strcmp(msg->magic, "FROBCr1") == 0);
+    LOGIX("Not implemented");
     return -1;
 };
 
@@ -66,16 +67,6 @@ static const char* channel_to_string(const enum OrderedChannels o) {
         case ER_MAIN:    return "ER_MAIN";
         case ER_MASTER:  return "ER_MASTER";
         case CHANNELS_COUNT:
-    }
-    return NULL;
-}
-
-static const char* fdset_to_string(const enum OrderedFdSets o) {
-    switch (o) {
-        case FD_EXCEPT: return "FD_EXCEPT";
-        case FD_WRITE:  return "FD_WRITE";
-        case FD_READ:   return "FD_READ";
-        case FD_SET_COUNT:
     }
     return NULL;
 }
@@ -107,7 +98,7 @@ static void process_msg(const unsigned char* p, const unsigned char* const pe) {
             return;
     }
 
-    assert(("Complete message shall be processed, ie cursor shall point to the end of message", p == pe));
+    assertion("Complete message shall be processed, ie cursor shall point to the end of message", p == pe);
 
     if (frob_forward_msg(&msg) != 0)
         LOGDX("Downstream error");

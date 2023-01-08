@@ -9,7 +9,7 @@
 #define LOGEX(Fmt, ...) LOG_X(LOG_ERROR, "E", Fmt, ##__VA_ARGS__)
 #define LOGFX(Fmt, ...) LOGF_(errx, Fmt, ##__VA_ARGS__)
 #define LOGF(Fmt, ...) LOGF_(err, Fmt, ##__VA_ARGS__)
-#define LOGW(Fmt, ...) (LOG_WARNING > g_log_level ?: warn("W %s:%d\t" Fmt, __FILE__, __LINE__, ##__VA_ARGS__))
+#define LOGW(Fmt, ...) (LOG_WARNING > g_log_level ? (void)0 : warn("W %s:%d\t" Fmt, __FILE__, __LINE__, ##__VA_ARGS__))
 
 #define PRETTY(Arr) to_printable(Arr, endof(Arr), 4*sizeof(Arr), (char[4*sizeof(Arr)]){})
 #define PRETTV(P, Pe, Buf) to_printable(P, Pe, sizeof(Buf), Buf)
@@ -28,5 +28,5 @@ extern enum LogLevel g_log_level;
 char* to_printable(const unsigned char* p, const unsigned char* pe, size_t s, char b[static s]);
 
 // Internal macros
-#define LOG_X(Level, Prefix, Fmt, ...) (Level > g_log_level ?: warnx(Prefix " %s:%d\t" Fmt, __FILE__, __LINE__, ##__VA_ARGS__))
-#define LOGF_(ErrFunction, Fmt, ...) (LOG_FATAL > g_log_level ?: ErrFunction (EXIT_FAILURE, "F %s:%d\t" Fmt, __FILE__, __LINE__, ##__VA_ARGS__))
+#define LOG_X(Level, Prefix, Fmt, ...) (Level > g_log_level ? (void)0 : warnx(Prefix " %s:%d\t" Fmt, __FILE__, __LINE__, ##__VA_ARGS__))
+#define LOGF_(ErrFunction, Fmt, ...) (LOG_FATAL > g_log_level ? (void)0: ErrFunction (EXIT_FAILURE, "F %s:%d\t" Fmt, __FILE__, __LINE__, ##__VA_ARGS__))
