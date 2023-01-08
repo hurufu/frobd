@@ -76,10 +76,10 @@ static const char* channel_to_string(const enum OrderedChannels o) {
 
 static int forward_message(const struct frob_msg* const msg, const int channel, struct io_state* const t) {
     if (channel < 0) {
-        return LOGWX("%s", strerror(EBADF)), -1;
+        return LOGWX("%s", strerror(EBADF));
     }
     if (t->cur[channel] + sizeof msg >= t->buf[channel] + sizeof t->buf[channel]) {
-        return LOGWX("%s", strerror(ENOBUFS)), -1;
+        return LOGWX("%s", strerror(ENOBUFS));
     }
     memcpy(t->cur[channel], msg, sizeof msg);
     t->cur[channel] += sizeof msg;
@@ -90,15 +90,14 @@ static int forward_message(const struct frob_msg* const msg, const int channel, 
 static const byte_t* get_preformatted_buffer(const struct preformated_messages* const pm, const enum FrobMessageType t) {
     switch (t) {
         case FROB_T1: return pm->t2;
-        default:
-            return LOGWX("%s", strerror(ENOSYS)), NULL;
+        default: return NULL;
     }
 }
 
 static int handle_local(const struct preformated_messages* const pm, const enum FrobMessageType mt, int (*channel)[CHANNELS_COUNT], struct io_state* const t) {
     const byte_t* const m = get_preformatted_buffer(pm, mt);
     if (!m)
-        return -1;
+        return LOGWX("Can't respond to locally handled message: %s", strerror(ENOSYS));
     const size_t l = strlen((char*)m);
     memcpy(t->cur[EW_MAIN], m, l);
     t->cur[EW_MAIN] += l;
@@ -139,18 +138,18 @@ static int handle_message(const struct preformated_messages* const pm, const str
 static int process_msg(const unsigned char* p, const unsigned char* const pe, struct frob_msg* const msg) {
     msg->header = frob_header_extract(&p, pe);
     if (msg->header.type == 0)
-        return LOGWX("Bad header"), -1;
+        return LOGWX("Bad header");
     LOGDX("\tTYPE: %02X TOKEN: %02X %02X %02X",
             msg->header.type, msg->header.token[0], msg->header.token[1], msg->header.token[2]);
 
     switch (frob_body_extract(msg->header.type, &p, pe, &msg->body)) {
         case EBADMSG:
-            return LOGDX("Bad payload"), -1;
+            return LOGDX("Bad payload");
     }
 
     switch (frob_extract_additional_attributes(&p, pe, &msg->attr)) {
         case EBADMSG:
-            return LOGDX("Bad data"), -1;
+            return LOGDX("Bad data");
     }
 
     assertion("Complete message shall be processed, ie cursor shall point to the end of message", p == pe);
