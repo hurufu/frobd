@@ -25,7 +25,7 @@ tags:
 	ctags --kinds-C=+p -R .
 cscope.out:
 	cscope -bR
-ut: LDLIBS   := -lcheck -lsubunit
+ut: LDLIBS   := -lcheck -lsubunit -lm
 ut: $(UT_O) $(RL_O)
 	$(LINK.o) -o $@ $^ $(LDLIBS)
 frob: $(OFILES)
