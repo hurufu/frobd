@@ -121,13 +121,6 @@ static int process_msg(const unsigned char* p, const unsigned char* const pe, st
     return 0;
 }
 
-static const byte_t* get_preformatted_buffer(const struct preformated_messages* const pm, const enum FrobMessageType t) {
-    switch (t) {
-        case FROB_T1: return pm->t2;
-        default: return NULL;
-    }
-}
-
 static int make_frame(const byte_t* const body, const byte_t (* const token)[3], byte_t** const pp, byte_t* const pe) {
     byte_t* p = *pp;
 
@@ -157,9 +150,16 @@ static int make_frame(const byte_t* const body, const byte_t (* const token)[3],
 }
 
 static int handle_local(const struct preformated_messages* const pm, const struct frob_header* const h, int (*channel)[CHANNELS_COUNT], struct io_state* const t) {
-    const byte_t* const m = get_preformatted_buffer(pm, h->type);
-    if (!m)
-        return LOGWX("There isn't any answer to reply: %s", strerror(ENOSYS));
+    const byte_t* m = NULL;
+    switch (h->type) {
+        case FROB_T1: m = pm->t2; break;
+        case FROB_T2:
+            // There is no response for a terminal message in an exchange
+            return 0;
+        default:
+            LOGWX("There isn't any answer to reply: %s", strerror(ENOSYS));
+            return -1;
+    }
     if (make_frame(m, &h->token, &t->cur[EW_MAIN], endof(t->buf[EW_MAIN])) != 0)
         return LOGWX("Locally generate response skipped");
     FD_SET((*channel)[EW_MAIN], &t->set[FD_WRITE]);
