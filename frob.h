@@ -197,7 +197,7 @@ struct frob_a2 {
 union frob_body {
     struct frob_t1 t1;
     struct frob_t2 t2;
-    struct frob_t3 ts;
+    struct frob_t3 t3;
     struct frob_t4 t4;
     struct frob_t5 t5;
     struct frob_d4 d4;
