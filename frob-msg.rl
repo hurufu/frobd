@@ -1,48 +1,33 @@
 #include "frob.h"
 #include <stdio.h>
 
-static struct FrobMsg s_m;
-static const unsigned char* s_p;
-
-static int crc(const unsigned char p) {
-    fprintf(stderr, "CRC : %#04x\n", p);
-    return p;
-}
-
-static void file(const unsigned char* const p) {
-    fprintf(stderr, "FILE: %.*s\n", (int)(p-s_p), s_p);
-    s_p = p;
-}
-
-static void unit(const unsigned char* const p) {
-    fprintf(stderr, "UNIT: %s\n", p);
-}
-
-static void start(const unsigned char* const p) {
-    s_p = p;
-}
-
 
 %%{
     machine frob;
     alphtype unsigned char;
 
-    action CRC {
-        if (crc(fc) != 0) {
-            fbreak;
-        }
-    }
-
-    action Start {
-        start(fpc);
-    }
-
     action File {
-        file(fpc);
+        puts("FILE");
     }
 
     action Unit {
-        unit(fpc);
+        puts("UNIT");
+    }
+
+    action LRC_Start {
+        lrc = 0;
+    }
+
+    action LRC_Byte {
+        lrc ^= fc;
+    }
+
+    action LRC_Check {
+        if (lrc == fc) {
+            puts("ACK");
+        } else {
+            puts("NAK");
+        }
     }
 
     stx = 0x02;
@@ -68,17 +53,20 @@ static void start(const unsigned char* const p) {
     T3 = zlen;
     T4 = sf;
 
-    msg := (stx (nf|af|hf|bf|sf)* etx %CRC any) >Start;
-}%%
+    structure = stx (nf|af|hf|bf|sf)* etx any @{ puts("Frame"); };
+    frame = stx >LRC_Start ((any-etx) @LRC_Byte)* (etx @LRC_Byte) any @LRC_Check;
 
-%% write data;
+    main := ((any-stx)* (frame & structure))+;
+
+    write data;
+}%%
 
 ssize_t frob_match(const producer_t producer, const consumer_t consumer) {
     ssize_t s;
-    unsigned char buf[2 * 1024];
     int cs;
+    unsigned char buf[2 * 1024];
+    unsigned char lrc;
     %% write init;
-    s_m = (struct FrobMsg){ };
     while ((s = producer(&buf)) > 0) {
         const unsigned char* p = buf, * const pe = buf + s;
         %% write exec;

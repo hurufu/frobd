@@ -15,5 +15,5 @@ int main() {
 
     const ssize_t ret = frob_match(producer, consumer);
     perror("DONE");
-    return ret ? 1 : 0;
+    return ret;
 }
