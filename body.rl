@@ -570,6 +570,54 @@ static int extract_b4(const byte_t** const pp, const byte_t* const pe, struct fr
     return cs < %%{ write first_final; }%% ? ENOTRECOVERABLE : 0;
 }
 
+static int extract_k0(const byte_t** const pp, const byte_t* const pe, struct frob_k0* const out) {
+    int cs;
+    const byte_t* c;
+
+    %%{
+        machine frob_k0;
+        include common;
+
+        action C {
+            c = fpc;
+        }
+        action Result {
+            out->result = STRTOL(c);
+        }
+        action Output {
+            COPY(out->output, c, fpc);
+        }
+
+        result = n* >C fs @Result;
+        output = a* >C fs @Output;
+
+        main := result | (result output);
+
+        write data;
+        write init;
+        write exec;
+    }%%
+
+    return cs < %%{ write first_final; }%% ? ENOTRECOVERABLE : 0;
+}
+
+static int extract_k1(const byte_t** const pp, const byte_t* const pe, struct frob_k1* const out) {
+    int cs;
+
+    %%{
+        machine frob_k1;
+        include common;
+
+        main := fs?;
+
+        write data;
+        write init;
+        write exec;
+    }%%
+
+    return cs < %%{ write first_final; }%% ? EBADMSG : 0;
+}
+
 int frob_body_extract(const enum FrobMessageType t,
         const byte_t** const p, const byte_t* const pe,
         union frob_body* const out) {
@@ -587,6 +635,8 @@ int frob_body_extract(const enum FrobMessageType t,
         case FROB_B2: return extract_b2(p, pe, &out->b2);
         case FROB_B3: return extract_b3(p, pe, &out->b3);
         case FROB_B4: return extract_b4(p, pe, &out->b4);
+        case FROB_K0: return extract_k0(p, pe, &out->k0);
+        case FROB_K1: return extract_k1(p, pe, &out->k1);
         default:
             return ENOSYS;
     }

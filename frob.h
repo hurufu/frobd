@@ -240,6 +240,13 @@ struct frob_b4 {
     uint32_t result;
 };
 
+struct frob_k0 {
+    uint32_t result;
+    char output[100];
+};
+
+struct frob_k1 { };
+
 union frob_body {
     struct frob_t1 t1;
     struct frob_t2 t2;
@@ -258,6 +265,8 @@ union frob_body {
     struct frob_b2 b2;
     struct frob_b3 b3;
     struct frob_b4 b4;
+    struct frob_k0 k0;
+    struct frob_k1 k1;
 };
 
 struct frob_msg {

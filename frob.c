@@ -60,6 +60,8 @@ struct preformated_messages {
     byte_t d5[128];
     byte_t b2[1024];
     byte_t s2[128];
+    byte_t k0[32];
+    byte_t k1[16];
 };
 
 struct config {
@@ -228,6 +230,7 @@ static int handle_local(const struct preformated_messages* const pm, const struc
         case FROB_D4: m = pm->d5; break;
         case FROB_B1: m = pm->b2; break;
         case FROB_S1: m = pm->s2; break;
+        case FROB_K1: m = pm->k0; break;
         case FROB_T2:
         case FROB_T5:
         case FROB_D5:
@@ -565,6 +568,7 @@ int main(const int ac, const char* av[static const ac]) {
             .t4 = FS "T4" FS "160" US "170" US FS ETX,
             .t5 = FS "T5" FS "170" FS ETX,
             .s2 = FS "S2" FS "993" FS FS "M000" FS "T000" FS "N/A" FS FS FS "NONE" FS "Payment endopoint not available" FS ETX,
+            .k0 = FS "K0" FS "999" FS FS ETX,
             .d5 = FS "D5" FS "24" FS "12" FS "6" FS "19" FS "1" FS "1" FS "1"
                   FS "0" FS "0" FS "0" FS FS FS "4" FS "9999" FS "4" FS "15"
                   FS "ENTER" US "CANCEL" US "CHECK" US "BACKSPACE" US "DELETE" US "UP" US "DOWN" US "LEFT" US "RIGHT" US
@@ -572,9 +576,9 @@ int main(const int ac, const char* av[static const ac]) {
         },
         .channel = {
             [IW_PAYMENT] = -1,
-            [IW_STORAGE] = STDOUT_FILENO,
-            [IW_UI     ] = STDOUT_FILENO,
-            [IW_EVENTS ] = STDOUT_FILENO,
+            [IW_STORAGE] = -1,
+            [IW_UI     ] = -1,
+            [IW_EVENTS ] = -1,
             [IR_DEVICE ] = -1,
             [EW_MAIN   ] = STDOUT_FILENO,
             [ER_MAIN   ] = STDIN_FILENO,
