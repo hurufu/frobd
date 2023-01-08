@@ -29,7 +29,6 @@ enum OrderedChannels {
     EW_MAIN,
     ER_MAIN,
     ER_MASTER,
-    EW_DEBUG,
 
     CHANNELS_COUNT
 };
@@ -52,8 +51,7 @@ struct io_state {
 enum LogLevel g_log_level = LOG_DEBUG;
 
 int frob_forward_msg(const struct frob_msg* const msg) {
-    (void)msg;
-    // Not implemented;
+    LOGIX("Not implemented %p", msg);
     return -1;
 };
 
@@ -67,7 +65,6 @@ static const char* channel_to_string(const enum OrderedChannels o) {
         case EW_MAIN:    return "EW_MAIN";
         case ER_MAIN:    return "ER_MAIN";
         case ER_MASTER:  return "ER_MASTER";
-        case EW_DEBUG:   return "EW_DEBUG";
         case CHANNELS_COUNT:
     }
     return NULL;
@@ -83,7 +80,7 @@ static const char* fdset_to_string(const enum OrderedFdSets o) {
     return NULL;
 }
 
-static int process_msg(const unsigned char* p, const unsigned char* const pe) {
+static void process_msg(const unsigned char* p, const unsigned char* const pe) {
     struct frob_msg msg = {
         .magic = "FROBCr1",
         .header = frob_header_extract(&p, pe)
@@ -95,29 +92,25 @@ static int process_msg(const unsigned char* p, const unsigned char* const pe) {
     switch (frob_protocol_transition(&protocol_state, msg.header.type)) {
         case EPROTO:
             LOGDX("Out of order message");
-            return 1;
+            return;
     }
 
     switch (frob_body_extract(msg.header.type, &p, pe, &msg.body)) {
         case EBADMSG:
             LOGDX("Bad payload");
-            return 2;
+            return;
     }
 
     switch (frob_extract_additional_attributes(&p, pe, &msg.attr)) {
         case EBADMSG:
             LOGDX("Bad data");
-            return 3;
+            return;
     }
 
-    //assert(p == pe);
+    assert(("Complete message shall be processed, ie cursor shall point to the end of message", p == pe));
 
-    if (frob_forward_msg(&msg) != 0) {
+    if (frob_forward_msg(&msg) != 0)
         LOGDX("Downstream error");
-        return 4;
-    }
-
-    return 0;
 }
 
 static void fset(const int (* const channel)[CHANNELS_COUNT], fd_set (* const set)[FD_SET_COUNT]) {
@@ -146,7 +139,12 @@ static void finit(const int (* const channel)[CHANNELS_COUNT], struct io_state* 
 static bool fselect(const int nfd, fd_set (* const set)[FD_SET_COUNT], const time_t relative_timeout) {
     struct timeval t = { .tv_sec = relative_timeout };
     // TODO: Use pselect and enable master channel on SIGINT
-    return select(nfd, &(*set)[FD_READ], &(*set)[FD_WRITE], &(*set)[FD_EXCEPT], &t) > 0;
+    const int l = select(nfd, &(*set)[FD_READ], &(*set)[FD_WRITE], &(*set)[FD_EXCEPT], &t);
+    if (l < 0)
+        LOGW("Select failed");
+    else if (l == 0)
+        LOGWX("Timeout reached");
+    return l;
 }
 
 static int get_max_fd(const int (*channel)[CHANNELS_COUNT]) {
@@ -170,19 +168,21 @@ static int perform_pending_io(struct io_state* const t, int (*channel)[CHANNELS_
                 switch (j) {
                     ssize_t s;
                     case FD_EXCEPT:
-                        errno = EBADE;
+                        LOGEX("Exceptional data isn't supported");
                         return -2;
                     case FD_WRITE:
                         if ((s = write((*channel)[i], t->buf[i], t->cur[i] - t->buf[i])) != t->cur[i] - t->buf[i])
-                            return -4;
+                            LOGF("Can't write %zu bytes to %s channel (fd %d)", t->cur[i] - t->buf[i], channel_to_string(i), (*channel)[i]);
                         t->cur[i] = t->buf[i];
                         FD_CLR((*channel)[i], &(t->set)[FD_WRITE]);
                         break;
                     case FD_READ:
                         if ((s = read((*channel)[i], t->cur[i], t->buf[i] + sizeof t->buf[i] - t->cur[i])) < 0) {
-                            return -3;
+                            LOGF("Can't read data on %s channel (fd %d)", channel_to_string(i), (*channel)[i]);
                         } else if (s == 0) {
+                            LOGIX("Channel %s (fd %d) was closed", channel_to_string(i), (*channel)[i]);
                             close((*channel)[i]);
+                            FD_CLR((*channel)[i], &(t->set)[FD_READ]);
                             (*channel)[i] = -1;
                         }
                         t->cur[i] += s;
@@ -246,6 +246,5 @@ int main() {
         return EXIT_FAILURE;
 
     event_loop(&channel, 1);
-    LOGW("Exit");
     return EXIT_FAILURE;
 }
