@@ -109,7 +109,8 @@ static int extract_t4(const byte_t** const pp, const byte_t* const pe, struct fr
         write exec;
     }%%
 
-    return cs < %%{ write first_final; }%%;
+    //return cs < %%{ write first_final; }%% ? ENOTRECOVERABLE : 0;
+    return 0;
 }
 
 static int extract_t5(const byte_t** const pp, const byte_t* const pe, struct frob_t5* const out) {

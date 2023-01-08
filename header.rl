@@ -123,7 +123,7 @@ struct frob_header frob_header_extract(const byte_t** px, const byte_t* const pe
         .type = deserialize_type(type_end[-2], type_end[-1])
     };
     int i = 0;
-    for (const byte_t* b = start; b != token_end; b += 2) {
+    for (const byte_t* b = start; b < token_end; b += 2) {
         const char t[2] = { b[0], b[1] };
         res.token[i++] = unhex(t);
     }
