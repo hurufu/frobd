@@ -213,6 +213,32 @@ struct frob_a2 {
     char msg[100];
 };
 
+struct frob_b1 {
+    char version[4];
+    char vendor[20];
+    char device_type[20];
+    char device_id[20];
+};
+
+struct frob_b2 {
+    char version[4];
+    char vendor[20];
+    char device_type[20];
+    char device_id[20];
+    uint32_t result;
+    unsigned char modulus[256];
+    unsigned char exponent[3];
+};
+
+struct frob_b3 {
+    unsigned char kek[256];
+    unsigned char kcv[3];
+};
+
+struct frob_b4 {
+    uint32_t result;
+};
+
 union frob_body {
     struct frob_t1 t1;
     struct frob_t2 t2;
@@ -227,6 +253,10 @@ union frob_body {
     struct frob_p1 p1;
     struct frob_a1 a1;
     struct frob_a2 a2;
+    struct frob_b1 b1;
+    struct frob_b2 b2;
+    struct frob_b3 b3;
+    struct frob_b4 b4;
 };
 
 struct frob_msg {

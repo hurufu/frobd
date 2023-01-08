@@ -58,6 +58,7 @@ struct preformated_messages {
     byte_t t4[32];
     byte_t t5[32];
     byte_t d5[128];
+    byte_t b2[1024];
 };
 
 struct config {
@@ -227,6 +228,7 @@ static int handle_local(const struct preformated_messages* const pm, const struc
         case FROB_T3: m = pm->t4; break;
         case FROB_T4: m = pm->t5; break;
         case FROB_D4: m = pm->d5; break;
+        case FROB_B1: m = pm->b2; break;
         case FROB_T2:
         case FROB_T5:
         case FROB_D5:
@@ -552,6 +554,7 @@ int main(const int ac, const char* av[static const ac]) {
     static struct config cfg = {
         .pm = {
             .t2 = FS "T2" FS "170" FS "TEST" FS "SIM" FS "0" FS ETX,
+            .b2 = FS "T2" FS "170" FS "TEST" FS "SIM" FS "0" FS "0" FS "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" FS "00" ETX,
             .t4 = FS "T4" FS "160" US "170" US FS ETX,
             .t5 = FS "T5" FS "170" FS ETX,
             .d5 = FS "D5" FS "24" FS "12" FS "6" FS "19" FS "1" FS "1" FS "1"

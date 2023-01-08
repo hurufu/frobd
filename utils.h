@@ -9,6 +9,13 @@
 #define US "\x1F"
 
 #define COPY(Dest, Start, End) memcpy((Dest), Start, min(End - Start, elementsof(Dest)))
+#define UNHEX(Dest, Start, End) do {\
+    char* dst = Dest;\
+    for (const char* src = Start; src < End; src += 2) {\
+        const char tmp[] = { src[0], src[1] };\
+        *dst++ = unhex(tmp);\
+    }\
+} while (0)
 
 #define APPLY_TO_ARRAY(X, Macro) ({\
     _Static_assert(sizeof (X) != 0);\
@@ -35,3 +42,6 @@
       else\
         __assert_fail(#Expr " (" Msg ")", __FILE__, __LINE__, __ASSERT_FUNCTION);\
 }))
+
+unsigned char hex2nibble(char h);
+unsigned char unhex(const char h[static 2]);

@@ -10,10 +10,10 @@ LDFLAGS  := -flto
 RL_FILES := $(wildcard *.rl)
 RL_C     := $(RL_FILES:.rl=.c)
 RL_O     := $(RL_FILES:.rl=.o)
-CFILES   := $(RL_C) frob.c log.c
+CFILES   := $(RL_C) frob.c log.c utils.c
 OFILES   := $(CFILES:.c=.o)
 UT_T := $(wildcard *.in)
-UT_O := $(UT_T:.in=.o)
+UT_O := $(UT_T:.in=.o) utils.o
 
 run: run-01 run-02 run-T4 run-S1 run-D4
 run-%: frob sample%

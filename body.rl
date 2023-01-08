@@ -12,6 +12,39 @@
     variable p *pp;
 }%%
 
+%%{
+    machine status;
+    include common;
+
+    action C {
+        c = fpc;
+    }
+    action Vendor {
+        COPY(out->vendor, c, fpc);
+    }
+    action Type {
+        COPY(out->device_type, c, fpc);
+    }
+    action Id {
+        COPY(out->device_id, c, fpc);
+    }
+
+    vendor = (a+ >C fs @Vendor) | fs;
+    type = (a+ >C fs @Type) | fs;
+    id = (a+ >C fs @Id) | fs;
+}%%
+
+%%{
+    machine common_b;
+    include status;
+
+    action Version {
+        COPY(out->version, c, fpc);
+    }
+
+    version = a+ >C fs @Version;
+}%%
+
 static int extract_t1(const byte_t** const pp, const byte_t* const pe, struct frob_t1* const out) {
     int cs;
     %%{
@@ -32,28 +65,13 @@ static int extract_t2(const byte_t** const pp, const byte_t* const pe, struct fr
     const byte_t* c;
     %%{
         machine frob_t2;
-        include common;
+        include status;
 
-        action C {
-            c = fpc;
-        }
         action Version {
             COPY(out->max_supported_version, c, fpc);
         }
-        action Vendor {
-            COPY(out->vendor, c, fpc);
-        }
-        action Type {
-            COPY(out->device_type, c, fpc);
-        }
-        action Id {
-            COPY(out->device_id, c, fpc);
-        }
 
         version = a+ >C fs @Version;
-        vendor = (a+ >C fs @Vendor) | fs;
-        type = (a+ >C fs @Type) | fs;
-        id = (a+ >C fs @Id) | fs;
 
         main := (version vendor type id) |
                 (version vendor type) |
@@ -375,6 +393,114 @@ static int extract_d5(const byte_t** const pp, const byte_t* const pe, struct fr
     return cs < %%{ write first_final; }%% ? ENOTRECOVERABLE : 0;
 }
 
+static int extract_b1(const byte_t** const pp, const byte_t* const pe, struct frob_b1* const out) {
+    int cs;
+    const byte_t* c;
+
+    %%{
+        machine frob_b1;
+        include common_b;
+
+        main := version vendor type id;
+
+        write data;
+        write init;
+        write exec;
+    }%%
+
+    return cs < %%{ write first_final; }%% ? ENOTRECOVERABLE : 0;
+}
+
+static int extract_b2(const byte_t** const pp, const byte_t* const pe, struct frob_b2* const out) {
+    int cs;
+    const byte_t* c;
+
+    %%{
+        machine frob_b2;
+        include common_b;
+
+        action Result {
+            out->result = STRTOL(c);
+        }
+        action Modulus {
+            UNHEX(out->modulus, c, fpc);
+        }
+        action Exponent {
+            UNHEX(out->exponent, c, fpc);
+        }
+
+        result = n* >C fs @Result;
+        modulus = h* >C fs @Modulus;
+        exponent = h* >C fs @Exponent;
+
+        main := version vendor type id result (modulus exponent)?;
+
+        write data;
+        write init;
+        write exec;
+    }%%
+
+    return cs < %%{ write first_final; }%% ? ENOTRECOVERABLE : 0;
+}
+
+static int extract_b3(const byte_t** const pp, const byte_t* const pe, struct frob_b3* const out) {
+    int cs;
+    const byte_t* c;
+
+    %%{
+        machine frob_b3;
+        include common;
+
+        action C {
+            c = fpc;
+        }
+        action Kek {
+            UNHEX(out->kek, c, fpc);
+        }
+        action Kcv {
+            UNHEX(out->kcv, c, fpc);
+        }
+
+        kek = h* >C fs @Kek;
+        kcv = h* >C fs @Kcv;
+
+        main := kek kcv;
+
+        write data;
+        write init;
+        write exec;
+    }%%
+
+    return cs < %%{ write first_final; }%% ? ENOTRECOVERABLE : 0;
+}
+
+static int extract_b4(const byte_t** const pp, const byte_t* const pe, struct frob_b4* const out) {
+    int cs;
+    const byte_t* c;
+
+    %%{
+        machine frob_b4;
+        include common;
+
+        action C {
+            c = fpc;
+        }
+        action Result {
+            out->result = STRTOL(c);
+        }
+
+        result = n* >C fs @Result;
+
+        main := result;
+
+        write data;
+        write init;
+        write exec;
+    }%%
+
+    return cs < %%{ write first_final; }%% ? ENOTRECOVERABLE : 0;
+}
+
 int frob_body_extract(const enum FrobMessageType t,
         const byte_t** const p, const byte_t* const pe,
         union frob_body* const out) {
@@ -387,6 +513,10 @@ int frob_body_extract(const enum FrobMessageType t,
         case FROB_S1: return extract_s1(p, pe, &out->s1);
         case FROB_D4: return extract_d4(p, pe, &out->d4);
         case FROB_D5: return extract_d5(p, pe, &out->d5);
+        case FROB_B1: return extract_b1(p, pe, &out->b1);
+        case FROB_B2: return extract_b2(p, pe, &out->b2);
+        case FROB_B3: return extract_b3(p, pe, &out->b3);
+        case FROB_B4: return extract_b4(p, pe, &out->b4);
         default:
             return ENOSYS;
     }
