@@ -92,13 +92,6 @@ static int process_msg(const unsigned char* p, const unsigned char* const pe, st
     LOGDX("\tTYPE: %02X TOKEN: %02X %02X %02X",
             msg->header.type, msg->header.token[0], msg->header.token[1], msg->header.token[2]);
 
-    static int protocol_state = -1;
-    switch (frob_protocol_transition(&protocol_state, msg->header.type)) {
-        case EPROTO:
-            LOGDX("Out of order message");
-            return -1;
-    }
-
     switch (frob_body_extract(msg->header.type, &p, pe, &msg->body)) {
         case EBADMSG:
             LOGDX("Bad payload");
