@@ -1,8 +1,11 @@
 .PHONY: index clean graph-% run run-% test tcp
 
 #CPPFLAGS := -DNO_LOGS_ON_STDERR
-CFLAGS   := -O0 -ggdb3 -Wall -Wextra -ffat-lto-objects -mtune=native -march=native
+OPTLEVEL ?= 0
+CFLAGS    = -O$(OPTLEVEL) -ggdb3 -Wall -Wextra -ffat-lto-objects -mtune=native -march=native
 CFLAGS   += -fanalyzer -fanalyzer-checker=taint
+# TODO: Remove those warnings only for generated files
+#CFLAGS   += -Wno-implicit-fallthrough -Wno-unused-const-variable -Wno-sign-compare -Wno-unused-variable -Wno-unused-parameter
 LDFLAGS  := -flto
 RL_FILES := $(wildcard *.rl)
 RL_C     := $(RL_FILES:.rl=.c)
@@ -22,9 +25,8 @@ tags:
 	ctags --kinds-C=+p -R .
 cscope.out:
 	cscope -bR
-ut: CPPFLAGS := -DNO_LOGS_ON_STDERR
 ut: LDLIBS   := -lcheck
-ut: CFLAGS   += -Og -ggdb3
+ut: OPTLEVEL := g
 ut: $(UT_O) $(RL_O)
 	$(LINK.o) -o $@ $^ $(LDLIBS)
 frob: $(OFILES)

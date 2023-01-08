@@ -1,5 +1,6 @@
 #include "frob.h"
 #include "utils.h"
+#include "log.h"
 #include <check.h>
 #include <errno.h>
 
@@ -33,6 +34,10 @@ static void test_frame(const size_t bs, byte_t buf[static bs],
     ck_assert_ptr_eq(st.p, expected_p);
     ck_assert_ptr_eq(st.pe, expected_pe);
 }
+
+#ifndef NO_LOGS_ON_STDERR
+enum LogLevel g_log_level = LOG_DEBUG;
+#endif
 
 #suite frame_parsing
 
