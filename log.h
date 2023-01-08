@@ -26,9 +26,9 @@ char* to_printable(const unsigned char* p, const unsigned char* pe, size_t s, ch
 
 #ifndef NO_LOGS_ON_STDERR
 extern enum LogLevel g_log_level;
-#   define LOGW(Fmt, ...) (LOG_WARNING > g_log_level ? 0 : warn("W %s:%d\t" Fmt, __FILE__, __LINE__, ##__VA_ARGS__), -1)
-#   define LOG_X(Level, Prefix, Fmt, ...) (Level > g_log_level ? 0 : warnx(Prefix " %s:%d\t" Fmt, __FILE__, __LINE__, ##__VA_ARGS__), -1)
-#   define LOGF_(ErrFunction, Fmt, ...) (LOG_FATAL > g_log_level ? 0 : ErrFunction (EXIT_FAILURE, "F %s:%d\t" Fmt, __FILE__, __LINE__, ##__VA_ARGS__), -1)
+#   define LOGW(Fmt, ...) (LOG_WARNING > g_log_level ? -1 : (warn("W %s:%d\t" Fmt, __FILE__, __LINE__, ##__VA_ARGS__), -1))
+#   define LOG_X(Level, Prefix, Fmt, ...) (Level > g_log_level ? -1 : (warnx(Prefix " %s:%d\t" Fmt, __FILE__, __LINE__, ##__VA_ARGS__), -1))
+#   define LOGF_(ErrFunction, Fmt, ...) (LOG_FATAL > g_log_level ? -1 : (ErrFunction (EXIT_FAILURE, "F %s:%d\t" Fmt, __FILE__, __LINE__, ##__VA_ARGS__), -1))
 #else
 #   define LOGW(Fmt, ...)
 #   define LOG_X(Level, Prefix, Fmt, ...)

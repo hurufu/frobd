@@ -15,6 +15,7 @@
 /** Prints textual description in addtion to regular message.
  *  @note Implementation was copied from assert.h with slight formatting modification
  *  @todo Move to a separate assertion.h header
+ *  @todo Use NDEBUG macro to disable assertions
  */
 #define assertion(Msg, Expr)\
     ((void) sizeof ((Expr) ? 1 : 0), __extension__ ({\
