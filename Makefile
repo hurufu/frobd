@@ -2,7 +2,7 @@
 
 CFLAGS := -Og -ggdb3 -Wall -Wextra -fvar-tracking-assignments
 
-run: run-01 run-02
+run: run-01 run-02 run-T4
 run-%: main sample%
 	./$< <$(word 2,$^)
 index: tags cscope.out
