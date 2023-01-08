@@ -61,5 +61,14 @@ struct FrobMsg {
 
 typedef ssize_t (*producer_t)(unsigned char (*)[2*1024]);
 typedef int (*consumer_t)(const struct FrobMsg*);
+typedef int (*acknowledge_t)(unsigned char);
+
+struct FrobInterface {
+    size_t input_buffer_size;
+    unsigned char* input_buffer;
+    producer_t producer;
+    acknowledge_t acknowledge;
+    consumer_t consumer;
+};
 
 ssize_t frob_match(producer_t, consumer_t);
