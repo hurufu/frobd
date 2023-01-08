@@ -1,5 +1,6 @@
 #include "frob.h"
 #include <stdio.h>
+#include <stdbool.h>
 
 static size_t s_i;
 static unsigned char s_working_copy[255];
@@ -60,6 +61,7 @@ static int process_frob_structure(void) {
         write init;
         write exec;
     }%%
+    return 0;
 }
 
 %%{
@@ -75,24 +77,23 @@ static int process_frob_structure(void) {
     action Reset {
         s_i = 0;
     }
-    action Commit {
-        if (process_frob_structure()) {
-            fbreak;
-        }
-    }
     action LRC_Start {
         lrc = 0;
     }
     action LRC_Byte {
         lrc ^= fc;
     }
-    action LRC_Check {
-        puts(lrc == fc ? "ACK" : "NAK");
+    action LRC_Check_And_Commit {
+        const bool ok = lrc == fc;
+        puts(ok ? "ACK" : "NAK");
+        if (ok && process_frob_structure()) {
+            fbreak;
+        }
     }
 
     stx = 0x02;
     etx = 0x03;
-    frame = stx >LRC_Start @Reset ((any-etx) @LRC_Byte @Copy)* (etx @LRC_Byte) any @LRC_Check @Commit;
+    frame = stx >LRC_Start @Reset ((any-etx) @LRC_Byte @Copy)* (etx @LRC_Byte) any @LRC_Check_And_Commit;
 
     main := ((any-stx)* frame )+;
 
