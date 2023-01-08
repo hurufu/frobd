@@ -39,6 +39,7 @@ static char* convert_to_printable(const unsigned char* const p, const unsigned c
 
 static int process_msg(const unsigned char* p, const unsigned char* const pe) {
     struct frob_msg msg = {
+        .magic = "FROBCr1"
         .header = frob_header_extract(&p, pe)
     };
     fprintf(stderr, "\tTYPE: %02X TOKEN: %02X %02X %02X\n",
