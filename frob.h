@@ -7,8 +7,8 @@
 
 typedef unsigned char byte_t;
 
+// TODO: Consider converting to base-36 – downside it will requires 2 bytes
 enum FrobMessageType {
-    // TODO: Consider converting to base-36 – downside it will requires 2 bytes
     // Message classes, numbering is arbitrary
     FROB_T = 0x00,
     FROB_D = 0x10,
@@ -21,55 +21,54 @@ enum FrobMessageType {
     FROB_L = 0x80,
     FROB_B = 0x90,
 
-    // TODO: Decide if destination channel should be encoded in FrobMessageType
-#   if 0
-    FROB_LOCAL = 0x100,   // L – message handled locally
-    FROB_FORWARD = 0x200, // F – message is forwarded to payment channel
-                          //     S1 with type C message forwarded to transaction_store channel
-    FROB_MAPPED = 0x300,  // M – message is mapped (TBD)
-    FROB_UI = 0x400,      // U – message is forwarded to GUI channel
-    FROB_EVENT 0x800,     // E – message is forwarded to event channel
-#   endif
+    // Message destinations
+    FROB_DESTINATION_MASK = 0xf00,
+    FROB_LOCAL   = 0x100, // L – message handled locally
+    FROB_PAYMENT = 0x200, // F – message is forwarded to payment channel
+    FROB_STORAGE = 0x300, //     S1 with type C message forwarded to transaction_store channel
+    FROB_MAPPED  = 0x400, // M – message is mapped (TBD)
+    FROB_UI      = 0x500, // U – message is forwarded to GUI channel
+    FROB_EVENT   = 0x600, // E – message is forwarded to event channel
 
     // All message types are in the same order as in the documentation
-    FROB_T1 = FROB_T | 0x1, // (L) Communication test – query
-    FROB_T2 = FROB_T | 0x2, // (L) Communication test – answer
-    FROB_T3 = FROB_T | 0x3, // (L) Version negotiation – inquiry
-    FROB_T4 = FROB_T | 0x4, // (L) Version negotiation – proposal
-    FROB_T5 = FROB_T | 0x5, // (L) Version negotiation – selection
-    FROB_D4 = FROB_D | 0x4, // (L) Configuration – request
-    FROB_D5 = FROB_D | 0x5, // (L) Configuration – response
-    FROB_S1 = FROB_S | 0x1, // (F) Transaction – initiate
-    FROB_S2 = FROB_S | 0x2, // (F) Transaction – complete
-    FROB_P1 = FROB_P | 0x1, // (F) Transaction – abort
-    FROB_I1 = FROB_I | 0x1, // (F) Transaction – info
-    FROB_A1 = FROB_A | 0x1, // (F) Start application – request
-    FROB_A2 = FROB_A | 0x2, // (F) Start application – acknowledge
-    FROB_D0 = FROB_D | 0x0, // (L) Print – response
-    FROB_D1 = FROB_D | 0x1, // (L) Print status – inquiry
-    FROB_D6 = FROB_D | 0x6, // (M) Print – command
-    FROB_D2 = FROB_D | 0x2, // (L) Print – claim
-    FROB_D3 = FROB_D | 0x3, // (L) Print – stop
-    FROB_D7 = FROB_D | 0x7, // (M) Print graphics – request
-    FROB_D8 = FROB_D | 0x8, // (M) Print graphics – response
-    FROB_D9 = FROB_D | 0x9, // (M) Print graphics – store
-    FROB_DA = FROB_D | 0xA, // (M) Print graphics - remove
-    FROB_K0 = FROB_K | 0x0, // (U) Attendant interaction – response
-    FROB_K1 = FROB_K | 0x1, // (U) Attendant interaction – claim
-    FROB_K2 = FROB_K | 0x2, // (U) Attendant interaction – interrupt
-    FROB_K3 = FROB_K | 0x3, // (U) Attendant interaction – message
-    FROB_K4 = FROB_K | 0x4, // (U) Attendant interaction – prompt
-    FROB_K5 = FROB_K | 0x5, // (U) Attendant interaction – menu
-    FROB_K6 = FROB_K | 0x6, // (U) Attendant interaction – list
-    FROB_K7 = FROB_K | 0x7, // (U) Attendant interaction – input
-    FROB_K8 = FROB_K | 0x8, // (U) Attendant interaction – card
-    FROB_K9 = FROB_K | 0x9, // (U) Attendant interaction – sound
-    FROB_M1 = FROB_M | 0x1, // (E) Event – notification
-    FROB_L1 = FROB_L | 0x1, // (L) Unavailability – notification
-    FROB_B1 = FROB_B | 0x1, // (L) Key pairing – request
-    FROB_B2 = FROB_B | 0x2, // (L) Key pairing – response
-    FROB_B3 = FROB_B | 0x3, // (L) Key exchange
-    FROB_B4 = FROB_B | 0x4  // (L) Key exchange acknowledge
+    FROB_T1 = FROB_LOCAL   | FROB_T | 0x1, // Communication test – query
+    FROB_T2 = FROB_LOCAL   | FROB_T | 0x2, // Communication test – answer
+    FROB_T3 = FROB_LOCAL   | FROB_T | 0x3, // Version negotiation – inquiry
+    FROB_T4 = FROB_LOCAL   | FROB_T | 0x4, // Version negotiation – proposal
+    FROB_T5 = FROB_LOCAL   | FROB_T | 0x5, // Version negotiation – selection
+    FROB_D4 = FROB_LOCAL   | FROB_D | 0x4, // Configuration – request
+    FROB_D5 = FROB_LOCAL   | FROB_D | 0x5, // Configuration – response
+    FROB_S1 = FROB_PAYMENT | FROB_S | 0x1, // Transaction – initiate
+    FROB_S2 = FROB_PAYMENT | FROB_S | 0x2, // Transaction – complete
+    FROB_P1 = FROB_PAYMENT | FROB_P | 0x1, // Transaction – abort
+    FROB_I1 = FROB_PAYMENT | FROB_I | 0x1, // Transaction – info
+    FROB_A1 = FROB_PAYMENT | FROB_A | 0x1, // Start application – request
+    FROB_A2 = FROB_PAYMENT | FROB_A | 0x2, // Start application – acknowledge
+    FROB_D0 = FROB_LOCAL   | FROB_D | 0x0, // Print – response
+    FROB_D1 = FROB_LOCAL   | FROB_D | 0x1, // Print status – inquiry
+    FROB_D6 = FROB_MAPPED  | FROB_D | 0x6, // Print – command
+    FROB_D2 = FROB_LOCAL   | FROB_D | 0x2, // Print – claim
+    FROB_D3 = FROB_LOCAL   | FROB_D | 0x3, // Print – stop
+    FROB_D7 = FROB_MAPPED  | FROB_D | 0x7, // Print graphics – request
+    FROB_D8 = FROB_MAPPED  | FROB_D | 0x8, // Print graphics – response
+    FROB_D9 = FROB_MAPPED  | FROB_D | 0x9, // Print graphics – store
+    FROB_DA = FROB_MAPPED  | FROB_D | 0xA, // Print graphics - remove
+    FROB_K0 = FROB_UI      | FROB_K | 0x0, // Attendant interaction – response
+    FROB_K1 = FROB_UI      | FROB_K | 0x1, // Attendant interaction – claim
+    FROB_K2 = FROB_UI      | FROB_K | 0x2, // Attendant interaction – interrupt
+    FROB_K3 = FROB_UI      | FROB_K | 0x3, // Attendant interaction – message
+    FROB_K4 = FROB_UI      | FROB_K | 0x4, // Attendant interaction – prompt
+    FROB_K5 = FROB_UI      | FROB_K | 0x5, // Attendant interaction – menu
+    FROB_K6 = FROB_UI      | FROB_K | 0x6, // Attendant interaction – list
+    FROB_K7 = FROB_UI      | FROB_K | 0x7, // Attendant interaction – input
+    FROB_K8 = FROB_UI      | FROB_K | 0x8, // Attendant interaction – card
+    FROB_K9 = FROB_UI      | FROB_K | 0x9, // Attendant interaction – sound
+    FROB_M1 = FROB_EVENT   | FROB_M | 0x1, // Event – notification
+    FROB_L1 = FROB_LOCAL   | FROB_L | 0x1, // Unavailability – notification
+    FROB_B1 = FROB_LOCAL   | FROB_B | 0x1, // Key pairing – request
+    FROB_B2 = FROB_LOCAL   | FROB_B | 0x2, // Key pairing – response
+    FROB_B3 = FROB_LOCAL   | FROB_B | 0x3, // Key exchange
+    FROB_B4 = FROB_LOCAL   | FROB_B | 0x4  // Key exchange acknowledge
 };
 
 struct frob_header {

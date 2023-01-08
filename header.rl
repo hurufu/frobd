@@ -60,7 +60,47 @@ static int get_class(const byte_t c) {
 }
 
 static enum FrobMessageType deserialize_type(const byte_t cla, const byte_t sub) {
-    return get_class(cla) | hex2nibble(sub);
+    switch (get_class(cla) | hex2nibble(sub)) {
+        case FROB_T1 & ~FROB_DESTINATION_MASK: return FROB_T1;
+        case FROB_T2 & ~FROB_DESTINATION_MASK: return FROB_T2;
+        case FROB_T3 & ~FROB_DESTINATION_MASK: return FROB_T3;
+        case FROB_T4 & ~FROB_DESTINATION_MASK: return FROB_T4;
+        case FROB_T5 & ~FROB_DESTINATION_MASK: return FROB_T5;
+        case FROB_D4 & ~FROB_DESTINATION_MASK: return FROB_D4;
+        case FROB_D5 & ~FROB_DESTINATION_MASK: return FROB_D5;
+        case FROB_S1 & ~FROB_DESTINATION_MASK: return FROB_S1;
+        case FROB_S2 & ~FROB_DESTINATION_MASK: return FROB_S2;
+        case FROB_P1 & ~FROB_DESTINATION_MASK: return FROB_P1;
+        case FROB_I1 & ~FROB_DESTINATION_MASK: return FROB_I1;
+        case FROB_A1 & ~FROB_DESTINATION_MASK: return FROB_A1;
+        case FROB_A2 & ~FROB_DESTINATION_MASK: return FROB_A2;
+        case FROB_D0 & ~FROB_DESTINATION_MASK: return FROB_D0;
+        case FROB_D1 & ~FROB_DESTINATION_MASK: return FROB_D1;
+        case FROB_D6 & ~FROB_DESTINATION_MASK: return FROB_D6;
+        case FROB_D2 & ~FROB_DESTINATION_MASK: return FROB_D2;
+        case FROB_D3 & ~FROB_DESTINATION_MASK: return FROB_D3;
+        case FROB_D7 & ~FROB_DESTINATION_MASK: return FROB_D7;
+        case FROB_D8 & ~FROB_DESTINATION_MASK: return FROB_D8;
+        case FROB_D9 & ~FROB_DESTINATION_MASK: return FROB_D9;
+        case FROB_DA & ~FROB_DESTINATION_MASK: return FROB_DA;
+        case FROB_K0 & ~FROB_DESTINATION_MASK: return FROB_K0;
+        case FROB_K1 & ~FROB_DESTINATION_MASK: return FROB_K1;
+        case FROB_K2 & ~FROB_DESTINATION_MASK: return FROB_K2;
+        case FROB_K3 & ~FROB_DESTINATION_MASK: return FROB_K3;
+        case FROB_K4 & ~FROB_DESTINATION_MASK: return FROB_K4;
+        case FROB_K5 & ~FROB_DESTINATION_MASK: return FROB_K5;
+        case FROB_K6 & ~FROB_DESTINATION_MASK: return FROB_K6;
+        case FROB_K7 & ~FROB_DESTINATION_MASK: return FROB_K7;
+        case FROB_K8 & ~FROB_DESTINATION_MASK: return FROB_K8;
+        case FROB_K9 & ~FROB_DESTINATION_MASK: return FROB_K9;
+        case FROB_M1 & ~FROB_DESTINATION_MASK: return FROB_M1;
+        case FROB_L1 & ~FROB_DESTINATION_MASK: return FROB_L1;
+        case FROB_B1 & ~FROB_DESTINATION_MASK: return FROB_B1;
+        case FROB_B2 & ~FROB_DESTINATION_MASK: return FROB_B2;
+        case FROB_B3 & ~FROB_DESTINATION_MASK: return FROB_B3;
+        case FROB_B4 & ~FROB_DESTINATION_MASK: return FROB_B4;
+    }
+    return 0;
 }
 
 struct frob_header frob_header_extract(const byte_t** px, const byte_t* const pe) {

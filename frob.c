@@ -23,6 +23,7 @@ typedef uint8_t byte_t;
 
 // e – external, i - internal, m – manual
 // r - read/input, w - write/output
+// Must be positive, because value is getting mixed with negative error codes
 enum OrderedChannels {
     IW_PAYMENT,
     IW_STORAGE,
@@ -73,9 +74,15 @@ static const char* channel_to_string(const enum OrderedChannels o) {
     return NULL;
 }
 
-static int forward_message(const struct frob_msg* const msg, int (*channel)[CHANNELS_COUNT], struct io_state* const t) {
-    LOGWX("Handling of this message type isn't implemented");
-    return -1;
+static int forward_message(const struct frob_msg* const msg, const int channel, struct io_state* const t) {
+    if (channel < 0)
+        return EBADF;
+    if (t->cur[channel] + sizeof msg >= t->buf[channel] + sizeof t->buf[channel])
+        return ENOBUFS;
+    memcpy(t->cur[channel], msg, sizeof msg);
+    t->cur[channel] += sizeof msg;
+    FD_SET(channel, &t->set[FD_WRITE]);
+    return 0;
 }
 
 static const byte_t* get_preformatted_buffer(const struct preformated_messages* const pm, const enum FrobMessageType t) {
@@ -85,16 +92,47 @@ static const byte_t* get_preformatted_buffer(const struct preformated_messages* 
     }
 }
 
-static int handle_message(const struct preformated_messages* const pm, const struct frob_msg* const msg, int (*channel)[CHANNELS_COUNT], struct io_state* const t) {
-    assertion("Magic string shall match", strcmp(msg->magic, FROB_MAGIC) == 0);
-    const byte_t* const m = get_preformatted_buffer(pm, msg->header.type);
+static int handle_local(const struct preformated_messages* const pm, const enum FrobMessageType mt, int (*channel)[CHANNELS_COUNT], struct io_state* const t) {
+    const byte_t* const m = get_preformatted_buffer(pm, mt);
     if (!m)
-        return forward_message(msg, channel, t);
+        return ENOSYS;
     const size_t l = strlen((char*)m);
     memcpy(t->cur[EW_MAIN], m, l);
     t->cur[EW_MAIN] += l;
     FD_SET((*channel)[EW_MAIN], &t->set[FD_WRITE]);
     return 0;
+}
+
+static int get_channel(const struct frob_msg* const msg) {
+    switch (msg->header.type & FROB_DESTINATION_MASK) {
+        case FROB_PAYMENT:
+            if (msg->header.type == FROB_S1)
+                switch (msg->body.s1.transaction_type) {
+                    case FROB_TRANSACTION_TYPE_PAYMENT:
+                        return IW_PAYMENT;
+                    case FROB_TRANSACTION_TYPE_VOID:
+                        return IW_STORAGE;
+                }
+            break;
+        case FROB_UI: return IW_UI;
+        case FROB_EVENT: return IW_EVENTS;
+        case FROB_LOCAL: return -1;
+        default:
+            break;
+    }
+    LOGEX("Can't handle %#x\n", msg->header.type);
+    assertion("All channels must be handled", false);
+    return -2;
+}
+
+static int handle_message(const struct preformated_messages* const pm, const struct frob_msg* const msg, int (*channel)[CHANNELS_COUNT], struct io_state* const t) {
+    assertion("Magic string shall match", strcmp(msg->magic, FROB_MAGIC) == 0);
+    const int ch = get_channel(msg);
+    if (ch == -2)
+        return -2;
+    if (ch == -1)
+        return handle_local(pm, msg->header.type, channel, t);
+    return forward_message(msg, *(channel)[ch], t);
 };
 
 static int process_msg(const unsigned char* p, const unsigned char* const pe, struct frob_msg* const msg) {
