@@ -93,16 +93,14 @@ static char channel_to_code(const enum OrderedChannels o) {
     return '-';
 }
 
-static int forward_message(const struct frob_msg* const msg, const int channel, struct io_state* const t) {
-    if (channel < 0) {
-        return LOGWX("%s", strerror(EBADF));
-    }
+static int forward_message(const struct frob_msg* const msg, const int channel, const int fd, struct io_state* const t) {
+    assert(channel >= 0 && channel < CHANNELS_COUNT);
     if (t->cur[channel] + sizeof msg >= t->buf[channel] + sizeof t->buf[channel]) {
         return LOGWX("%s", strerror(ENOBUFS));
     }
-    memcpy(t->cur[channel], msg, sizeof msg);
-    t->cur[channel] += sizeof msg;
-    FD_SET(channel, &t->set[FD_WRITE]);
+    memcpy(t->cur[channel], msg, sizeof *msg);
+    t->cur[channel] += sizeof *msg;
+    FD_SET(fd, &t->set[FD_WRITE]);
     return 0;
 }
 
@@ -210,7 +208,7 @@ static int handle_message(const struct preformated_messages* const pm, const str
         return -2;
     if (ch == -1)
         return handle_local(pm, &msg->header, channel, t, expected_acks);
-    return forward_message(msg, *(channel)[ch], t);
+    return forward_message(msg, ch, (*channel)[ch], t);
 };
 
 static void fset(const int (* const channel)[CHANNELS_COUNT], fd_set (* const set)[FD_SET_COUNT]) {
@@ -358,7 +356,7 @@ static int event_loop(const struct preformated_messages* const pm, int (* const 
 
 int main() {
     int channel[] = {
-        [IW_PAYMENT] = -1,
+        [IW_PAYMENT] = STDOUT_FILENO,
         [IW_STORAGE] = -1,
         [IW_UI     ] = -1,
         [IW_EVENTS ] = -1,

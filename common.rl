@@ -10,4 +10,5 @@
 
     a = ascii - cntrl - del;
     h = xdigit;
+    n = digit;
 }%%
