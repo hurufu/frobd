@@ -340,7 +340,7 @@ static void start_master_channel(int (*channel)[CHANNELS_COUNT]) {
         return LOGW("Couldn't start %s channel at %s", channel_to_string(ER_MASTER), pts);
     else
         LOGIX("Master channel started at %s, but what will you do with it?", pts);
-    LOGIX("Press ^C again to exit...");
+    LOGIX("Press ^C again to exit the program or ^D to close master channel (and go back to normal)...");
     (*channel)[ER_MASTER] = fd;
     show_prompt(fd);
 }
