@@ -5,6 +5,10 @@
 
 #define elementsof(Arr) (sizeof(Arr)/sizeof((Arr)[0]))
 
+int frob_acknowledge(const unsigned char c) {
+    return write(STDOUT_FILENO, &c, 1);
+}
+
 int main() {
     struct pollfd pf[] = {
         { .fd = STDIN_FILENO, .events = POLLRDNORM }
