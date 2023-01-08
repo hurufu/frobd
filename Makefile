@@ -12,8 +12,8 @@ RL_C     := $(RL_FILES:.rl=.c)
 RL_O     := $(RL_FILES:.rl=.o)
 CFILES   := $(RL_C) frob.c log.c
 OFILES   := $(CFILES:.c=.o)
-UT_T := $(wildcard *.t)
-UT_O := $(UT_T:.t=.o)
+UT_T := $(wildcard *.in)
+UT_O := $(UT_T:.in=.o)
 
 run: run-01 run-02 run-T4 run-S1 run-D4
 run-%: frob sample%
@@ -35,12 +35,12 @@ frob: $(OFILES)
 	ragel -G2 -L $<
 %.s: %.c
 	$(CC) -S -o $@ -fverbose-asm -fno-asynchronous-unwind-tables $(CFLAGS) $<
-%.c: %.t
+%.c: %.in
 	checkmk $< >$@
 
 graph-%: frob-frame.rl adjust-%.sed
 	ragel -p -V $< | sed -Ef $(word 2,$^) | dot -Tpng | feh -
-clean: F += $(wildcard $(RL_C) $(RL_C:.c=.s) $(UT_O) $(UT_T:.t=.c) $(UT_T:.t=.s) $(OFILES) frob frob.s log.s tags cscope.out ut)
+clean: F += $(wildcard $(RL_C) $(RL_C:.c=.s) $(UT_O) $(UT_T:.in=.c) $(UT_T:.in=.s) $(OFILES) frob frob.s log.s tags cscope.out ut)
 clean:
 	$(if $(strip $F),$(RM) -- $F)
 
