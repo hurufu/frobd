@@ -95,9 +95,10 @@ static char channel_to_code(const enum OrderedChannels o) {
 
 static int forward_message(const struct frob_msg* const msg, const int channel, const int fd, struct io_state* const t) {
     assert(channel >= 0 && channel < CHANNELS_COUNT);
-    if (t->cur[channel] + sizeof msg >= t->buf[channel] + sizeof t->buf[channel]) {
-        return LOGWX("%s", strerror(ENOBUFS));
-    }
+    if (t->cur[channel] + sizeof msg >= t->buf[channel] + sizeof t->buf[channel])
+        return LOGWX("Message forwarding skipped: %s", strerror(ENOBUFS));
+    if (fd < 0)
+        return LOGWX("Message forwarding skipped: %s", strerror(EBADF));
     memcpy(t->cur[channel], msg, sizeof *msg);
     t->cur[channel] += sizeof *msg;
     FD_SET(fd, &t->set[FD_WRITE]);
@@ -248,7 +249,7 @@ static void finit(const int (* const channel)[CHANNELS_COUNT], struct io_state* 
     fset(channel, &t->set);
 }
 
-static bool fselect(const int nfd, fd_set (* const set)[FD_SET_COUNT], const time_t relative_timeout) {
+static int fselect(const int nfd, fd_set (* const set)[FD_SET_COUNT], const time_t relative_timeout) {
     struct timeval t = { .tv_sec = relative_timeout };
     struct timeval* const tp = (relative_timeout == (time_t)-1) ? NULL : &t;
     // TODO: Use pselect and enable master channel on SIGINT
@@ -330,7 +331,8 @@ static int event_loop(const struct preformated_messages* const pm, int (* const 
     const int m = get_max_fd(channel);
     struct frob_frame_fsm_state f = { .p = t.buf[ER_MAIN] };
     int expected_acks = 0;
-    for (finit(channel, &t); fselect(m, &t.set, relative_timeout); fset(channel, &t.set)) {
+    int ret = 0;
+    for (finit(channel, &t); (ret = fselect(m, &t.set, relative_timeout)) > 0; fset(channel, &t.set)) {
         perform_pending_io(&t, channel);
 
         if (FD_ISSET((*channel)[ER_MAIN], &t.set[FD_READ])) {
@@ -359,7 +361,7 @@ static int event_loop(const struct preformated_messages* const pm, int (* const 
                         LOGWX("Can't process message");
                     else
                         if (handle_message(pm, &parsed, channel, &t, &expected_acks) != 0)
-                            LOGWX("Can't handle message");
+                            LOGWX("Message wasn't handled");
                 } else {
                     LOGWX("Can't parse incoming message: %s", strerror(e));
                 }
@@ -367,12 +369,12 @@ static int event_loop(const struct preformated_messages* const pm, int (* const 
         }
     }
 
-    return 0;
+    return ret;
 }
 
 int main() {
     int channel[] = {
-        [IW_PAYMENT] = STDOUT_FILENO,
+        [IW_PAYMENT] = -1,
         [IW_STORAGE] = -1,
         [IW_UI     ] = -1,
         [IW_EVENTS ] = -1,
@@ -396,4 +398,5 @@ int main() {
     const time_t timeout = 0;
     if (event_loop(&pm, &channel, timeout) == 0)
         return timeout ? EXIT_FAILURE : EXIT_SUCCESS;
+    return EXIT_FAILURE;
 }
