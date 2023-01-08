@@ -1,10 +1,12 @@
 .PHONY: index clean graph-% run run-%
 
 #CPPFLAGS := -DNO_LOGS_ON_STDERR
-CFLAGS   := -O0 -ggdb3 -Wall -Wextra -ffat-lto-objects -mtune=native -march=native
+CFLAGS   := -Os -ggdb3 -Wall -Wextra -ffat-lto-objects -mtune=native -march=native
 LDFLAGS  := -flto
 RL_FILES := $(wildcard *.rl)
 RL_C     := $(RL_FILES:.rl=.c)
+CFILES   := $(RL_C) frob.c log.c
+OFILES   := $(CFILES:.c=.o)
 
 run: run-01 run-02 run-T4
 run-%: frob sample%
@@ -15,8 +17,9 @@ tags:
 cscope.out:
 	cscope -bR
 
-frob: frob.c $(RL_C) log.c
-	$(LINK.c) -o $@ $^ $(LDLIBS)
+frob: $(OFILES)
+	$(LINK.o) -o $@ $^ $(LDLIBS)
+	strip --strip-unneeded $@
 %.c: %.rl
 	ragel -G2 -L $<
 %.s: %.c
@@ -24,6 +27,6 @@ frob: frob.c $(RL_C) log.c
 
 graph-%: frob-frame.rl adjust-%.sed
 	ragel -p -V $< | sed -Ef $(word 2,$^) | dot -Tpng | feh -
-clean: F += $(wildcard $(RL_C) $(RL_C:.c=.s) frob frob.s tags cscope.out)
+clean: F += $(wildcard $(RL_C) $(RL_C:.c=.s) $(OFILES) frob frob.s log.s tags cscope.out)
 clean:
 	$(if $(strip $F),$(RM) -- $F)
