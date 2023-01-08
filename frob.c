@@ -134,7 +134,10 @@ static bool fselect(const int nfd, fd_set (* const set)[FD_SET_COUNT], const tim
     if (l < 0)
         LOGW("Select failed");
     else if (l == 0)
-        LOGWX("Timeout reached");
+        if (relative_timeout)
+            LOGWX("Timeout reached");
+        else
+            LOGWX("Single-shot mode ended");
     return l;
 }
 
