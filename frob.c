@@ -13,6 +13,7 @@
 #include <stdbool.h>
 
 #define FS "\x1C"
+#define US "\x1F"
 #define ETX "\x03"
 
 /* uint8_t is better than unsigned char to define a byte, because on some
@@ -53,6 +54,9 @@ struct io_state {
 
 struct preformated_messages {
     byte_t t2[32];
+    byte_t t4[32];
+    byte_t t5[32];
+    byte_t d5[128];
 };
 
 #ifndef NO_LOGS_ON_STDERR
@@ -153,9 +157,19 @@ static int handle_local(const struct preformated_messages* const pm, const struc
     const byte_t* m = NULL;
     switch (h->type) {
         case FROB_T1: m = pm->t2; break;
-        case FROB_T2:
-            // There is no response for a terminal message in an exchange
-            return 0;
+        case FROB_T2: return 0;
+        case FROB_T3: m = pm->t4; break;
+        case FROB_T4: m = pm->t5; break;
+        case FROB_T5: return 0;
+        case FROB_D4: m = pm->d5; break;
+        case FROB_D5: return 0;
+        case FROB_S1:
+        case FROB_S2:
+        case FROB_P1:
+        case FROB_I1:
+        case FROB_A1:
+        case FROB_A2:
+            return -1;
         default:
             LOGWX("There isn't any answer to reply: %s", strerror(ENOSYS));
             return -1;
@@ -355,7 +369,13 @@ int main() {
     if (!all_channels_ok(&channel))
         return EXIT_FAILURE;
     const struct preformated_messages pm = {
-        .t2 = FS "T2" FS "170" FS "TEST" FS "SIM" FS "0" FS ETX
+        .t2 = FS "T2" FS "170" FS "TEST" FS "SIM" FS "0" FS ETX,
+        .t4 = FS "T4" FS "160" US "170" US FS ETX,
+        .t5 = FS "T5" FS "170" FS ETX,
+        .d5 = FS "D5" FS "24" FS "12" FS "6" FS "19" FS "1" FS "1" FS "1" FS "0" FS "0"
+              FS "0" FS FS FS "4" FS "9999" FS "4" FS "15"
+              FS "ENTER" US "CANCEL" US "CHECK" US "BACKSPACE" US "DELETE" US "UP" US "DOWN" US "LEFT" US "RIGHT"
+              FS "1" FS "1" FS "1" FS "1" FS "1"
     };
     const time_t timeout = 0;
     if (event_loop(&pm, &channel, timeout) == 0)
