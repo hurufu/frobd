@@ -1,18 +1,20 @@
 .PHONY: index clean graph-% run run-%
 
-CFLAGS := -Os -g0 -Wall -Wextra -ffat-lto-objects -mtune=native -march=native
+CFLAGS  := -Os -g0 -Wall -Wextra -ffat-lto-objects -mtune=native -march=native
 LDFLAGS := -flto
+RL_FILES:= $(wildcard *.rl)
+RL_C    := $(RL_FILES:.rl=.c)
 
 run: run-01 run-02 run-T4
 run-%: main sample%
 	./$< <$(word 2,$^)
 index: tags cscope.out
 tags:
-	ctags -R .
+	ctags --kinds-C=+p -R .
 cscope.out:
 	cscope -bR
 
-main: main.c frob-frame.c frob-header.c frob-protocol.c frob-body.c frob-attrs.c
+main: main.c $(RL_C)
 	$(LINK.c) -o $@ $^ $(LDLIBS)
 	strip --strip-unneeded $@
 %.c: %.rl
@@ -22,6 +24,6 @@ main: main.c frob-frame.c frob-header.c frob-protocol.c frob-body.c frob-attrs.c
 
 graph-%: frob-frame.rl adjust-%.sed
 	ragel -p -V $< | sed -Ef $(word 2,$^) | dot -Tpng | feh -
-clean: F += frob-attrs.c frob-body.c frob-protocol.c frob-frame.c frob-msg.c frob-header.c main main.s frob-frame.s frob-header.s frob-msg.s tags cscope.out frob-protocol.s frob-body.s frob-attrs.s
+clean: F += $(wildcard $(RL_C) $(RL_C:.c=.s) main main.s tags cscope.out)
 clean:
-	$(if $(strip $(wildcard $F)),$(RM) -- $(wildcard $F))
+	$(if $(strip $F),$(RM) -- $F)
