@@ -117,6 +117,8 @@ struct frob_header frob_header_extract(const byte_t** px, const byte_t* const pe
         return (struct frob_header){ };
 #   endif
 
+    if (!type_end)
+        return (struct frob_header){};
     struct frob_header res = {
         .type = deserialize_type(type_end[-2], type_end[-1])
     };
