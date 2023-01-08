@@ -123,7 +123,7 @@ static char channel_to_code(const enum OrderedChannels o) {
     return '-';
 }
 
-static int forward_message(const struct frob_msg* const msg, const int channel, const int fd, struct io_state* const t) {
+static int forward_message(const struct frob_msg* const msg, const enum OrderedChannels channel, const int fd, struct io_state* const t) {
     assert(channel >= 0 && channel < CHANNELS_COUNT);
     if (t->cur[channel] + sizeof msg >= t->buf[channel] + sizeof t->buf[channel])
         return LOGWX("Message forwarding skipped: %s", strerror(ENOBUFS)), -1;
