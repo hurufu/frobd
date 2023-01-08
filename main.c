@@ -17,11 +17,8 @@ int main() {
     }
 
     for (;;) {
-        struct frob_frame_fsm_state st = { .start = buf };
-        const size_t r = fread(st.start, 1, end - st.start, stdin);
-        if (r <= 0)
-            break;
-        st.end = st.start + r;
+        struct frob_frame_fsm_state st = { .end = buf };
+        goto again;
         switch (frob_frame_process(&st)) {
             case EBADMSG:
 nak:

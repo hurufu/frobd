@@ -1,6 +1,6 @@
 .PHONY: index clean graph-% run run-%
 
-CFLAGS := -Os -g0 -Wall -Wextra -ffat-lto-objects -mtune=native -march=native
+CFLAGS := -O0 -ggdb3 -Wall -Wextra -ffat-lto-objects -mtune=native -march=native
 LDFLAGS := -flto
 
 run: run-01 run-02 run-T4
