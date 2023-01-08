@@ -64,20 +64,20 @@ static int process_msg(const unsigned char* p, const unsigned char* const pe) {
 
     switch (frob_body_extract(msg.header.type, &p, pe, &msg.body)) {
         case EBADMSG:
-            fprintf(stderr, "Bad payload");
+            fprintf(stderr, "Bad payload\n");
             return 2;
     }
 
     switch (frob_extract_additional_attributes(&p, pe, &msg.attr)) {
         case EBADMSG:
-            fprintf(stderr, "Bad data");
+            fprintf(stderr, "Bad data\n");
             return 3;
     }
 
     assert(p == pe);
 
     if (frob_forward_msg(&msg) != 0) {
-        fprintf(stderr, "Downstream error");
+        fprintf(stderr, "Downstream error\n");
         return 4;
     }
 
