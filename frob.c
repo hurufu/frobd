@@ -59,6 +59,7 @@ struct preformated_messages {
     byte_t t5[32];
     byte_t d5[128];
     byte_t b2[1024];
+    byte_t s2[128];
 };
 
 struct config {
@@ -152,9 +153,9 @@ static char channel_to_code(const enum OrderedChannels o) {
 static int forward_message(const struct frob_msg* const msg, const enum OrderedChannels channel, const int fd, struct io_state* const t) {
     assert(channel >= 0 && channel < CHANNELS_COUNT);
     if (t->cur[channel] + sizeof msg >= t->buf[channel] + sizeof t->buf[channel])
-        return LOGWX("Message forwarding skipped: %s", strerror(ENOBUFS)), -1;
+        return LOGWX("Message forwarding skipped in %s channel: %s", channel_to_string(channel), strerror(ENOBUFS)), -1;
     if (fd < 0 || fd >= FD_SETSIZE)
-        return LOGWX("Message forwarding skipped for fd %d: %s", fd, strerror(EBADF)), -1;
+        return LOGWX("Message forwarding skipped in %s channel for fd %d: %s", channel_to_string(channel), fd, strerror(EBADF)), -1;
     memcpy(t->cur[channel], msg, sizeof *msg);
     t->cur[channel] += sizeof *msg;
     FD_SET(fd, &t->set[FD_WRITE]);
@@ -234,7 +235,7 @@ static int handle_local(const struct preformated_messages* const pm, const struc
         case FROB_D5:
             LOGIX("%s message %s (%#x) skipped", frob_message_destination_to_string(h->type), frob_message_to_string(h->type), h->type);
             return 0;
-        case FROB_S1:
+        case FROB_S1: m = pm->s2; break;
         case FROB_S2:
         case FROB_P1:
         case FROB_I1:
@@ -280,7 +281,9 @@ static int handle_message(const struct preformated_messages* const pm, const str
         return -2;
     if (ch == -1)
         return handle_local(pm, &msg->header, channel, t, expected_acks);
-    return forward_message(msg, ch, (*channel)[ch], t);
+    if (forward_message(msg, ch, (*channel)[ch], t) != 0)
+        return handle_local(pm, &msg->header, channel, t, expected_acks);
+    return 0;
 };
 
 static void fset(const int (* const channel)[CHANNELS_COUNT], fd_set (* const set)[FD_SET_COUNT]) {
@@ -492,8 +495,14 @@ static void perform_pending_io(struct io_state* const t, int (*channel)[CHANNELS
                             LOGIX("Channel %s (fd %d) was closed", channel_to_string(i), (*channel)[i]);
                             close((*channel)[i]);
                             FD_CLR((*channel)[i], &(t->set)[FD_READ]);
-                            if (ER_MASTER == i)
-                                (*channel)[MR_SIGNAL] = setup_signalfd((*channel)[MR_SIGNAL], blocked);
+                            switch (i) {
+                                case ER_MAIN:
+                                    // TODO: Set timer to some small value or in some other wise schedule program to exit in a short time
+                                    break;
+                                case ER_MASTER:
+                                    (*channel)[MR_SIGNAL] = setup_signalfd((*channel)[MR_SIGNAL], blocked);
+                                    break;
+                            }
                             (*channel)[i] = -1;
                         } else {
                             char tmp[3*s];
@@ -557,13 +566,14 @@ int main(const int ac, const char* av[static const ac]) {
             .b2 = FS "T2" FS "170" FS "TEST" FS "SIM" FS "0" FS "0" FS "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" FS "00" ETX,
             .t4 = FS "T4" FS "160" US "170" US FS ETX,
             .t5 = FS "T5" FS "170" FS ETX,
+            .s2 = FS "S2" FS "993" FS FS "M000" FS "T000" FS "N/A" FS FS FS "NONE" FS "Payment endopoint not available" FS ETX,
             .d5 = FS "D5" FS "24" FS "12" FS "6" FS "19" FS "1" FS "1" FS "1"
                   FS "0" FS "0" FS "0" FS FS FS "4" FS "9999" FS "4" FS "15"
                   FS "ENTER" US "CANCEL" US "CHECK" US "BACKSPACE" US "DELETE" US "UP" US "DOWN" US "LEFT" US "RIGHT" US
                   FS "1" FS "1" FS "1" FS "0" FS ETX
         },
         .channel = {
-            [IW_PAYMENT] = STDOUT_FILENO,
+            [IW_PAYMENT] = -1,
             [IW_STORAGE] = STDOUT_FILENO,
             [IW_UI     ] = STDOUT_FILENO,
             [IW_EVENTS ] = STDOUT_FILENO,

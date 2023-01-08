@@ -8,6 +8,7 @@
 /* uint8_t is better than unsigned char to define a byte, because on some
  * platforms (unsigned) char may have more than 8 bit (TI C54xx 16 bit).
  * The problem is purely theoretical, because I don't target MCUs, but still...
+ * TODO: Rename to input_t, to signify that it relates to the input bytes only, and not a generic byte type
  */
 typedef uint8_t byte_t;
 
@@ -190,7 +191,7 @@ struct frob_s1 {
 struct frob_s2 {
     uint32_t error;
     unsigned char card_token[32]; // WTF is this?
-    char mid[20];
+    char mid[20]; // or acquirer id? Who knows what they've tried to say...
     char tid[20];
     char trx_id[20];
     amount_t trx_amount;

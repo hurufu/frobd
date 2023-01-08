@@ -221,6 +221,72 @@ static int extract_s1(const byte_t** const pp, const byte_t* const pe, struct fr
     return cs < %%{ write first_final; }%%;
 }
 
+static int extract_s2(const byte_t** const pp, const byte_t* const pe, struct frob_s2* const out) {
+    int cs;
+    const byte_t* c;
+
+    %%{
+        machine frob_s2;
+        include common;
+
+        action C {
+            c = fpc;
+        }
+        action Error {
+            out->error = STRTOL(c);
+        }
+        action Token {
+            UNHEX(out->card_token, c, fpc);
+        }
+        action Mid {
+            COPY(out->mid, c, fpc);
+        }
+        action Tid {
+            COPY(out->tid, c, fpc);
+        }
+        action TrxId {
+            COPY(out->trx_id, c, fpc);
+        }
+        action TrxAmount {
+            COPY(out->trx_amount, c, fpc);
+        }
+        action Cashback {
+            COPY(out->cashback, c, fpc);
+        }
+        action PaymentMethod {
+            COPY(out->payment_method, c, fpc);
+        }
+        action Msg {
+            COPY(out->msg, c, fpc);
+        }
+
+        amount = digit*;
+        error = n* >C fs @Error;
+        card_token = h* >C fs @Token;
+        mid = a* >C fs @Mid;
+        tid = a* >C fs @Tid;
+        trx_id = a* >C fs @TrxId;
+        trx_amount = amount >C fs @TrxAmount;
+        cashback = amount >C fs @Cashback;
+        method = a* >C fs @PaymentMethod;
+        msg = a* >C fs @Msg;
+
+        required = error card_token mid tid trx_id;
+
+        main := (required) |
+                (required trx_amount) |
+                (required trx_amount cashback) |
+                (required trx_amount cashback method) |
+                (required trx_amount cashback method msg);
+
+        write data;
+        write init;
+        write exec;
+    }%%
+
+    return cs < %%{ write first_final; }%% ? ENOTRECOVERABLE : 0;
+}
+
 static int extract_d4(const byte_t** const pp, const byte_t* const pe, struct frob_d4* const out) {
     int cs;
     const byte_t* c;
@@ -511,6 +577,7 @@ int frob_body_extract(const enum FrobMessageType t,
         case FROB_T4: return extract_t4(p, pe, &out->t4);
         case FROB_T5: return extract_t5(p, pe, &out->t5);
         case FROB_S1: return extract_s1(p, pe, &out->s1);
+        case FROB_S2: return extract_s2(p, pe, &out->s2);
         case FROB_D4: return extract_d4(p, pe, &out->d4);
         case FROB_D5: return extract_d5(p, pe, &out->d5);
         case FROB_B1: return extract_b1(p, pe, &out->b1);
