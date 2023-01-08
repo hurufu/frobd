@@ -1,4 +1,5 @@
 #include "frob.h"
+#include "log.h"
 #include <errno.h>
 #include <stddef.h>
 
@@ -15,6 +16,7 @@
     }
     action LRC_Check {
         if (st->lrc != fc) {
+            LOGWX("Frame LRC failed. Excpected: %#04x != Received: %#04x", st->lrc, fc);
             error = 1; // FIXME: Remove this lame variable
             fbreak;
         }

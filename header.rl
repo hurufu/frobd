@@ -111,8 +111,11 @@ struct frob_header frob_header_extract(const byte_t** px, const byte_t* const pe
         write exec;
     }%%
 
+#   if 0
+    // FIXME: This module somehow ends in error state on valid headers
     if (frob_header_error == cs)
         return (struct frob_header){ };
+#   endif
 
     struct frob_header res = {
         .type = deserialize_type(type_end[-2], type_end[-1])
