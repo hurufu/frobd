@@ -1,7 +1,7 @@
 .PHONY: index clean graph-% run run-%
 
 #CPPFLAGS := -DNO_LOGS_ON_STDERR
-CFLAGS   := -Os -ggdb3 -Wall -Wextra -ffat-lto-objects -mtune=native -march=native
+CFLAGS   := -O0 -ggdb3 -Wall -Wextra -ffat-lto-objects -mtune=native -march=native
 CFLAGS   += -fanalyzer -fanalyzer-checker=taint
 LDFLAGS  := -flto
 RL_FILES := $(wildcard *.rl)
@@ -20,7 +20,7 @@ cscope.out:
 
 frob: $(OFILES)
 	$(LINK.o) -o $@ $^ $(LDLIBS)
-	strip --strip-unneeded $@
+	#strip --strip-unneeded $@
 %.c: %.rl
 	ragel -G2 -L $<
 %.s: %.c
