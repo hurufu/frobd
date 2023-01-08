@@ -54,7 +54,7 @@ int frob_frame_process(struct frob_frame_fsm_state* const st) {
     if (error)
         return EBADMSG;
     if (frob_frame_error == st->cs)
-        return EBADMSG;
+        return -1;
     if (frob_frame_first_final == st->cs)
         return 0;
     return EAGAIN;
