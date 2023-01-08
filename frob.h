@@ -5,7 +5,7 @@ struct frob_frame_fsm_state {
     unsigned char lrc;
     bool not_first;
     int cs;
-    unsigned char* start, *end;
+    unsigned char* p, *pe;
 };
 
 int frob_frame_process(struct frob_frame_fsm_state*);

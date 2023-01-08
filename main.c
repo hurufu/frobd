@@ -17,20 +17,19 @@ int main() {
 
     for (;;) {
         char ack = 0x06;
-        struct frob_frame_fsm_state st = { .end = buf };
+        struct frob_frame_fsm_state st = { .pe = buf };
         goto again;
 process:
         switch (frob_frame_process(&st)) {
             case EAGAIN:
 again:
-                st.start = st.end;
-                const size_t s = fread(st.start, 1, end - st.start, stdin);
+                st.p = st.pe;
+                const size_t s = fread(st.p, 1, end - st.p, stdin);
                 if (s <= 0)
                     goto end_read;
-                st.end = st.start + s;
+                st.pe = st.p + s;
                 goto process;
             case EBADMSG:
-nak:
                 ack = 0x15;
         }
         if (fwrite(&ack, 1, 1, stdout) != 1)
