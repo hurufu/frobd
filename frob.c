@@ -324,14 +324,18 @@ static bool all_channels_ok(const int (*channel)[CHANNELS_COUNT]) {
     return true;
 }
 
-static void start_master_channel(int* const channel) {
-    LOGWX("Using of master channel is unpredictable: %s", strerror(ENOSYS));
+static void start_master_channel(int (*channel)[CHANNELS_COUNT]) {
+    static const char prompt[] = "> ";
+    LOGWX("Master channel doesn't work: %s", strerror(ENOSYS));
     const char* const pts = ttyname(STDERR_FILENO);
-    *channel = open(pts, O_RDWR);
-    if (*channel == -1)
-        LOGW("Couldn't start %s channel at %s", channel_to_string(ER_MASTER), pts);
+    const int fd = open(pts, O_RDWR);
+    if (fd == -1)
+        return LOGW("Couldn't start %s channel at %s", channel_to_string(ER_MASTER), pts);
     else
         LOGIX("Master channel started at %s, but what will you do with it?", pts);
+    LOGIX("Press ^C again to exit...");
+    (*channel)[ER_MASTER] = fd;
+    write(fd, prompt, elementsof(prompt));
 }
 
 static void process_signal(sigset_t blocked, struct io_state* const t, int (*channel)[CHANNELS_COUNT]) {
@@ -339,8 +343,7 @@ static void process_signal(sigset_t blocked, struct io_state* const t, int (*cha
     const struct signalfd_siginfo* const inf = (struct signalfd_siginfo*)t->buf[MR_SIGNAL];
     switch (inf->ssi_signo) {
         case SIGINT:
-            start_master_channel(&(*channel)[ER_MASTER]);
-            LOGIX("Press ^C again to exit");
+            start_master_channel(channel);
             break;
         case SIGALRM:
             LOGWX("Can't re-transmit: %s", strerror(ENOSYS));
