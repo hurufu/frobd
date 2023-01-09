@@ -3,7 +3,13 @@
 Write GUI that uses REPL from SIGINT. It should be able to connect to a remote
 live ECR or EFT.
 
-Add line edit interface using rlwrap program.
+Add line edit interface to the debug console using rlwrap program.
+
+Forward all normally auto-responded messages to a special channel with a rule
+system attached on the other side, for more inteligent reponses. Key topics:
+  * Situation calculus
+  * Fluents
+  * Action language
 
 #### Signal handling
 
@@ -20,7 +26,7 @@ Add line edit interface using rlwrap program.
 It will be useful if configuration will define some sort of scriptlets that
 specify how frobd should react to different messages and conditions.
 
-What shall be specifiable:
+What shall be considered:
 
   * Enabled protocols versions and attached devices parameters to respond to
     `Tx` and `D4`.
