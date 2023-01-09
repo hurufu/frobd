@@ -65,10 +65,12 @@ Problems to solve:
 Possible topics to have a look at:
   * [Situation calculus][1]
   * [Event calculus][2]
-  * [Fluents][3]
+  * [Fluents][3],
+    [Fluent programming][5]
   * [Action language][4]
 
 [1]: https://en.wikipedia.org/wiki/Situation_calculus
 [2]: https://en.wikipedia.org/wiki/Event_calculus
 [3]: https://en.wikipedia.org/wiki/Fluent_(artificial_intelligence)
 [4]: https://www.researchgate.net/publication/2276002_Reasoning_about_Fluents_in_Logic_Programming
+[5]: https://www.researchgate.net/publication/2841600_Fluent_Logic_Programming
