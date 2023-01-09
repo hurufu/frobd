@@ -34,19 +34,33 @@ live ECR or EFT.
 
 Add line edit interface to the debug console using rlwrap program.
 
-#### Rule system
+#### Rule system (probably isn't needed for 99% of use cases)
 
 Forward all normally auto-responded messages to a special channel with a rule
 system attached on the other side, for more inteligent reponses.
 
 Sample rule (tbd):
 
+When terminal is busy, then always reject any `Kx` message with 993 response code
+otherwise don't respond to `K0` message at all, always respond with 0 to `K1`
+message, and reject any other `Kx` message with response code 999.
+
 ```Prolog
 % Matches response message according to recevied one and current environment
-env_received_sent(Env, msg([type(k,X)|_]), msg([type(k,0),result(999)])) :-
-    env_property_value(Env, busy, false),
+env_received_sent(E, [type-[k,_]|_], [type-[k,0],result-993]) :-
+    env_property_value(E, busy, true).
+env_received_sent(E, R, S) :-
+    env_property_value(E, busy, false),
+    received_sent_(R, S).
+
+received_sent_([type-[k,0]|_], []).
+received_sent_([type-[k,1]|_], [type-[k,0],result-0]).
+received_sent_([type-[k,X]|_], [type-[k,0],result-999]) :-
     maplist(dif(X), [0,1]).
 ```
+
+Problems to solve:
+  * How to represent dependencies on previous messages?
 
 Possible topics to have a look at:
   * [Situation calculus][1]
