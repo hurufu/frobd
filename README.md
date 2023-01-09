@@ -8,17 +8,23 @@ available specification can be downloaded [here][c].
 
 ### Build and test (requires `ragel` and `check` packages)
 
-    make && make test
+```shell
+make && make test
+```
 
 ### Start TCP server (requires `s6-networking` package)
 
-    make tcp
+```shell
+make tcp
+```
 
 ### Show frame matching FSM diagram (requires additionally `graphviz` and `feh`)
 
-    make graph-dot
-    # or
-    make graph-fdp
+```shell
+make graph-dot
+# or
+make graph-fdp
+```
 
 ## What is it?
 
