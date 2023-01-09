@@ -574,7 +574,7 @@ int main(const int ac, const char* av[static const ac]) {
             .t4 = FS "T4" FS "160" US "170" US FS ETX,
             .t5 = FS "T5" FS "170" FS ETX,
             .s2 = FS "S2" FS "993" FS FS "M000" FS "T000" FS "N/A" FS FS FS "NONE" FS "Payment endopoint not available" FS ETX,
-            .k0 = FS "K0" FS "0" FS FS ETX,
+            .k0 = FS "K0" FS "0" FS ETX,
             .d5 = FS "D5" FS "24" FS "12" FS "6" FS "19" FS "1" FS "1" FS "1"
                   FS "0" FS "0" FS "0" FS FS FS "4" FS "9999" FS "4" FS "15"
                   FS "ENTER" US "CANCEL" US "CHECK" US "BACKSPACE" US "DELETE" US "UP" US "DOWN" US "LEFT" US "RIGHT" US
