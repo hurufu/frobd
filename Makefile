@@ -38,7 +38,7 @@ frob: $(OFILES)
 %.c: %.in
 	checkmk $< >$@
 
-graph-%: frob-frame.rl adjust-%.sed
+graph-%: frame.rl adjust-%.sed
 	ragel -p -V $< | sed -Ef $(word 2,$^) | dot -Tpng | feh -
 clean: F += $(wildcard $(RL_C) $(RL_C:.c=.s) $(UT_O) $(UT_T:.in=.c) $(UT_T:.in=.s) $(OFILES) frob frob.s log.s tags cscope.out ut)
 clean:

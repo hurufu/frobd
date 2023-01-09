@@ -14,6 +14,12 @@ available specification can be downloaded [here][c].
 
     make tcp
 
+### Show frame matching FSM diagram (requires additionally `graphviz` and `feh`)
+
+    make graph-dot
+    # or
+    make graph-fdp
+
 ## What is it?
 
 __frobd__ is a program that listens for ECR-EFT messages on stdin and responds
