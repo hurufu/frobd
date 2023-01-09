@@ -22,6 +22,10 @@ What shall be considered:
   * Timeouts and re-transmission policy, eg don't re-transmit non-idempotent
     messages like `S1`.
   * Chat scenarios
+  * Configurable number of channels and instructions on where each message type
+    should go. This can be achieved eg by embeding a scripting language like
+    GNU Guile or Lua or something less common; or alternatively by executing
+    external shell script.
 
 ### Additional programs
 
