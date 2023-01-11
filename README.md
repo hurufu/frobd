@@ -6,19 +6,24 @@
 More information for the protocol on the [official website][b]. Publicly
 available specification can be downloaded [here][c].
 
-### Build and test (requires `ragel` and `check` packages)
+## Usage
+
+It doesn't support any command line switches and is supposed to run only from
+the source tree. This will be rectified in the future.
+
+#### Build and test (requires `ragel` and `check` packages)
 
 ```shell
 make && make test
 ```
 
-### Start TCP server (requires `s6-networking` package)
+#### Start TCP server (requires `s6-networking` package)
 
 ```shell
 make tcp
 ```
 
-### Show frame matching FSM diagram (requires additionally `graphviz` and `feh`)
+#### Show frame matching FSM diagram (requires additionally `graphviz` and `feh`)
 
 ```shell
 make graph-dot
