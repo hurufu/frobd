@@ -115,7 +115,7 @@ enum LogLevel g_log_level = LOG_DEBUG;
 
 #test empty_body_is_handled
     byte_t buf[0];
-    byte_t* p = buf;
+    const byte_t* p = buf;
     union frob_body body = {}, empty = {};
     const int ret = frob_body_extract(FROB_T3, &p, p, &body);
     ck_assert_int_eq(ret, 0);

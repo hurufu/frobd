@@ -12,7 +12,6 @@
  */
 typedef uint8_t byte_t;
 
-// TODO: Consider converting to base-36 – downside it will requires 2 bytes
 enum FrobMessageType {
     // Message classes, numbering is arbitrary
     FROB_T = 0x00,
