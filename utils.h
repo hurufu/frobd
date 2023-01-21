@@ -8,6 +8,12 @@
 #define FS "\x1C"
 #define US "\x1F"
 
+/* uint8_t is better than unsigned char to define a byte, because on some
+ * platforms (unsigned) char may have more than 8 bit (TI C54xx 16 bit).
+ * The problem is purely theoretical, because I don't target MCUs, but still...
+ */
+typedef uint8_t byte_t;
+
 #define COPY(Dest, Start, End) memcpy((Dest), Start, min(End - Start, elementsof(Dest)))
 #define UNHEX(Dest, Start, End) do {\
     char* dst = Dest;\
@@ -30,18 +36,5 @@
 
 #define min(A, B) (A < B ? A : B)
 
-/** Prints textual description in addtion to regular message.
- *  @note Implementation was copied from assert.h with slight formatting modification
- *  @todo Move to a separate assertion.h header
- *  @todo Use NDEBUG macro to disable assertions
- */
-#define assertion(Msg, Expr)\
-    ((void) sizeof ((Expr) ? 1 : 0), __extension__ ({\
-      if (Expr)\
-        ; /* empty */\
-      else\
-        __assert_fail(#Expr " (" Msg ")", __FILE__, __LINE__, __ASSERT_FUNCTION);\
-}))
-
-unsigned char hex2nibble(char h);
-unsigned char unhex(const char h[static 2]);
+byte_t hex2nibble(char h);
+byte_t unhex(const char h[static 2]);

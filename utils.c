@@ -1,6 +1,6 @@
 #include "utils.h"
 
-unsigned char hex2nibble(const char h) {
+byte_t hex2nibble(const char h) {
     switch (h) {
         case 'A' ... 'F': return h - 'A' + 10;
         case 'a' ... 'f': return h - 'a' + 10;
@@ -10,6 +10,6 @@ unsigned char hex2nibble(const char h) {
     return '\0';
 }
 
-unsigned char unhex(const char h[static const 2]) {
+byte_t unhex(const char h[static const 2]) {
     return (hex2nibble(h[0]) << 4) | hex2nibble(h[1]);
 }

@@ -1,5 +1,9 @@
 #include "log.h"
 
+#ifndef NO_LOGS_ON_STDERR
+enum LogLevel g_log_level = LOG_DEBUG;
+#endif
+
 char* to_printable(const unsigned char* const p, const unsigned char* const pe,
                                   const size_t s, char b[static const s]) {
     // TODO: Add support for regional characters, ie from 0x80 to 0xFF

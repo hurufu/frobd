@@ -5,15 +5,17 @@
 
 #define FROB_MAGIC "FROBCr1"
 
-/* uint8_t is better than unsigned char to define a byte, because on some
- * platforms (unsigned) char may have more than 8 bit (TI C54xx 16 bit).
- * The problem is purely theoretical, because I don't target MCUs, but still...
- * TODO: Rename to input_t, to signify that it relates to the input bytes only, and not a generic byte type
- */
-typedef uint8_t byte_t;
+// WARNING: All char arrays are NOT null-terminated, but null-padded
+
+// Input character type, can be changed to something else
+typedef uint8_t input_t;
+
+typedef uint8_t bcd_t;
+typedef bcd_t amount_t[12];
 
 enum FrobMessageType {
     // Message classes, numbering is arbitrary
+    FROB_MESSAGE_CLASS_MASK = 0xf0,
     FROB_T = 0x00,
     FROB_D = 0x10,
     FROB_S = 0x20,
@@ -26,7 +28,7 @@ enum FrobMessageType {
     FROB_B = 0x90,
 
     // Message destinations
-    FROB_DESTINATION_MASK = 0xf00,
+    FROB_MESSAGE_CHANNEL_MASK = 0xf00,
     FROB_LOCAL   = 0x100, // L – message handled locally
     FROB_PAYMENT = 0x200, // F – message is forwarded to payment channel
     FROB_STORAGE = 0x300, //     S1 with type C message forwarded to transaction_store channel
@@ -35,6 +37,7 @@ enum FrobMessageType {
     FROB_EVENT   = 0x600, // E – message is forwarded to event channel
 
     // All message types are in the same order as in the documentation
+    FROB_MESSAGE_NUMBER_MASK = 0x0f,
     FROB_T1 = FROB_LOCAL   | FROB_T | 0x1, // Communication test – query
     FROB_T2 = FROB_LOCAL   | FROB_T | 0x2, // Communication test – answer
     FROB_T3 = FROB_LOCAL   | FROB_T | 0x3, // Version negotiation – inquiry
@@ -77,13 +80,8 @@ enum FrobMessageType {
 
 struct frob_header {
     enum FrobMessageType type;
-    // FIXME: Replace token with a char[6] type, because otherwise it isn't
-    // possible to respond with exactly the same token, if it is shorter than 6
-    unsigned char token[3];
+    char token[6];
 };
-
-typedef uint8_t bcd_t;
-typedef bcd_t amount_t[12];
 
 enum FrobTransactionStatus {
     FROB_WAIT_FOR_CARD = 20,
@@ -283,7 +281,7 @@ struct frob_frame_fsm_state {
 };
 
 int frob_frame_process(struct frob_frame_fsm_state*);
-struct frob_header frob_header_extract(const unsigned char** p, const unsigned char* pe);
+int frob_header_extract(const input_t** p, const input_t* pe, struct frob_header*);
 int frob_protocol_transition(int*, const enum FrobMessageType);
-int frob_body_extract(enum FrobMessageType, const unsigned char** p, const unsigned char* pe, union frob_body*);
-int frob_extract_additional_attributes(const byte_t**, const byte_t*, char (* const out)[10][16]);
+int frob_body_extract(enum FrobMessageType, const input_t** p, const input_t* pe, union frob_body*);
+int frob_extract_additional_attributes(const input_t**, const input_t*, char (* const out)[10][16]);

@@ -30,7 +30,7 @@
 
 }%%
 
-static int get_class(const byte_t c) {
+static int get_class(const input_t c) {
     switch (c) {
         case 'T': return FROB_T;
         case 'D': return FROB_D;
@@ -46,7 +46,7 @@ static int get_class(const byte_t c) {
     return 0;
 }
 
-static enum FrobMessageType deserialize_type(const byte_t cla, const byte_t sub) {
+static enum FrobMessageType deserialize_type(const input_t cla, const input_t sub) {
     switch (get_class(cla) | hex2nibble(sub)) {
         case FROB_T1 & ~FROB_DESTINATION_MASK: return FROB_T1;
         case FROB_T2 & ~FROB_DESTINATION_MASK: return FROB_T2;
@@ -90,8 +90,8 @@ static enum FrobMessageType deserialize_type(const byte_t cla, const byte_t sub)
     return 0;
 }
 
-struct frob_header frob_header_extract(const byte_t** px, const byte_t* const pe) {
-    const byte_t* p = *px, * const start = p, * token_end = NULL, * type_end = NULL;
+int frob_header_extract(const input_t** px, const input_t* const pe, struct frob_header* const header) {
+    const input_t* p = *px, * const start = p, * token_end = NULL, * type_end = NULL;
     int cs;
     %%{
         write init;
@@ -101,19 +101,19 @@ struct frob_header frob_header_extract(const byte_t** px, const byte_t* const pe
 #   if 0
     // FIXME: This module somehow ends in error state on valid headers
     if (frob_header_error == cs)
-        return (struct frob_header){ };
+        return EBADMSG;
 #   endif
 
     if (!type_end || !token_end)
-        return (struct frob_header){};
-    struct frob_header res = {
+        return EBADMSG;
+    *res = {
         .type = deserialize_type(type_end[-2], type_end[-1])
     };
     int i = 0;
-    for (const byte_t* b = start; b < token_end; b += 2) {
+    for (const input_t* b = start; b < token_end; b += 2) {
         const char t[2] = { b[0], b[1] };
         res.token[i++] = unhex(t);
     }
     *px = p;
-    return res;
+    return 0;
 }
