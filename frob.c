@@ -119,24 +119,25 @@ static char channel_to_code(const enum channel o) {
     return '?';
 }
 
-static const char* frob_message_to_string(const enum FrobMessageType m) {
-    char class_to_char(void) {
-        switch (m & FROB_MESSAGE_CLASS_MASK) {
-            case FROB_T: return 'T';
-            case FROB_D: return 'D';
-            case FROB_S: return 'S';
-            case FROB_P: return 'P';
-            case FROB_I: return 'I';
-            case FROB_A: return 'A';
-            case FROB_K: return 'K';
-            case FROB_M: return 'M';
-            case FROB_L: return 'L';
-            case FROB_B: return 'B';
-        }
-        return '?';
+static char class_to_char(const enum FrobMessageType m) {
+    switch (m & FROB_MESSAGE_CLASS_MASK) {
+        case FROB_T: return 'T';
+        case FROB_D: return 'D';
+        case FROB_S: return 'S';
+        case FROB_P: return 'P';
+        case FROB_I: return 'I';
+        case FROB_A: return 'A';
+        case FROB_K: return 'K';
+        case FROB_M: return 'M';
+        case FROB_L: return 'L';
+        case FROB_B: return 'B';
     }
+    return '?';
+}
+
+static const char* frob_message_to_string(const enum FrobMessageType m) {
     static char buf[3];
-    buf[0] = class_to_char();
+    buf[0] = class_to_char(m);
     buf[1] = (m & FROB_MESSAGE_NUMBER_MASK) + '0';
     buf[2] = '\0';
     return buf;
@@ -407,8 +408,8 @@ static void perform_pending_write(struct chstate* const ch) {
     // We shouldn't attempt to write 0 bytes
     assert(ch->cur > ch->buf);
     // FIXME: Retry if we were unable to write all bytes
-    ssize_t s;
-    if ((s = write(ch->fd, ch->buf, ch->cur - ch->buf)) != ch->cur - ch->buf) {
+    const ssize_t s = write(ch->fd, ch->buf, ch->cur - ch->buf);
+    if (s != ch->cur - ch->buf) {
         //LOGF("Can't write %td bytes to %s channel (fd %d)", t->cur[i] - t->buf[i], channel_to_string(i), (*channel)[i]);
     } else {
         // Not just ACK/NAK alone – very bad heuristic

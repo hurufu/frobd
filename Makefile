@@ -3,7 +3,9 @@
 #CPPFLAGS := -DNO_LOGS_ON_STDERR
 OPTLEVEL ?= g
 CFLAGS   := -O$(OPTLEVEL) -ggdb3 -Wall -Wextra -ffat-lto-objects -mtune=native -march=native
-CFLAGS   += -fanalyzer -fanalyzer-checker=taint
+CFLAGS_gcc   := -fanalyzer -fanalyzer-checker=taint
+CFLAGS_clang := -Xanalyzer
+CFLAGS += $(CFLAGS_$(CC))
 # TODO: Remove those warnings only for generated files
 #CFLAGS   += -Wno-implicit-fallthrough -Wno-unused-const-variable -Wno-sign-compare -Wno-unused-variable -Wno-unused-parameter
 LDFLAGS  := -flto
