@@ -549,6 +549,22 @@ static sigset_t adjust_signal_delivery(int* const ch) {
     return s;
 }
 
+static void log_ucspi_info(const char* const proto) {
+    static const char* const rl[] = { "REMOTE", "LOCAL" };
+    static const char* const ev[] = { "HOST", "IP", "PORT", "INFO" };
+
+    const char* ed[elementsof(rl)][elementsof(ev)];
+    for (size_t j = 0; j < elementsof(rl); j++)
+        for (size_t i = 0; i < elementsof(ev); i++) {
+            char tmp[16];
+            snprintf(tmp, elementsof(tmp), "%s%s%s", proto, rl[j], ev[i]);
+            ed[j][i] = getenv(tmp);
+        }
+
+    LOGIX("proto: %s; remote: %s (%s:%s) info: %s; local: %s;",
+            proto, ed[0][0], ed[0][1], ed[0][2], ed[0][3], ed[1][0]);
+}
+
 int main(const int ac, const char* av[static const ac]) {
     static struct state s = {
         .hm = {
@@ -584,6 +600,14 @@ int main(const int ac, const char* av[static const ac]) {
         .timeout_sec = ac == 2 ? atoi(av[1]) : 0,
         .maxfd = get_max_fd(&s.fs.ch)
     };
+
+    const char* const proto = getenv("PROTO");
+    if (proto) {
+        LOGDX("UCSPI compatible environment detected");
+        s.fs.ch[CHANNEL_FI_MAIN].fd = 6;
+        s.fs.ch[CHANNEL_FO_MAIN].fd = 7;
+        log_ucspi_info(proto);
+    }
 
     if (event_loop(&s) == 0)
         return s.select_params.timeout_sec > 0 ? EXIT_FAILURE : EXIT_SUCCESS;

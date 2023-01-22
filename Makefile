@@ -46,7 +46,9 @@ clean: F += $(wildcard $(RL_C) $(RL_C:.c=.s) $(UT_O) $(UT_T:.in=.c) $(UT_T:.in=.
 clean:
 	$(if $(strip $F),$(RM) -- $F)
 
-tcp: frob
+tcp-server: frob
 	s6-tcpserver4 -v2 0.0.0.0 5002 ./$< 1000
+tcp-client: frob
+	s6-tcpclient -rv localhost 5002 ./$< 1000
 scan:
 	scan-build $(MAKE) clean frob
