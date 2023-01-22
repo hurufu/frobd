@@ -441,14 +441,14 @@ static void perform_pending_write(const enum channel i, struct chstate* const ch
     ch->cur = ch->buf;
 }
 
-static void perform_pending_read(const enum channel i,  struct chstate* const ch) {
+static void perform_pending_read(const enum channel i,  struct chstate* const ch, fd_set* const rset) {
     const ssize_t s = read(ch->fd, ch->cur, ch->buf + sizeof ch->buf - ch->cur);
     if (s < 0) {
         LOGF("Can't read data on %s channel (fd %d)", channel_to_string(i), ch->fd);
     } else if (s == 0) {
         LOGIX("Channel %s (fd %d) was closed", channel_to_string(i), ch->fd);
         close(ch->fd);
-        //FD_CLR(ch->fd, &(t->set)[FDSET_READ]);
+        FD_CLR(ch->fd, rset);
         switch (i) {
             case CHANNEL_FI_MAIN:
                 // TODO: Set timer to some small value or in some other wise schedule program to exit in a short time
@@ -474,7 +474,7 @@ static void perform_pending_io(struct fstate* const f) {
         if (FD_ISSET(f->ch[i].fd, &f->wset))
             perform_pending_write(i, &f->ch[i]);
         if (FD_ISSET(f->ch[i].fd, &f->rset))
-            perform_pending_read(i, &f->ch[i]);
+            perform_pending_read(i, &f->ch[i], &f->rset);
     }
     for (enum channel i = CHANNEL_FIRST; i <= CHANNEL_LAST; i++)
         FD_CLR(f->ch[i].fd, &f->wset);
