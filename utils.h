@@ -15,6 +15,12 @@
  */
 typedef uint8_t byte_t;
 
+// TODO: Unify COPY and MCOPY
+#define MCOPY(Dst, Src) do {\
+    memcpy(Dst, Src, elementsof(Src));\
+    Dst += elementsof(Src);\
+} while (0)
+
 #define COPY(Dest, Start, End) memcpy((Dest), Start, min(End - Start, elementsof(Dest)))
 #define UNHEX(Dest, Start, End) do {\
     char* dst = Dest;\

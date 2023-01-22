@@ -276,10 +276,8 @@ static int commission_message(struct state* const st, const struct frob_msg* con
 };
 
 static void commission_prompt(struct state* const st) {
-    static const char prompt[] = "> ";
     struct chstate* const ch = &st->fs.ch[CHANNEL_CO_MASTER];
-    memcpy(ch->cur, prompt, sizeof prompt);
-    ch->cur += sizeof prompt;
+    MCOPY(ch->cur, "> ");
     FD_SET(ch->fd, &st->fs.wset);
 }
 
@@ -301,15 +299,23 @@ static int get_max_fd(const struct chstate (* const ch)[CHANNEL_COUNT]) {
 
 static void start_master_channel(struct state* const s) {
     LOGWX("Master channel doesn't work: %s", strerror(ENOSYS));
-    const char* const pts = ttyname(STDERR_FILENO);
+    // TODO: I don't really know what is a good way to implement interactive console.
+    //       It should be compatible with rlwrap (1) and it shouldn't interfere
+    //       with s6-tcpserver4, because both use stdin/stdout.
+#   if 0
+    const char* const pts = ttyname(STDIN_FILENO);
+    // There is ctermid, with similar effect to ttyname, but works if stdin is redirected
     const int fd = open(pts, O_RDWR);
     if (fd == -1)
         return LOGW("Couldn't start %s channel at %s", channel_to_string(CHANNEL_CI_MASTER), pts);
     else
         LOGIX("Master channel started at %s, but what will you do with it?", pts);
-    LOGIX("Press ^C again to exit the program or ^D to close master channel (and go back to normal)...");
-
     s->fs.ch[CHANNEL_CI_MASTER].fd = s->fs.ch[CHANNEL_CO_MASTER].fd = fd;
+#   else
+    s->fs.ch[CHANNEL_CI_MASTER].fd = STDIN_FILENO;
+    s->fs.ch[CHANNEL_CO_MASTER].fd = STDOUT_FILENO;
+#   endif
+
     sigdelset(&s->sigfdset, SIGINT);
     s->fs.ch[CHANNEL_II_SIGNAL].fd = setup_signalfd(s->fs.ch[CHANNEL_II_SIGNAL].fd, s->sigfdset);
     s->select_params.maxfd = get_max_fd(&s->fs.ch);
@@ -320,6 +326,7 @@ static void start_master_channel(struct state* const s) {
     if (sigprocmask(SIG_UNBLOCK, &tmp, NULL) != 0)
         LOGF("Can't unblock received singal");
 
+    MCOPY(s->fs.ch[CHANNEL_CO_MASTER].cur, "Press ^C again to exit the program or ^D to close master channel (and go back to normal)...\n");
     commission_prompt(s);
 }
 
