@@ -1,4 +1,8 @@
 #include "utils.h"
+#include "log.h"
+#include <stdio.h>
+#include <stdarg.h>
+#include <errno.h>
 
 byte_t hex2nibble(const char h) {
     switch (h) {
@@ -12,4 +16,18 @@ byte_t hex2nibble(const char h) {
 
 byte_t unhex(const char h[static const 2]) {
     return (hex2nibble(h[0]) << 4) | hex2nibble(h[1]);
+}
+
+const char* snprintfx(char* const buf, const size_t s, const char* const fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    const int r = vsnprintf(buf, s, fmt, ap);
+    va_end(ap);
+    if (r >= 0) {
+        if (r < (ssize_t)s)
+            return buf;
+        else
+            errno = ENOBUFS;
+    }
+    LOGF("vsnprintf failed");
 }

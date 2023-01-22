@@ -2,6 +2,7 @@
 
 #include <err.h>
 #include <stddef.h>
+#include <stdlib.h>
 
 #define LOGDX(Fmt, ...) LOG_X(LOG_DEBUG, "D", Fmt, ##__VA_ARGS__)
 #define LOGIX(Fmt, ...) LOG_X(LOG_INFO, "I", Fmt, ##__VA_ARGS__)
