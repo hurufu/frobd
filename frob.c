@@ -552,16 +552,20 @@ static void ucspi_log(const char* const proto, const char* const connnum) {
     static const char* const rl[] = { "REMOTE", "LOCAL" };
     static const char* const ev[] = { "HOST", "IP", "PORT", "INFO" };
 
+    char tmp[16];
     const char* ed[elementsof(rl)][elementsof(ev)];
     for (size_t j = 0; j < elementsof(rl); j++)
-        for (size_t i = 0; i < elementsof(ev); i++) {
-            char tmp[16];
+        for (size_t i = 0; i < elementsof(ev); i++)
             ed[j][i] = getenvfx(tmp, sizeof tmp, "%s%s%s", proto, rl[j], ev[i]);
-        }
 
     LOGIX("UCSPI compatible environment detected (started by s6-tcp%s)", (connnum ? "server" : "client"));
-    LOGDX("proto: %s; remote: %s (%s:%s) connnum: %s info: %s; local: %s;",
-            proto, ed[0][0], ed[0][1], ed[0][2], connnum, ed[0][3], ed[1][0]);
+    LOGDX("proto: %s; remote: %s%s%s:%s%s%s%s%s%s%s%s;",
+            proto,
+            (ed[0][0] ?: ""),
+            (ed[0][0] ? " (" : ""), ed[0][1], ed[0][2], (ed[0][0] ? ")" : ""),
+            (connnum ? " connections: " : ""), (connnum ?: ""),
+            (ed[0][3] ? " info: " : ""), (ed[0][3] ?: ""),
+            (ed[1][0] ? "; local: ": ""), (ed[1][0] ?: ""));
 }
 
 static const char* ucspi_adjust(const char* const proto, struct fstate* const f) {
