@@ -111,10 +111,8 @@ int frob_header_extract(const input_t** px, const input_t* const pe, struct frob
         .type = deserialize_type(type_end[-2], type_end[-1])
     };
     int i = 0;
-    for (const input_t* b = start; b < token_end; b += 2) {
-        const char t[2] = { b[0], b[1] };
-        header->token[i++] = unhex(t);
-    }
+    assert(token_end - start <= 6);
+    memcpy(header->token, start, token_end - start);
     *px = p;
     return 0;
 }

@@ -181,20 +181,20 @@ static ssize_t place_message(const size_t s, input_t cur[static const s], const 
 }
 
 static ssize_t place_frame(const size_t s, input_t cur[static const s], const char (* const token)[6], const char* const body) {
-    const int ret = snprintf((char*)cur, s, STX "%s" FS "%s" ETX "_", *token, body);
+    const int ret = snprintf((char*)cur, s, STX "%.6s" FS "%s" ETX "_", *token, body);
     if (ret < 0)
         return -errno;
     else if ((unsigned)ret >= s)
         return -ENOBUFS;
     uint8_t lrc = 0;
-    for (const input_t* c = cur + 1; c < cur + ret; c++)
+    for (const input_t* c = cur + 1; c < cur + ret - 1; c++)
         lrc ^= *c;
     cur[ret - 1] = lrc;
 
     // Parseable frame is created
     assert(frob_frame_process(&(struct frob_frame_fsm_state){.p = cur, .pe = cur + s}) == 0);
     // Parseable message within that frame is created
-    assert(parse_message(cur + 1, cur + s - 2, &(struct frob_msg){ .magic = FROB_MAGIC }) == 0);
+    assert(parse_message(cur + 1, cur + ret - 2, &(struct frob_msg){ .magic = FROB_MAGIC }) == 0);
 
     return ret;
 }
@@ -242,27 +242,35 @@ static enum hardcoded_message choose_hardcoded_response(const enum FrobMessageTy
         case FROB_S1: return H_S2;
         case FROB_K1: return H_K0;
         default:
+            LOGWX("No hardcoded response for %s (%#x)", frob_message_to_string(t), t);
             break;
     }
     // All messages must be handled
-    assert(0);
+    assert(false);
     return -1;
 }
 
-static int commission_message(struct state* const st, const struct frob_msg* const msg) {
-    const enum channel dst = choose_destination(&st->fs, msg);
+static int commission_message(struct state* const st, const struct frob_msg* const received_msg) {
+    const enum channel dst = choose_destination(&st->fs, received_msg);
     struct chstate* const ch = &st->fs.ch[dst];
+    const ptrdiff_t free_space = ch->buf + elementsof(ch->buf) - ch->cur;
+
+    // Pointer sanity checks
+    assert(ch->cur >= ch->buf && free_space >= 0);
+
     int res;
     if (dst == CHANNEL_FO_MAIN) {
-        const enum hardcoded_message h = choose_hardcoded_response(msg->header.type);
+        const enum hardcoded_message h = choose_hardcoded_response(received_msg->header.type);
         if (h == H_NONE)
-            return LOGEX("No hardcoded response for message %s", frob_message_to_string(msg->header.type)), -1;
-        res = place_frame(ch->cur - ch->buf, ch->cur, &msg->header.token, st->hm[h]);
+            return LOGEX("No hardcoded response for message %s", frob_message_to_string(received_msg->header.type)), -1;
+        // Reply with hardcoded response
+        res = place_frame(free_space, ch->cur, &received_msg->header.token, st->hm[h]);
     } else {
-        res = place_message(ch->cur - ch->buf, ch->cur, msg);
+        // Forward message without changing it
+        res = place_message(free_space, ch->cur, received_msg);
     }
     if (res < 0)
-        return LOGEX("Failed to place message %s: %s", frob_message_to_string(msg->header.type), strerror(-res)), -1;
+        return LOGEX("Failed to place message %s: %s", frob_message_to_string(received_msg->header.type), strerror(-res)), -1;
     ch->cur += res;
     FD_SET(ch->fd, &st->fs.wset);
     return 0;
@@ -328,9 +336,10 @@ static void print_stats(const struct statistics* const st) {
     const double ratio = (double)st->received_good / (bad + st->received_good);
     const unsigned total = st->received_good + bad;
     LOGIX("Current stats:");
-    LOGIX("	Received messages");
-    LOGIX("	Total	Ratio	Good	LRC	parse	handling");
-    LOGIX("	%u	%.5f	%u	%u	%u	%u", total, ratio, st->received_good,
+    LOGIX("\tReceived messages");
+    LOGIX("\tTotal"  "\tRatio"  "\tGood"  "\tLRC"  "\tparse"  "\thandling");
+    LOGIX("\t%u"     "\t%.5f"   "\t%u"    "\t%u"   "\t%u"     "\t%u",
+            total, ratio, st->received_good,
             st->received_bad_lrc, st->received_bad_parse, st->received_bad_handled);
 }
 
@@ -404,7 +413,7 @@ static void process_channel(const enum channel c, struct state* const s, struct 
     }
 }
 
-static void perform_pending_write(struct chstate* const ch) {
+static void perform_pending_write(const enum channel i, struct chstate* const ch) {
     // FIXME: select works on file descriptors and not on channels, so when same fd is assigned to
     //        different channels then the first channel (which may be empty) will be used and then
     //        the whole fd will be cleared causing data loss on the other channel
@@ -415,7 +424,7 @@ static void perform_pending_write(struct chstate* const ch) {
     // FIXME: Retry if we were unable to write all bytes
     const ssize_t s = write(ch->fd, ch->buf, ch->cur - ch->buf);
     if (s != ch->cur - ch->buf) {
-        //LOGF("Can't write %td bytes to %s channel (fd %d)", t->cur[i] - t->buf[i], channel_to_string(i), (*channel)[i]);
+        LOGF("Can't write %td bytes to %s channel (fd %d)", ch->cur - ch->buf, channel_to_string(i), ch->fd);
     } else {
         // Not just ACK/NAK alone – very bad heuristic
         if (ch->cur - ch->buf > 1) {
@@ -425,35 +434,35 @@ static void perform_pending_write(struct chstate* const ch) {
                 LOGWX("Duplicated alram scheduled. Previous was ought to be delivered in %us", prev);
             //assertion("Only singal active timeout is expected", prev == 0);
         }
-        //char tmp[3*s];
-        //LOGDX("← %c %zu\t%s", channel_to_code(i), s, PRETTV(t->buf[i], t->cur[i], tmp));
+        char tmp[3*s];
+        LOGDX("← %c %zu\t%s", channel_to_code(i), s, PRETTV(ch->buf, ch->cur, tmp));
     }
     // FIXME: This pointer shall be reset only on ACK or last retransmission
     ch->cur = ch->buf;
 }
 
-static void perform_pending_read(struct chstate* const ch) {
+static void perform_pending_read(const enum channel i,  struct chstate* const ch) {
     const ssize_t s = read(ch->fd, ch->cur, ch->buf + sizeof ch->buf - ch->cur);
     if (s < 0) {
-        //LOGF("Can't read data on %s channel (fd %d)", channel_to_string(i), (*channel)[i]);
+        LOGF("Can't read data on %s channel (fd %d)", channel_to_string(i), ch->fd);
     } else if (s == 0) {
-        /*
-        LOGIX("Channel %s (fd %d) was closed", channel_to_string(i), (*channel)[i]);
-        close((*channel)[i]);
-        FD_CLR((*channel)[i], &(t->set)[FDSET_READ]);
+        LOGIX("Channel %s (fd %d) was closed", channel_to_string(i), ch->fd);
+        close(ch->fd);
+        //FD_CLR(ch->fd, &(t->set)[FDSET_READ]);
         switch (i) {
             case CHANNEL_FI_MAIN:
                 // TODO: Set timer to some small value or in some other wise schedule program to exit in a short time
                 break;
             case CHANNEL_CI_MASTER:
-                (*channel)[CHANNEL_II_SIGNAL] = setup_signalfd((*channel)[CHANNEL_II_SIGNAL], blocked);
+                //(*channel)[CHANNEL_II_SIGNAL] = setup_signalfd((*channel)[CHANNEL_II_SIGNAL], blocked);
+                break;
+            default:
                 break;
         }
-        (*channel)[i] = -1;
-        */
+        ch->fd = -1;
     } else {
-        //char tmp[3*s];
-        //LOGDX("→ %c %zu\t%s", channel_to_code(i), s, PRETTV(t->cur[i], t->cur[i] + s, tmp));
+        char tmp[3*s];
+        LOGDX("→ %c %zu\t%s", channel_to_code(i), s, PRETTV(ch->cur, ch->cur + s, tmp));
     }
     ch->cur += s;
 }
@@ -463,9 +472,9 @@ static void perform_pending_io(struct fstate* const f) {
         if (FD_ISSET(f->ch[i].fd, &f->eset))
             LOGFX("Exceptional data isn't supported");
         if (FD_ISSET(f->ch[i].fd, &f->wset))
-            perform_pending_write(&f->ch[i]);
+            perform_pending_write(i, &f->ch[i]);
         if (FD_ISSET(f->ch[i].fd, &f->rset))
-            perform_pending_read(&f->ch[i]);
+            perform_pending_read(i, &f->ch[i]);
     }
     for (enum channel i = CHANNEL_FIRST; i <= CHANNEL_LAST; i++)
         FD_CLR(f->ch[i].fd, &f->wset);
@@ -543,22 +552,33 @@ static sigset_t adjust_signal_delivery(int* const ch) {
 int main(const int ac, const char* av[static const ac]) {
     static struct state s = {
         .hm = {
-            [H_T2] = FS "T2" FS "170" FS "TEST" FS "SIM" FS "0" FS,
-            [H_B2] = FS "B2" FS "170" FS "TEST" FS "SIM" FS "0" FS "0" FS "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" FS "00" FS,
-            [H_T4] = FS "T4" FS "160" US "170" US FS,
-            [H_T5] = FS "T5" FS "170" FS,
-            [H_S2] = FS "S2" FS "993" FS FS "M000" FS "T000" FS "N/A" FS FS FS "NONE" FS "Payment endopoint not available" FS,
-            [H_K0] = FS "K0" FS "0" FS,
-            [H_D5] = FS "D5" FS "24" FS "12" FS "6" FS "19" FS "1" FS "1" FS "1"
+            [H_T2] = "T2" FS "170" FS "TEST" FS "SIM" FS "0" FS,
+            [H_B2] = "B2" FS "170" FS "TEST" FS "SIM" FS "0" FS "0" FS "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" FS "00" FS,
+            [H_T4] = "T4" FS "160" US "170" US FS,
+            [H_T5] = "T5" FS "170" FS,
+            [H_S2] = "S2" FS "993" FS FS "M000" FS "T000" FS "N/A" FS FS FS "NONE" FS "Payment endopoint not available" FS,
+            [H_K0] = "K0" FS "0" FS,
+            [H_D5] = "D5" FS "24" FS "12" FS "6" FS "19" FS "1" FS "1" FS "1"
                     FS "0" FS "0" FS "0" FS FS FS "4" FS "9999" FS "4" FS "15"
                     FS "ENTER" US "CANCEL" US "CHECK" US "BACKSPACE" US "DELETE" US "UP" US "DOWN" US "LEFT" US "RIGHT" US
                     FS "1" FS "1" FS "1" FS "0" FS
         },
-        .fs.ch[CHANNEL_II_SIGNAL].fd = -1
+        .fs = {
+            .ch = {
+                [CHANNEL_FO_MAIN]    = { .fd = STDOUT_FILENO },
+                [CHANNEL_FI_MAIN]    = { .fd = STDIN_FILENO },
+                [CHANNEL_NO_PAYMENT] = { .fd = -1 },
+                [CHANNEL_NO_STORAGE] = { .fd = -1 },
+                [CHANNEL_NO_UI]      = { .fd = -1 },
+                [CHANNEL_NO_EVENTS]  = { .fd = -1 },
+                [CHANNEL_CO_MASTER]  = { .fd = -1 },
+                [CHANNEL_II_SIGNAL]  = { .fd = -1 },
+                [CHANNEL_CI_MASTER]  = { .fd = -1 },
+                [CHANNEL_NI_DEVICE]  = { .fd = -1 }
+            }
+        }
     };
     s.sigfdset = adjust_signal_delivery(&s.fs.ch[CHANNEL_II_SIGNAL].fd);
-    s.fs.ch[CHANNEL_FO_MAIN].fd = STDOUT_FILENO;
-    s.fs.ch[CHANNEL_FI_MAIN].fd = STDIN_FILENO;
     //s.channel[CHANNEL_NO_PAYMENT] = open("payment", O_WRONLY | O_CLOEXEC);
     s.select_params = (struct select_params) {
         .timeout_sec = ac == 2 ? atoi(av[1]) : 0,
