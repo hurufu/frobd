@@ -199,7 +199,7 @@ static ssize_t place_frame(const size_t s, input_t cur[static const s], const ch
     return ret;
 }
 
-static enum channel choose_destination(const struct frob_msg* const msg) {
+static enum channel choose_destination_from_message(const struct frob_msg* const msg) {
     switch (msg->header.type & FROB_MESSAGE_CHANNEL_MASK) {
         case FROB_PAYMENT:
             if (msg->header.type == FROB_S1)
@@ -221,6 +221,17 @@ static enum channel choose_destination(const struct frob_msg* const msg) {
     return CHANNEL_NONE;
 }
 
+static enum channel choose_destination(const struct fstate* const f, const struct frob_msg* const msg) {
+    enum channel dst = choose_destination_from_message(msg);
+    if (dst == CHANNEL_NONE)
+        return LOGEX("No destination for message %s: %s", frob_message_to_string(msg->header.type), strerror(ECHRNG)), -1;
+    if (f->ch[dst].fd == -1) {
+        LOGWX("Channel %s is not connected: %s", channel_to_string(dst), strerror(EUNATCH));
+        dst = CHANNEL_FO_MAIN;
+    }
+    return dst;
+}
+
 static enum hardcoded_message choose_hardcoded_response(const enum FrobMessageType t) {
     switch (t) {
         case FROB_T1: return H_T2;
@@ -239,13 +250,7 @@ static enum hardcoded_message choose_hardcoded_response(const enum FrobMessageTy
 }
 
 static int commission_message(struct state* const st, const struct frob_msg* const msg) {
-    enum channel dst = choose_destination(msg);
-    if (dst == CHANNEL_NONE)
-        return LOGEX("No destination for message %s: %s", frob_message_to_string(msg->header.type), strerror(ECHRNG)), -1;
-    if (st->fs.ch[dst].fd == -1) {
-        LOGWX("Channel %s is not connected: %s", channel_to_string(dst), strerror(EUNATCH));
-        dst = CHANNEL_FO_MAIN;
-    }
+    const enum channel dst = choose_destination(&st->fs, msg);
     struct chstate* const ch = &st->fs.ch[dst];
     int res;
     if (dst == CHANNEL_FO_MAIN) {
@@ -276,7 +281,7 @@ static int setup_signalfd(const int ch, const sigset_t blocked) {
         LOGF("Couldn't adjust signal mask");
     const int ret = signalfd(ch, &blocked, SFD_CLOEXEC);
     if (ret == -1)
-        LOGF("Couldn't setup sigfd");
+        LOGF("Couldn't setup sigfd for %d", ch);
     return ret;
 }
 
@@ -548,7 +553,8 @@ int main(const int ac, const char* av[static const ac]) {
                     FS "0" FS "0" FS "0" FS FS FS "4" FS "9999" FS "4" FS "15"
                     FS "ENTER" US "CANCEL" US "CHECK" US "BACKSPACE" US "DELETE" US "UP" US "DOWN" US "LEFT" US "RIGHT" US
                     FS "1" FS "1" FS "1" FS "0" FS
-        }
+        },
+        .fs.ch[CHANNEL_II_SIGNAL].fd = -1
     };
     s.sigfdset = adjust_signal_delivery(&s.fs.ch[CHANNEL_II_SIGNAL].fd);
     s.fs.ch[CHANNEL_FO_MAIN].fd = STDOUT_FILENO;

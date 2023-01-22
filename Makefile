@@ -1,4 +1,4 @@
-.PHONY: index clean graph-% run run-% test tcp
+.PHONY: index clean graph-% run run-% test tcp scan
 
 #CPPFLAGS := -DNO_LOGS_ON_STDERR
 OPTLEVEL ?= g
@@ -48,3 +48,5 @@ clean:
 
 tcp: frob
 	s6-tcpserver4 -v2 0.0.0.0 5002 ./$< 1000
+scan:
+	scan-build $(MAKE) clean frob

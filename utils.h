@@ -2,6 +2,7 @@
 
 #include <string.h>
 #include <assert.h>
+#include <stdint.h>
 
 #define STX "\x02"
 #define ETX "\x03"
