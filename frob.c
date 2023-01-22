@@ -240,6 +240,8 @@ static enum hardcoded_message choose_hardcoded_response(const enum FrobMessageTy
         case FROB_B1: return H_B2;
         case FROB_S1: return H_S2;
         case FROB_K1: return H_K0;
+        case FROB_T2:
+        case FROB_T5: return H_NONE;
         default:
             LOGWX("No hardcoded response for %s (%#x)", frob_message_to_string(t), t);
             break;
@@ -433,7 +435,7 @@ static void perform_pending_write(const enum channel i, struct chstate* const ch
         LOGF("Can't write %td bytes to %s channel (fd %d)", ch->cur - ch->buf, channel_to_string(i), ch->fd);
     } else {
         // Not just ACK/NAK alone – very bad heuristic
-        if (ch->cur - ch->buf > 1) {
+        if (ch->cur - ch->buf > 1 && i == CHANNEL_FI_MAIN) {
             const unsigned int prev = alarm(3);
             // FIXME: Enforce that only single message can be sent at a time until ACK/NAK wasn't received
             if (prev != 0)
