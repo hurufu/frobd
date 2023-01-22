@@ -441,7 +441,7 @@ static void perform_pending_write(const enum channel i, struct chstate* const ch
     ch->cur = ch->buf;
 }
 
-static void perform_pending_read(const enum channel i,  struct chstate* const ch, fd_set* const rset) {
+static void perform_pending_read(const enum channel i,  struct chstate* const ch, fd_set* const rset, int* const sigfd, const sigset_t sigfdset) {
     const ssize_t s = read(ch->fd, ch->cur, ch->buf + sizeof ch->buf - ch->cur);
     if (s < 0) {
         LOGF("Can't read data on %s channel (fd %d)", channel_to_string(i), ch->fd);
@@ -454,7 +454,7 @@ static void perform_pending_read(const enum channel i,  struct chstate* const ch
                 // TODO: Set timer to some small value or in some other wise schedule program to exit in a short time
                 break;
             case CHANNEL_CI_MASTER:
-                //(*channel)[CHANNEL_II_SIGNAL] = setup_signalfd((*channel)[CHANNEL_II_SIGNAL], blocked);
+                *sigfd = setup_signalfd(*sigfd, sigfdset);
                 break;
             default:
                 break;
@@ -467,14 +467,14 @@ static void perform_pending_read(const enum channel i,  struct chstate* const ch
     ch->cur += s;
 }
 
-static void perform_pending_io(struct fstate* const f) {
+static void perform_pending_io(struct fstate* const f, const sigset_t sigfdset) {
     for (enum channel i = CHANNEL_FIRST; i <= CHANNEL_LAST; i++) {
         if (FD_ISSET(f->ch[i].fd, &f->eset))
             LOGFX("Exceptional data isn't supported");
         if (FD_ISSET(f->ch[i].fd, &f->wset))
             perform_pending_write(i, &f->ch[i]);
         if (FD_ISSET(f->ch[i].fd, &f->rset))
-            perform_pending_read(i, &f->ch[i], &f->rset);
+            perform_pending_read(i, &f->ch[i], &f->rset, &f->ch[CHANNEL_II_SIGNAL].fd, sigfdset);
     }
     for (enum channel i = CHANNEL_FIRST; i <= CHANNEL_LAST; i++)
         FD_CLR(f->ch[i].fd, &f->wset);
@@ -524,7 +524,7 @@ static int event_loop(struct state* const s) {
     struct frob_frame_fsm_state r = { .p = s->fs.ch[CHANNEL_FI_MAIN].buf };
     int ret = 0;
     for (finit(&s->fs); (ret = fselect(&s->fs, &s->select_params)) > 0; fset(&s->fs)) {
-        perform_pending_io(&s->fs);
+        perform_pending_io(&s->fs, s->sigfdset);
         for (enum channel i = CHANNEL_FIRST_INPUT; i <= CHANNEL_LAST_INPUT; i++) {
             if (s->fs.ch[i].fd >= 0 && FD_ISSET(s->fs.ch[i].fd, &s->fs.rset))
                 process_channel(i, s, &r);
