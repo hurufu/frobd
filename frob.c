@@ -421,11 +421,6 @@ static void process_channel(const enum channel c, struct state* const s, struct 
 }
 
 static void perform_pending_write(const enum channel i, struct chstate* const ch) {
-    // FIXME: select works on file descriptors and not on channels, so when same fd is assigned to
-    //        different channels then the first channel (which may be empty) will be used and then
-    //        the whole fd will be cleared causing data loss on the other channel
-    if (ch->cur == ch->buf)
-        return;
     // We shouldn't attempt to write 0 bytes
     assert(ch->cur > ch->buf);
     switch (i) {
@@ -440,6 +435,11 @@ static void perform_pending_write(const enum channel i, struct chstate* const ch
             // We can write only to output channels
             assert(false);
     }
+    // FIXME: select works on file descriptors and not on channels, so when same fd is assigned to
+    //        different channels then the first channel (which may be empty) will be used and then
+    //        the whole fd will be cleared causing data loss on the other channel
+    if (ch->cur == ch->buf)
+        return;
     // FIXME: Retry if we were unable to write all bytes
     const ssize_t s = write(ch->fd, ch->buf, ch->cur - ch->buf);
     if (s != ch->cur - ch->buf) {
