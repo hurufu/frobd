@@ -45,9 +45,9 @@ typedef uint8_t byte_t;
 
 // Used to simplify access to environment variables with computed names
 #define getenvfx(Buf, Size, Fmt, ...) ({\
-    char* const v = getenv(snprintfx(Buf, Size, Fmt, __VA_ARGS__));\
+    char* v = getenv(snprintfx(Buf, Size, Fmt, __VA_ARGS__));\
     if (v)\
-        trim_whitespaces(v);\
+        v = trim_whitespaces(v);\
     v;\
 })
 
