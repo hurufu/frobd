@@ -59,4 +59,4 @@ byte_t unhex(const char h[static 2]);
 const char* snprintfx(char* buf, size_t s, const char* fmt, ...);
 
 // Removes leading and trailing whitespaces in places. Returns pointer to the first non-whitespace character
-const char* trim_whitespaces(char* s);
+char* trim_whitespaces(char* s);

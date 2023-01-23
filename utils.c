@@ -33,7 +33,7 @@ const char* snprintfx(char* const buf, const size_t s, const char* const fmt, ..
     LOGF("vsnprintf failed");
 }
 
-const char* trim_whitespaces(char* s) {
+char* trim_whitespaces(char* s) {
     while (isspace(*s))
         s++;
     for (char* end = s + strlen(s) - 1; end > s && isspace(*end); end--)
