@@ -21,6 +21,7 @@ What shall be considered:
     `Tx` and `D4`.
   * Timeouts and re-transmission policy, eg don't re-transmit non-idempotent
     messages like `S1`.
+  * Periodic ping using `T1` message.
   * Chat scenarios
   * Configurable number of channels and instructions on where each message type
     should go. This can be achieved eg by embeding a scripting language like
