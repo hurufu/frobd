@@ -573,7 +573,7 @@ static void ucspi_log(const char* const proto, const char* const connnum) {
             (ed[0][0] ?: ""),
             (ed[0][0] ? " (" : ""), ed[0][1], ed[0][2], (ed[0][0] ? ")" : ""),
             (connnum ? " connections: " : ""), (connnum ?: ""),
-            (ed[0][3] ? " info: " : ""), (ed[0][3] ?: ""),
+            (ed[0][3] ? " identification: " : ""), (ed[0][3] ?: ""),
             (ed[1][0] ? "; local: ": ""), (ed[1][0] ?: ""));
 }
 
