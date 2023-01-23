@@ -585,7 +585,7 @@ static void ucspi_log(const char* const proto, const char* const connnum) {
         for (size_t i = 0; i < elementsof(ev); i++)
             ed[j][i] = getenvfx(tmp, sizeof tmp, "%s%s%s", proto, rl[j], ev[i]);
 
-    LOGIX("UCSPI compatible environment detected (started by s6-tcp%s)", (connnum ? "server" : "client"));
+    LOGIX("UCSPI compatible environment detected (%s)", (connnum ? "server" : "client"));
     LOGDX("proto: %s; remote: %s%s%s:%s%s%s%s%s%s%s%s;",
             proto,
             (ed[0][0] ?: ""),
