@@ -463,7 +463,8 @@ static void perform_pending_read(const enum channel i, struct state* const s) {
                 // If main channel is closed by remote side then the only
                 // meaningful thing we can do is to exit gracefully after all
                 // pending writes are done by setting timeout to a small value.
-                s->select_params.timeout_sec = 1;
+                if (s->select_params.timeout_sec != 0)
+                    s->select_params.timeout_sec = 1;
                 break;
             case CHANNEL_CI_MASTER:
                 close(s->fs.ch[CHANNEL_CO_MASTER].fd);
