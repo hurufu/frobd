@@ -623,12 +623,13 @@ int main(const int ac, const char* av[static const ac]) {
     };
     s.sigfdset = adjust_signal_delivery(&s.fs.ch[CHANNEL_II_SIGNAL].fd);
     //s.channel[CHANNEL_NO_PAYMENT] = open("payment", O_WRONLY | O_CLOEXEC);
+
+    ucspi_adjust_if_detected(&s.fs);
+
     s.select_params = (struct select_params) {
         .timeout_sec = ac == 2 ? atoi(av[1]) : 0,
         .maxfd = get_max_fd(&s.fs.ch)
     };
-
-    ucspi_adjust_if_detected(&s.fs);
 
     if (event_loop(&s) == 0)
         return s.select_params.timeout_sec > 0 ? EXIT_FAILURE : EXIT_SUCCESS;
