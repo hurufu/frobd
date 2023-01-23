@@ -126,3 +126,29 @@ enum LogLevel g_log_level = LOG_DEBUG;
     ck_assert_int_eq(ret, 0);
     ck_assert_ptr_eq(p, buf);
     ck_assert_mem_eq(&body, &empty, sizeof empty);
+
+#suite utils
+
+#test space_trimming_works_with_only_trailing_spaces
+    char buf[] = "hello    ";
+    ck_assert_str_eq(trim_whitespaces(buf), "hello");
+
+#test space_trimming_works_with_only_leading_spaces
+    char buf[] = "    hello";
+    ck_assert_str_eq(trim_whitespaces(buf), "hello");
+
+#test space_trimming_works
+    char buf[] = "    hello    ";
+    ck_assert_str_eq(trim_whitespaces(buf), "hello");
+
+#test space_trimming_works_with_empty_string
+    char buf[] = "";
+    ck_assert_str_eq(trim_whitespaces(buf), "");
+
+#test space_trimming_works_with_only_spaces
+    char buf[] = "    ";
+    ck_assert_str_eq(trim_whitespaces(buf), "");
+
+#test space_trimming_works_with_no_spaces
+    char buf[] = "hello";
+    ck_assert_str_eq(trim_whitespaces(buf), "hello");
