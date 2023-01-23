@@ -48,7 +48,7 @@ enum channel {
 
 // FIXME: Should be removed and constructed from actual values
 enum hardcoded_message {
-    H_NONE = -1, H_T2, H_T4, H_T5, H_D5, H_B2, H_S2, H_K0, H_K1, H_COUNT
+    H_NONE = -1, H_T1, H_T2, H_T4, H_T5, H_D5, H_B2, H_S2, H_K0, H_K1, H_COUNT
 };
 
 struct state {
@@ -78,6 +78,7 @@ struct state {
     struct select_params {
         short maxfd;
         short timeout_sec;
+        unsigned short pings_on_inactivity;
     } select_params;
 };
 
@@ -534,23 +535,38 @@ static void finit(struct fstate* const f) {
     fset(f);
 }
 
-static int fselect(struct fstate* const f, const struct select_params* const s) {
+static int fselect(struct fstate* const f, struct select_params* const s, struct state* const st) {
     struct timeval t = { .tv_sec = s->timeout_sec };
+redo:
     const int l = select(s->maxfd, &f->rset, &f->wset, &f->eset, (s->timeout_sec < 0 ? NULL : &t));
-    if (l == 0)
-        if (s->timeout_sec == 0)
+    if (l == 0) {
+        if (s->timeout_sec == 0) {
             LOGIX("Single-shot mode ended");
-        else
+        } else if (s->pings_on_inactivity) {
+            struct chstate* const ch = &st->fs.ch[CHANNEL_FO_MAIN];
+            const ptrdiff_t free_space = ch->buf + elementsof(ch->buf) - ch->cur;
+            // TODO: Generate token
+            const int res = place_frame(free_space, ch->cur, &"00000", st->hm[H_T1]);
+            if (res < 0)
+                LOGF("Can't send ping");
+            ch->cur += res;
+            FD_SET(ch->fd, &st->fs.wset);
+            // TODO: Reset counter on successful pong (T2)
+            s->pings_on_inactivity--;
+            goto redo;
+        } else {
             LOGWX("Timed out");
-    else if (l < 0)
+        }
+    } else if (l < 0) {
         LOGE("Select failed");
+    }
     return l;
 }
 
 static int event_loop(struct state* const s) {
     struct frob_frame_fsm_state r = { .p = s->fs.ch[CHANNEL_FI_MAIN].buf };
     int ret = 0;
-    for (finit(&s->fs); (ret = fselect(&s->fs, &s->select_params)) > 0; fset(&s->fs)) {
+    for (finit(&s->fs); (ret = fselect(&s->fs, &s->select_params, s)) > 0; fset(&s->fs)) {
         perform_pending_io(s);
         for (enum channel i = CHANNEL_FIRST_INPUT; i <= CHANNEL_LAST_INPUT; i++) {
             if (s->fs.ch[i].fd >= 0 && FD_ISSET(s->fs.ch[i].fd, &s->fs.rset))
@@ -614,6 +630,7 @@ static void ucspi_adjust_if_detected(struct fstate* const f) {
 int main(const int ac, const char* av[static const ac]) {
     static struct state s = {
         .hm = {
+            [H_T1] = "T1" FS,
             [H_T2] = "T2" FS "170" FS "TEST" FS "SIM" FS "0" FS,
             [H_B2] = "B2" FS "170" FS "TEST" FS "SIM" FS "0" FS "0" FS "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" FS "00" FS,
             [H_T4] = "T4" FS "160" US "170" US FS,
@@ -653,7 +670,8 @@ int main(const int ac, const char* av[static const ac]) {
 
     s.select_params = (struct select_params) {
         .timeout_sec = ac == 2 ? atoi(av[1]) : 0,
-        .maxfd = get_max_fd(&s.fs.ch)
+        .maxfd = get_max_fd(&s.fs.ch),
+        .pings_on_inactivity = 2
     };
 
     if (event_loop(&s) == 0)
