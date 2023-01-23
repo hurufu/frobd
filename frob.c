@@ -428,6 +428,18 @@ static void perform_pending_write(const enum channel i, struct chstate* const ch
         return;
     // We shouldn't attempt to write 0 bytes
     assert(ch->cur > ch->buf);
+    switch (i) {
+        case CHANNEL_NO_PAYMENT:
+        case CHANNEL_NO_STORAGE:
+        case CHANNEL_NO_UI:
+        case CHANNEL_NO_EVENTS:
+        case CHANNEL_CO_MASTER:
+        case CHANNEL_FO_MAIN:
+            break;
+        default:
+            // We can write only to output channels
+            assert(false);
+    }
     // FIXME: Retry if we were unable to write all bytes
     const ssize_t s = write(ch->fd, ch->buf, ch->cur - ch->buf);
     if (s != ch->cur - ch->buf) {
@@ -467,11 +479,17 @@ static void perform_pending_read(const enum channel i, struct state* const s) {
                     s->select_params.timeout_sec = 1;
                 break;
             case CHANNEL_CI_MASTER:
+                // If console output channel is closed then we should close
+                // corresponding input channel as well
                 close(s->fs.ch[CHANNEL_CO_MASTER].fd);
                 s->fs.ch[CHANNEL_CO_MASTER].fd = -1;
                 break;
-            default:
+            case CHANNEL_II_SIGNAL:
+            case CHANNEL_NI_DEVICE:
                 break;
+            default:
+                // We can read only from input channels
+                assert(false);
         }
     } else {
         char tmp[3*r];
