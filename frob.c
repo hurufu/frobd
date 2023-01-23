@@ -304,22 +304,21 @@ static void start_master_channel(struct state* const s) {
     // TODO: I don't really know what is a good way to implement interactive console.
     //       It should be compatible with rlwrap (1) and it shouldn't interfere
     //       with s6-tcpserver4, because both use stdin/stdout.
-#   if 0
-    const char* const pts = ttyname(STDIN_FILENO);
-    // There is ctermid, with similar effect to ttyname, but works if stdin is redirected
-    const int fd = open(pts, O_RDWR);
-    if (fd == -1)
-        return LOGW("Couldn't start %s channel at %s", channel_to_string(CHANNEL_CI_MASTER), pts);
-    else
-        LOGIX("Master channel started at %s, but what will you do with it?", pts);
-    s->fs.ch[CHANNEL_CI_MASTER].fd = s->fs.ch[CHANNEL_CO_MASTER].fd = fd;
-#   else
-    s->fs.ch[CHANNEL_CI_MASTER].fd = STDIN_FILENO;
-    s->fs.ch[CHANNEL_CO_MASTER].fd = STDOUT_FILENO;
-#   endif
+    const char* pts = ttyname(STDIN_FILENO);
+    if (!pts) {
+        LOGW("stdin isn't a tty");
+        pts = ctermid(NULL);
+        const int fd = open(pts, O_RDWR);
+        s->fs.ch[CHANNEL_CI_MASTER].fd = s->fs.ch[CHANNEL_CO_MASTER].fd = fd;
+    } else {
+        s->fs.ch[CHANNEL_CI_MASTER].fd = STDIN_FILENO;
+        s->fs.ch[CHANNEL_CO_MASTER].fd = STDOUT_FILENO;
+    }
+    LOGIX("Master channel started at %s, but what will you do with it?", pts);
 
     sigdelset(&s->sigfdset, SIGINT);
-    s->fs.ch[CHANNEL_II_SIGNAL].fd = setup_signalfd(s->fs.ch[CHANNEL_II_SIGNAL].fd, s->sigfdset);
+    int* const sigfd = &s->fs.ch[CHANNEL_II_SIGNAL].fd;
+    *sigfd = setup_signalfd(*sigfd, s->sigfdset);
     s->select_params.maxfd = get_max_fd(&s->fs.ch);
 
     sigset_t tmp;
@@ -328,7 +327,7 @@ static void start_master_channel(struct state* const s) {
     if (sigprocmask(SIG_UNBLOCK, &tmp, NULL) != 0)
         LOGF("Can't unblock received singal");
 
-    MCOPY(s->fs.ch[CHANNEL_CO_MASTER].cur, "Press ^C again to exit the program or ^D to close master channel (and go back to normal)...\n");
+    MCOPY(s->fs.ch[CHANNEL_CO_MASTER].cur, "Press ^C again to exit the program or ^D end interactive session...\n");
     commission_prompt(s);
 }
 
@@ -449,43 +448,48 @@ static void perform_pending_write(const enum channel i, struct chstate* const ch
     ch->cur = ch->buf;
 }
 
-static void perform_pending_read(const enum channel i,  struct chstate* const ch, fd_set* const rset, int* const sigfd, const sigset_t sigfdset) {
-    const ssize_t s = read(ch->fd, ch->cur, ch->buf + sizeof ch->buf - ch->cur);
-    if (s < 0) {
+static void perform_pending_read(const enum channel i, struct state* const s) {
+    struct chstate* const ch = &s->fs.ch[i];
+    const ssize_t r = read(ch->fd, ch->cur, ch->buf + sizeof ch->buf - ch->cur);
+    if (r < 0) {
         LOGF("Can't read data on %s channel (fd %d)", channel_to_string(i), ch->fd);
-    } else if (s == 0) {
+    } else if (r == 0) {
         LOGIX("Channel %s (fd %d) was closed", channel_to_string(i), ch->fd);
         close(ch->fd);
-        FD_CLR(ch->fd, rset);
+        FD_CLR(ch->fd, &s->fs.rset);
+        ch->fd = -1;
         switch (i) {
             case CHANNEL_FI_MAIN:
-                // TODO: Set timer to some small value or in some other wise schedule program to exit in a short time
+                // If main channel is closed by remote side then the only
+                // meaningful thing we can do is to exit gracefully after all
+                // pending writes are done by setting timeout to a small value.
+                s->select_params.timeout_sec = 1;
                 break;
             case CHANNEL_CI_MASTER:
-                *sigfd = setup_signalfd(*sigfd, sigfdset);
+                close(s->fs.ch[CHANNEL_CO_MASTER].fd);
+                s->fs.ch[CHANNEL_CO_MASTER].fd = -1;
                 break;
             default:
                 break;
         }
-        ch->fd = -1;
     } else {
-        char tmp[3*s];
-        LOGDX("→ %c %zu\t%s", channel_to_code(i), s, PRETTV(ch->cur, ch->cur + s, tmp));
+        char tmp[3*r];
+        LOGDX("→ %c %zu\t%s", channel_to_code(i), r, PRETTV(ch->cur, ch->cur + r, tmp));
     }
-    ch->cur += s;
+    ch->cur += r;
 }
 
-static void perform_pending_io(struct fstate* const f, const sigset_t sigfdset) {
+static void perform_pending_io(struct state* const s) {
     for (enum channel i = CHANNEL_FIRST; i <= CHANNEL_LAST; i++) {
-        if (FD_ISSET(f->ch[i].fd, &f->eset))
+        if (FD_ISSET(s->fs.ch[i].fd, &s->fs.eset))
             LOGFX("Exceptional data isn't supported");
-        if (FD_ISSET(f->ch[i].fd, &f->wset))
-            perform_pending_write(i, &f->ch[i]);
-        if (FD_ISSET(f->ch[i].fd, &f->rset))
-            perform_pending_read(i, &f->ch[i], &f->rset, &f->ch[CHANNEL_II_SIGNAL].fd, sigfdset);
+        if (FD_ISSET(s->fs.ch[i].fd, &s->fs.wset))
+            perform_pending_write(i, &s->fs.ch[i]);
+        if (FD_ISSET(s->fs.ch[i].fd, &s->fs.rset))
+            perform_pending_read(i, s);
     }
     for (enum channel i = CHANNEL_FIRST; i <= CHANNEL_LAST; i++)
-        FD_CLR(f->ch[i].fd, &f->wset);
+        FD_CLR(s->fs.ch[i].fd, &s->fs.wset);
 }
 
 static void fset(struct fstate* const f) {
@@ -532,7 +536,7 @@ static int event_loop(struct state* const s) {
     struct frob_frame_fsm_state r = { .p = s->fs.ch[CHANNEL_FI_MAIN].buf };
     int ret = 0;
     for (finit(&s->fs); (ret = fselect(&s->fs, &s->select_params)) > 0; fset(&s->fs)) {
-        perform_pending_io(&s->fs, s->sigfdset);
+        perform_pending_io(s);
         for (enum channel i = CHANNEL_FIRST_INPUT; i <= CHANNEL_LAST_INPUT; i++) {
             if (s->fs.ch[i].fd >= 0 && FD_ISSET(s->fs.ch[i].fd, &s->fs.rset))
                 process_channel(i, s, &r);
