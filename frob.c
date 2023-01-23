@@ -424,12 +424,7 @@ static void perform_pending_write(const enum channel i, struct chstate* const ch
     // We shouldn't attempt to write 0 bytes
     assert(ch->cur > ch->buf);
     switch (i) {
-        case CHANNEL_NO_PAYMENT:
-        case CHANNEL_NO_STORAGE:
-        case CHANNEL_NO_UI:
-        case CHANNEL_NO_EVENTS:
-        case CHANNEL_CO_MASTER:
-        case CHANNEL_FO_MAIN:
+        case CHANNEL_FIRST_OUTPUT ... CHANNEL_LAST_OUTPUT:
             break;
         default:
             // We can write only to output channels
