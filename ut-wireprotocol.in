@@ -16,7 +16,9 @@
 static void test_header(const size_t bs, const byte_t buf[static bs],
                         const enum FrobMessageType expected_type,
                         const byte_t (*expected_token)[3]) {
-    const struct frob_header hdr = frob_header_extract(&buf, buf + bs - 1);
+    struct frob_header hdr;
+    const int ret = frob_header_extract(&buf, buf + bs - 1, &hdr);
+    ck_assert_int_eq(ret, 0);
     ck_assert_int_eq(hdr.type, expected_type);
     ck_assert_mem_eq(hdr.token, *expected_token, elementsof(*expected_token));
 }
