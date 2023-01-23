@@ -30,7 +30,7 @@ extern enum LogLevel g_log_level;
 #   define LOGW(Fmt, ...) (LOG_WARNING > g_log_level ? NOOP : warn("W %s:%d\t" Fmt, __FILE__, __LINE__, ##__VA_ARGS__))
 #   define LOGE(Fmt, ...) (LOG_ERROR   > g_log_level ? NOOP : warn("E %s:%d\t" Fmt, __FILE__, __LINE__, ##__VA_ARGS__))
 #   define LOG_X(Level, Prefix, Fmt, ...) (Level > g_log_level ? NOOP : warnx(Prefix " %s:%d\t" Fmt, __FILE__, __LINE__, ##__VA_ARGS__))
-#   define LOGF_(ErrFunction, Fmt, ...) (LOG_FATAL > g_log_level ? NOOP : ErrFunction (EXIT_FAILURE, "F %s:%d\t" Fmt, __FILE__, __LINE__, ##__VA_ARGS__))
+#   define LOGF_(ErrFunction, Fmt, ...) (LOG_FATAL > g_log_level ? exit(EXIT_FAILURE) : ErrFunction (EXIT_FAILURE, "F %s:%d\t" Fmt, __FILE__, __LINE__, ##__VA_ARGS__))
 #else
 #   define LOGW(Fmt, ...) NOOP
 #   define LOGE(Fmt, ...) NOOP
