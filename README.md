@@ -17,10 +17,12 @@ the source tree. This will be rectified in the future.
 make && make test
 ```
 
-#### Start TCP server (requires `s6-networking` package)
+#### Start TCP server/client (requires `s6-networking` package)
 
 ```shell
-make tcp
+make tcp-server
+# or
+make tcp-client
 ```
 
 #### Show frame matching FSM diagram (requires additionally `graphviz` and `feh`)
