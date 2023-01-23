@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <ctype.h>
 
 byte_t hex2nibble(const char h) {
     switch (h) {
@@ -30,4 +31,12 @@ const char* snprintfx(char* const buf, const size_t s, const char* const fmt, ..
             errno = ENOBUFS;
     }
     LOGF("vsnprintf failed");
+}
+
+const char* trim_whitespaces(char* s) {
+    while (isspace(*s))
+        s++;
+    for (char* end = s + strlen(s) - 1; end > s && isspace(*end); end--)
+        *end = '\0';
+    return s;
 }

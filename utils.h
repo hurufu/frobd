@@ -44,10 +44,18 @@ typedef uint8_t byte_t;
 #define min(A, B) (A < B ? A : B)
 
 // Used to simplify access to environment variables with computed names
-#define getenvfx(Buf, Size, Fmt, ...) getenv(snprintfx(Buf, Size, Fmt, __VA_ARGS__))
+#define getenvfx(Buf, Size, Fmt, ...) ({\
+    char* const v = getenv(snprintfx(Buf, Size, Fmt, __VA_ARGS__));\
+    if (v)\
+        trim_whitespaces(v);\
+    v;\
+})
 
 byte_t hex2nibble(char h);
 byte_t unhex(const char h[static 2]);
 
 // Same as snprintf, but returns buf and aborts on error
 const char* snprintfx(char* buf, size_t s, const char* fmt, ...);
+
+// Removes leading and trailing whitespaces in places. Returns pointer to the first non-whitespace character
+const char* trim_whitespaces(char* s);

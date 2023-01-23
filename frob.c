@@ -263,7 +263,7 @@ static int commission_message(struct state* const st, const struct frob_msg* con
     if (dst == CHANNEL_FO_MAIN) {
         const enum hardcoded_message h = choose_hardcoded_response(received_msg->header.type);
         if (h == H_NONE)
-            return LOGEX("No hardcoded response for message %s", frob_message_to_string(received_msg->header.type)), -1;
+            return LOGDX("Message %s concludes communication sequence", frob_message_to_string(received_msg->header.type)), 0;
         // Reply with hardcoded response
         res = place_frame(free_space, ch->cur, &received_msg->header.token, st->hm[h]);
     } else {
