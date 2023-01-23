@@ -3,6 +3,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdint.h>
+#include <stddef.h>
 
 #define STX "\x02"
 #define ETX "\x03"
@@ -21,7 +22,7 @@ typedef uint8_t byte_t;
     Dst += elementsof(Src);\
 } while (0)
 
-#define COPY(Dest, Start, End) memcpy((Dest), Start, min(End - Start, elementsof(Dest)))
+#define COPY(Dest, Start, End) memcpy((Dest), Start, min(End - Start, (ptrdiff_t)elementsof(Dest)))
 #define UNHEX(Dest, Start, End) do {\
     char* dst = Dest;\
     for (const char* src = Start; src < End; src += 2) {\

@@ -30,5 +30,9 @@ int frob_extract_additional_attributes(const byte_t** pp, const byte_t* pe, char
         write exec;
     }%%
     *pp = p;
+    // TODO: Use the following variables
+    (void)frob_attrs_en_main;
+    (void)frob_attrs_error;
+    (void)frob_attrs_first_final;
     return cs < %%{ write first_final; }%% ? ENOTRECOVERABLE : 0;
 }
