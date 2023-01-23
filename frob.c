@@ -14,6 +14,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/resource.h>
 
 #ifndef IO_BUF_SIZE
 #   define IO_BUF_SIZE (4 * 1024)
@@ -639,6 +640,12 @@ int main(const int ac, const char* av[static const ac]) {
             }
         }
     };
+
+    // This will force syscalls that allocate file descriptors to fail if it
+    // doesn't fit into fd_set, so we don't have to check for that in the code.
+    if (setrlimit(RLIMIT_NOFILE, &(struct rlimit){ .rlim_cur = FD_SETSIZE, .rlim_max = FD_SETSIZE }) != 0)
+        LOGF("setrlimit");
+
     s.sigfdset = adjust_signal_delivery(&s.fs.ch[CHANNEL_II_SIGNAL].fd);
     //s.channel[CHANNEL_NO_PAYMENT] = open("payment", O_WRONLY | O_CLOEXEC);
 
