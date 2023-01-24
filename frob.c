@@ -64,6 +64,8 @@ struct state {
     // Signals to be handled by signalfd
     sigset_t sigfdset;
 
+    int ack;
+
     struct fstate {
         fd_set eset;
         fd_set wset;
@@ -276,22 +278,25 @@ static int commission_message(struct state* const st, const struct frob_msg* con
         return LOGEX("Failed to place message %s: %s", frob_message_to_string(received_msg->header.type), strerror(-res)), -1;
     ch->cur += res;
     FD_SET(ch->fd, &st->fs.wset);
+    st->ack = 1;
     return 0;
 };
 
 static void commission_prompt(struct state* const st) {
     struct chstate* const ch = &st->fs.ch[CHANNEL_CO_MASTER];
-    MCOPY(ch->cur, "> ");
+    MCOPY(ch->cur, "\n> ");
     FD_SET(ch->fd, &st->fs.wset);
 }
 
 static int setup_signalfd(const int ch, const sigset_t blocked) {
     if (sigprocmask(SIG_BLOCK, &blocked, NULL) != 0)
         LOGF("Couldn't adjust signal mask");
-    const int ret = signalfd(ch, &blocked, SFD_CLOEXEC);
-    if (ret == -1)
+    const int fd = signalfd(ch, &blocked, SFD_CLOEXEC);
+    if (fd == -1)
         LOGF("Couldn't setup sigfd for %d", ch);
-    return ret;
+    if (fd >= FD_SETSIZE)
+        LOGF("Too many open files");
+    return fd;
 }
 
 static int get_max_fd(const struct chstate (* const ch)[CHANNEL_COUNT]) {
@@ -311,6 +316,8 @@ static void start_master_channel(struct state* const s) {
         LOGW("stdin isn't a tty");
         pts = ctermid(NULL);
         const int fd = open(pts, O_RDWR);
+        if (fd >= FD_SETSIZE)
+            LOGF("Too many open files");
         s->fs.ch[CHANNEL_CI_MASTER].fd = s->fs.ch[CHANNEL_CO_MASTER].fd = fd;
     } else {
         s->fs.ch[CHANNEL_CI_MASTER].fd = STDIN_FILENO;
@@ -379,13 +386,11 @@ static void process_master(struct state* const s) {
 }
 
 static void process_main(struct state* const s, struct frob_frame_fsm_state* const f) {
-    // Disarm any pending re-transmission alarm
-    alarm(0);
     int e;
     for (f->pe = s->fs.ch[CHANNEL_FI_MAIN].cur; (e = frob_frame_process(f)) != EAGAIN; *f = fnext(s->fs.ch[CHANNEL_FI_MAIN].cur, *f)) {
         // Message length shall be positive
         assert(f->pe > f->p);
-        const byte_t ack[] = { e ? 0x15 : 0x06 };
+        const byte_t ack[] = { e ? NAK : ACK };
         *s->fs.ch[CHANNEL_FO_MAIN].cur++ = ack[0];
         FD_SET(s->fs.ch[CHANNEL_FO_MAIN].fd, &s->fs.wset);
         if (0 == e) {
@@ -422,33 +427,27 @@ static void process_channel(const enum channel c, struct state* const s, struct 
     }
 }
 
-static void perform_pending_write(const enum channel i, struct chstate* const ch) {
+static void perform_pending_write(const enum channel i, struct chstate* const ch, const int ack) {
     // We shouldn't attempt to write 0 bytes
     assert(ch->cur > ch->buf);
+    // We can write only to output channels
     switch (i) {
         case CHANNEL_FIRST_OUTPUT ... CHANNEL_LAST_OUTPUT:
             break;
         default:
-            // We can write only to output channels
             assert(false);
     }
-    // FIXME: select works on file descriptors and not on channels, so when same fd is assigned to
-    //        different channels then the first channel (which may be empty) will be used and then
-    //        the whole fd will be cleared causing data loss on the other channel
-    if (ch->cur == ch->buf)
-        return;
-    // FIXME: Retry if we were unable to write all bytes
-    const ssize_t s = write(ch->fd, ch->buf, ch->cur - ch->buf);
-    if (s != ch->cur - ch->buf) {
-        LOGF("Can't write %td bytes to %s channel (fd %d)", ch->cur - ch->buf, channel_to_string(i), ch->fd);
+    const ptrdiff_t l = ch->cur - ch->buf;
+    const ssize_t s = write(ch->fd, ch->buf, l);
+    if (s != l) {
+        LOGF("Can't write %td bytes to %s channel (fd %d)", l, channel_to_string(i), ch->fd);
     } else {
-        // Not just ACK/NAK alone – very bad heuristic
-        if (ch->cur - ch->buf > 1 && i == CHANNEL_FI_MAIN) {
+        if (ack == 1 && i == CHANNEL_FO_MAIN) {
             const unsigned int prev = alarm(3);
-            // FIXME: Enforce that only single message can be sent at a time until ACK/NAK wasn't received
             if (prev != 0)
                 LOGWX("Duplicated alram scheduled. Previous was ought to be delivered in %us", prev);
-            //assertion("Only singal active timeout is expected", prev == 0);
+            // Only one active timeout is expected
+            assert(prev == 0);
         }
         char tmp[3*s];
         LOGDX("← %c %zu\t%s", channel_to_code(i), s, PRETTV(ch->buf, ch->cur, tmp));
@@ -489,6 +488,17 @@ static void perform_pending_read(const enum channel i, struct state* const s) {
                 assert(false);
         }
     } else {
+        if (s->ack) {
+            switch (ch->cur[0]) {
+                case ACK:
+                case NAK:
+                    alarm(0);
+                    s->ack = false;
+                    break;
+                default:
+                    break;
+            }
+        }
         char tmp[3*r];
         LOGDX("→ %c %zu\t%s", channel_to_code(i), r, PRETTV(ch->cur, ch->cur + r, tmp));
     }
@@ -497,21 +507,23 @@ static void perform_pending_read(const enum channel i, struct state* const s) {
 
 static void perform_pending_io(struct state* const s) {
     for (enum channel i = CHANNEL_FIRST; i <= CHANNEL_LAST; i++) {
-        if (FD_ISSET(s->fs.ch[i].fd, &s->fs.eset))
+        const int fd = s->fs.ch[i].fd;
+        if (fd < 0 || fd >= FD_SETSIZE)
+            continue;
+        if (FD_ISSET(fd, &s->fs.eset))
             LOGFX("Exceptional data isn't supported");
-        if (FD_ISSET(s->fs.ch[i].fd, &s->fs.wset))
-            perform_pending_write(i, &s->fs.ch[i]);
-        if (FD_ISSET(s->fs.ch[i].fd, &s->fs.rset))
+        if (FD_ISSET(fd, &s->fs.wset))
+            perform_pending_write(i, &s->fs.ch[i], s->ack);
+        if (FD_ISSET(fd, &s->fs.rset))
             perform_pending_read(i, s);
+        FD_CLR(fd, &s->fs.wset);
     }
-    for (enum channel i = CHANNEL_FIRST; i <= CHANNEL_LAST; i++)
-        FD_CLR(s->fs.ch[i].fd, &s->fs.wset);
 }
 
 static void fset(struct fstate* const f) {
     for (enum channel i = CHANNEL_NO_PAYMENT; i < CHANNEL_COUNT; i++) {
         const int fd = f->ch[i].fd;
-        if (fd == -1 || fd >= FD_SETSIZE)
+        if (fd < 0 || fd >= FD_SETSIZE)
             continue;
         FD_SET(fd, &f->eset);
         switch (i) {
