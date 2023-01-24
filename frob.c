@@ -51,8 +51,14 @@ enum hardcoded_message {
     H_NONE = -1, H_T1, H_T2, H_T4, H_T5, H_D5, H_B2, H_S2, H_K0, H_K1, H_COUNT
 };
 
+enum role {
+    ROLE_ECR,
+    ROLE_EFT
+};
+
 struct state {
     const char* hm[H_COUNT];
+    const enum role role;
 
     struct statistics {
         unsigned short received_good,
@@ -522,6 +528,16 @@ static void perform_pending_io(struct state* const s) {
     }
 }
 
+static int compute_next_token(const enum role r, char (*t)[6]) {
+    // TODO: Token shall be persitent across restarts
+    // FIXME: Specification doesn't define what to do in case of token overflow
+    static unsigned int token = 0;
+    const unsigned int offset = r == ROLE_ECR ? 10000 : 20000;
+    const int s = snprintf(*t, sizeof *t, "%X", token + offset);
+    token = (token + 1) % offset;
+    return s < 0;
+}
+
 static void fset(struct fstate* const f) {
     for (enum channel i = CHANNEL_NO_PAYMENT; i < CHANNEL_COUNT; i++) {
         const int fd = f->ch[i].fd;
@@ -559,13 +575,14 @@ redo:
         } else if (s->pings_on_inactivity) {
             struct chstate* const ch = &st->fs.ch[CHANNEL_FO_MAIN];
             const ptrdiff_t free_space = ch->buf + elementsof(ch->buf) - ch->cur;
-            // TODO: Generate token
-            const int res = place_frame(free_space, ch->cur, &"00100", st->hm[H_T1]);
+            char token[6];
+            if (compute_next_token(st->role, &token))
+                LOGF("Can't compute next token");
+            const int res = place_frame(free_space, ch->cur, &token, st->hm[H_T1]);
             if (res < 0)
                 LOGF("Can't send ping");
             ch->cur += res;
             FD_SET(ch->fd, &st->fs.wset);
-            // TODO: Reset counter on successful pong (T2)
             s->pings_on_inactivity--;
             goto redo;
         } else {
@@ -643,6 +660,7 @@ static void ucspi_adjust_if_detected(struct fstate* const f) {
 
 int main(const int ac, const char* av[static const ac]) {
     static struct state s = {
+        .role = ROLE_EFT,
         .hm = {
             [H_T1] = "T1" FS,
             [H_T2] = "T2" FS "170" FS "TEST" FS "SIM" FS "0" FS,
