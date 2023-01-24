@@ -566,8 +566,8 @@ static void finit(struct fstate* const f) {
 }
 
 static int fselect(struct fstate* const f, struct select_params* const s, struct state* const st) {
-    struct timeval t = { .tv_sec = s->timeout_sec };
 redo:
+    struct timeval t = { .tv_sec = s->timeout_sec };
     const int l = select(s->maxfd, &f->rset, &f->wset, &f->eset, (s->timeout_sec < 0 ? NULL : &t));
     if (l == 0) {
         if (s->timeout_sec == 0) {
