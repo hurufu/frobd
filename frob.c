@@ -265,6 +265,8 @@ static int commission_message(struct state* const st, const struct frob_msg* con
 
     int res;
     if (dst == CHANNEL_FO_MAIN) {
+        if (received_msg->header.type == FROB_T2)
+            st->select_params.pings_on_inactivity++;
         const enum hardcoded_message h = choose_hardcoded_response(received_msg->header.type);
         if (h == H_NONE)
             return LOGDX("Message %s concludes communication sequence", frob_message_to_string(received_msg->header.type)), 0;
@@ -369,7 +371,7 @@ static void process_signal(struct state* const s) {
             break;
         case SIGALRM:
             // TODO: Reschedule last message, but only if underlying fd isn't already closed
-            LOGWX("Can't re-transmit: %s", strerror(ENOSYS));
+            LOGDX("Retransmission isn't implemented yet");
             break;
         case SIGPWR:
             print_stats(&s->stats);
@@ -558,7 +560,7 @@ redo:
             struct chstate* const ch = &st->fs.ch[CHANNEL_FO_MAIN];
             const ptrdiff_t free_space = ch->buf + elementsof(ch->buf) - ch->cur;
             // TODO: Generate token
-            const int res = place_frame(free_space, ch->cur, &"00000", st->hm[H_T1]);
+            const int res = place_frame(free_space, ch->cur, &"00100", st->hm[H_T1]);
             if (res < 0)
                 LOGF("Can't send ping");
             ch->cur += res;
