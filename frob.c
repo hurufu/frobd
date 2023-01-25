@@ -481,6 +481,8 @@ static void perform_pending_read(const enum channel i, struct state* const s) {
                 // pending writes are done by setting timeout to a small value.
                 if (s->select_params.timeout_sec != 0)
                     s->select_params.timeout_sec = 1;
+                close(s->fs.ch[CHANNEL_FO_MAIN].fd);
+                s->fs.ch[CHANNEL_FO_MAIN].fd = -1;
                 break;
             case CHANNEL_CI_MASTER:
                 // If console output channel is closed then we should close
@@ -572,7 +574,7 @@ redo:
     if (l == 0) {
         if (s->timeout_sec == 0) {
             LOGIX("Single-shot mode ended");
-        } else if (s->pings_on_inactivity) {
+        } else if (s->pings_on_inactivity && st->fs.ch[CHANNEL_FI_MAIN].fd >= 0) {
             struct chstate* const ch = &st->fs.ch[CHANNEL_FO_MAIN];
             const ptrdiff_t free_space = ch->buf + elementsof(ch->buf) - ch->cur;
             char token[6];
@@ -599,10 +601,9 @@ static int event_loop(struct state* const s) {
     int ret = 0;
     for (finit(&s->fs); (ret = fselect(&s->fs, &s->select_params, s)) > 0; fset(&s->fs)) {
         perform_pending_io(s);
-        for (enum channel i = CHANNEL_FIRST_INPUT; i <= CHANNEL_LAST_INPUT; i++) {
+        for (enum channel i = CHANNEL_FIRST_INPUT; i <= CHANNEL_LAST_INPUT; i++)
             if (s->fs.ch[i].fd >= 0 && FD_ISSET(s->fs.ch[i].fd, &s->fs.rset))
                 process_channel(i, s, &r);
-        }
     }
     // Event loop shall end only on error/timeout/interrupt
     assert(ret <= 0);
