@@ -80,7 +80,7 @@ enum FrobMessageType {
 
 struct frob_header {
     enum FrobMessageType type;
-    char token[6];
+    char token[6]; // FIXME: Replace with unsigned int
 };
 
 enum FrobTransactionStatus {

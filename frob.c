@@ -72,6 +72,8 @@ struct state {
 
     int ack;
 
+    unsigned short pings_on_inactivity_left;
+
     struct fstate {
         fd_set eset;
         fd_set wset;
@@ -86,7 +88,6 @@ struct state {
     struct select_params {
         short maxfd;
         short timeout_sec;
-        unsigned short pings_on_inactivity;
     } select_params;
 };
 
@@ -183,6 +184,7 @@ static ssize_t place_message(const size_t s, input_t cur[static const s], const 
     // Magic string should match
     assert(strcmp(msg->magic, FROB_MAGIC) == 0);
 
+    // TODO: Consider aborting on error
     if (sizeof *msg >= s)
         return -ENOBUFS;
     memcpy(cur, msg, sizeof *msg);
@@ -191,6 +193,7 @@ static ssize_t place_message(const size_t s, input_t cur[static const s], const 
 
 static ssize_t place_frame(const size_t s, input_t cur[static const s], const char (* const token)[6], const char* const body) {
     const int ret = snprintf((char*)cur, s, STX "%.6s" FS "%s" ETX "_", *token, body);
+    // TODO: Consider aborting on error
     if (ret < 0)
         return -errno;
     else if ((unsigned)ret >= s)
@@ -261,6 +264,15 @@ static enum hardcoded_message choose_hardcoded_response(const enum FrobMessageTy
     return -1;
 }
 
+static void compute_next_token(const enum role r, char (*t)[6]) {
+    static unsigned int token = 0;
+    const unsigned int offset = r == ROLE_ECR ? 10000 : 20000;
+    snprintfx(*t, sizeof *t, "%X", token + offset);
+
+    // Specification doesn't define what to do in case of token overflow
+    token = (token + 1) % offset;
+}
+
 static int commission_message(struct state* const st, const struct frob_msg* const received_msg) {
     const enum channel dst = choose_destination(&st->fs, received_msg);
     struct chstate* const ch = &st->fs.ch[dst];
@@ -272,7 +284,7 @@ static int commission_message(struct state* const st, const struct frob_msg* con
     int res;
     if (dst == CHANNEL_FO_MAIN) {
         if (received_msg->header.type == FROB_T2)
-            st->select_params.pings_on_inactivity++;
+            st->pings_on_inactivity_left++;
         const enum hardcoded_message h = choose_hardcoded_response(received_msg->header.type);
         if (h == H_NONE)
             return LOGDX("Message %s concludes communication sequence", frob_message_to_string(received_msg->header.type)), 0;
@@ -296,14 +308,26 @@ static void commission_prompt(struct state* const st) {
     FD_SET(ch->fd, &st->fs.wset);
 }
 
+static int commission_ping(struct state* const s) {
+    struct chstate* const ch = &s->fs.ch[CHANNEL_FO_MAIN];
+    if (ch->fd < 0)
+        return 0;
+    char token[6];
+    compute_next_token(s->role, &token);
+    const int res = place_frame(lastof(ch->buf) - ch->cur, ch->cur, &token, "T1" FS);
+    if (res < 0)
+        LOGF("Can't send ping");
+    ch->cur += res;
+    FD_SET(ch->fd, &s->fs.wset);
+    return s->pings_on_inactivity_left--;
+}
+
 static int setup_signalfd(const int ch, const sigset_t blocked) {
     if (sigprocmask(SIG_BLOCK, &blocked, NULL) != 0)
         LOGF("Couldn't adjust signal mask");
     const int fd = signalfd(ch, &blocked, SFD_CLOEXEC);
     if (fd == -1)
         LOGF("Couldn't setup sigfd for %d", ch);
-    if (fd >= FD_SETSIZE)
-        LOGF("Too many open files");
     return fd;
 }
 
@@ -324,8 +348,6 @@ static void start_master_channel(struct state* const s) {
         LOGW("stdin isn't a tty");
         pts = ctermid(NULL);
         const int fd = open(pts, O_RDWR);
-        if (fd >= FD_SETSIZE)
-            LOGF("Too many open files");
         s->fs.ch[CHANNEL_CI_MASTER].fd = s->fs.ch[CHANNEL_CO_MASTER].fd = fd;
     } else {
         s->fs.ch[CHANNEL_CI_MASTER].fd = STDIN_FILENO;
@@ -518,7 +540,7 @@ static void perform_pending_read(const enum channel i, struct state* const s) {
 static void perform_pending_io(struct state* const s) {
     for (enum channel i = CHANNEL_FIRST; i <= CHANNEL_LAST; i++) {
         const int fd = s->fs.ch[i].fd;
-        if (fd < 0 || fd >= FD_SETSIZE)
+        if (fd < 0)
             continue;
         if (FD_ISSET(fd, &s->fs.eset))
             LOGFX("Exceptional data isn't supported");
@@ -530,84 +552,40 @@ static void perform_pending_io(struct state* const s) {
     }
 }
 
-static int compute_next_token(const enum role r, char (*t)[6]) {
-    // TODO: Token shall be persitent across restarts
-    // FIXME: Specification doesn't define what to do in case of token overflow
-    static unsigned int token = 0;
-    const unsigned int offset = r == ROLE_ECR ? 10000 : 20000;
-    const int s = snprintf(*t, sizeof *t, "%X", token + offset);
-    token = (token + 1) % offset;
-    return s < 0;
-}
-
-static void fset(struct fstate* const f) {
-    for (enum channel i = CHANNEL_NO_PAYMENT; i < CHANNEL_COUNT; i++) {
+static void reset_fdsets(struct fstate* const f) {
+    for (enum channel i = CHANNEL_FIRST; i <= CHANNEL_LAST; i++) {
         const int fd = f->ch[i].fd;
-        if (fd < 0 || fd >= FD_SETSIZE)
+        if (fd < 0)
             continue;
         FD_SET(fd, &f->eset);
-        switch (i) {
-            case CHANNEL_NI_DEVICE:
-            case CHANNEL_FI_MAIN:
-            case CHANNEL_CI_MASTER:
-            case CHANNEL_II_SIGNAL:
-                FD_SET(fd, &f->rset);
-            default:
-                break;
-        }
+        if (i >= CHANNEL_FIRST_INPUT && i <= CHANNEL_LAST_INPUT)
+            FD_SET(fd, &f->rset);
     }
 }
 
-static void finit(struct fstate* const f) {
-    FD_ZERO(&f->eset);
-    FD_ZERO(&f->wset);
-    FD_ZERO(&f->eset);
-    for (enum channel i = CHANNEL_NO_PAYMENT; i < CHANNEL_COUNT; i++)
-        f->ch[i].cur = f->ch[i].buf;
-    fset(f);
-}
-
-static int fselect(struct fstate* const f, struct select_params* const s, struct state* const st) {
-redo:
-    struct timeval t = { .tv_sec = s->timeout_sec };
-    const int l = select(s->maxfd, &f->rset, &f->wset, &f->eset, (s->timeout_sec < 0 ? NULL : &t));
-    if (l == 0) {
-        if (s->timeout_sec == 0) {
-            LOGIX("Single-shot mode ended");
-        } else if (s->pings_on_inactivity && st->fs.ch[CHANNEL_FI_MAIN].fd >= 0) {
-            struct chstate* const ch = &st->fs.ch[CHANNEL_FO_MAIN];
-            const ptrdiff_t free_space = ch->buf + elementsof(ch->buf) - ch->cur;
-            char token[6];
-            if (compute_next_token(st->role, &token))
-                LOGF("Can't compute next token");
-            const int res = place_frame(free_space, ch->cur, &token, st->hm[H_T1]);
-            if (res < 0)
-                LOGF("Can't send ping");
-            ch->cur += res;
-            FD_SET(ch->fd, &st->fs.wset);
-            s->pings_on_inactivity--;
-            goto redo;
-        } else {
-            LOGWX("Timed out");
+static int wait_for_io(struct state* const s) {
+    struct timeval t = { .tv_sec = s->select_params.timeout_sec };
+    reset_fdsets(&s->fs);
+    const int l = select(s->select_params.maxfd, &s->fs.rset, &s->fs.wset, &s->fs.eset, (s->select_params.timeout_sec < 0 ? NULL : &t));
+    if (l < 0 || (l == 0 && s->select_params.timeout_sec != 0)) {
+        if (l == 0) {
+            errno = ETIMEDOUT;
+            if (s->pings_on_inactivity_left)
+                return commission_ping(s);
         }
-    } else if (l < 0) {
-        LOGE("Select failed");
+        LOGF("select");
     }
     return l;
 }
 
-static int event_loop(struct state* const s) {
+static void event_loop(struct state* const s) {
     struct frob_frame_fsm_state r = { .p = s->fs.ch[CHANNEL_FI_MAIN].buf };
-    int ret = 0;
-    for (finit(&s->fs); (ret = fselect(&s->fs, &s->select_params, s)) > 0; fset(&s->fs)) {
+    while (wait_for_io(s)) {
         perform_pending_io(s);
         for (enum channel i = CHANNEL_FIRST_INPUT; i <= CHANNEL_LAST_INPUT; i++)
             if (s->fs.ch[i].fd >= 0 && FD_ISSET(s->fs.ch[i].fd, &s->fs.rset))
                 process_channel(i, s, &r);
     }
-    // Event loop shall end only on error/timeout/interrupt
-    assert(ret <= 0);
-    return ret;
 }
 
 static sigset_t adjust_signal_delivery(int* const ch) {
@@ -653,10 +631,27 @@ static const char* ucspi_adjust(const char* const proto, struct fstate* const f)
     return connnum;
 }
 
-static void ucspi_adjust_if_detected(struct fstate* const f) {
+static void initialize(struct state* const s, const int ac, const char* av[static const ac]) {
+    s->pings_on_inactivity_left = 2;
+    for (enum channel i = CHANNEL_FIRST; i <= CHANNEL_LAST; i++) {
+        s->fs.ch[i].fd = -1;
+        s->fs.ch[i].cur = s->fs.ch[i].buf;
+    }
+    s->sigfdset = adjust_signal_delivery(&s->fs.ch[CHANNEL_II_SIGNAL].fd);
+    s->fs.ch[CHANNEL_FO_MAIN].fd = STDOUT_FILENO;
+    s->fs.ch[CHANNEL_FI_MAIN].fd = STDIN_FILENO;
+    if ((s->fs.ch[CHANNEL_NO_PAYMENT].fd = open("./payment", O_WRONLY | O_CLOEXEC)) == -1)
+        LOGI("%s channel not available at %s", channel_to_string(CHANNEL_NO_PAYMENT), "./payment");
     const char* const proto = getenv("PROTO");
     if (proto)
-        ucspi_log(proto, ucspi_adjust(proto, f));
+        ucspi_log(proto, ucspi_adjust(proto, &s->fs));
+    FD_ZERO(&s->fs.eset);
+    FD_ZERO(&s->fs.wset);
+    FD_ZERO(&s->fs.eset);
+    s->select_params = (struct select_params) {
+        .timeout_sec = ac == 2 ? atoi(av[1]) : 0,
+        .maxfd = get_max_fd(&s->fs.ch),
+    };
 }
 
 int main(const int ac, const char* av[static const ac]) {
@@ -674,40 +669,16 @@ int main(const int ac, const char* av[static const ac]) {
                     FS "0" FS "0" FS "0" FS FS FS "4" FS "9999" FS "4" FS "15"
                     FS "ENTER" US "CANCEL" US "CHECK" US "BACKSPACE" US "DELETE" US "UP" US "DOWN" US "LEFT" US "RIGHT" US
                     FS "1" FS "1" FS "1" FS "0" FS
-        },
-        .fs = {
-            .ch = {
-                [CHANNEL_FO_MAIN]    = { .fd = STDOUT_FILENO },
-                [CHANNEL_FI_MAIN]    = { .fd = STDIN_FILENO },
-                [CHANNEL_NO_PAYMENT] = { .fd = -1 },
-                [CHANNEL_NO_STORAGE] = { .fd = -1 },
-                [CHANNEL_NO_UI]      = { .fd = -1 },
-                [CHANNEL_NO_EVENTS]  = { .fd = -1 },
-                [CHANNEL_CO_MASTER]  = { .fd = -1 },
-                [CHANNEL_II_SIGNAL]  = { .fd = -1 },
-                [CHANNEL_CI_MASTER]  = { .fd = -1 },
-                [CHANNEL_NI_DEVICE]  = { .fd = -1 }
-            }
         }
     };
+    initialize(&s, ac, av);
 
     // This will force syscalls that allocate file descriptors to fail if it
     // doesn't fit into fd_set, so we don't have to check for that in the code.
     if (setrlimit(RLIMIT_NOFILE, &(struct rlimit){ .rlim_cur = FD_SETSIZE, .rlim_max = FD_SETSIZE }) != 0)
         LOGF("setrlimit");
 
-    s.sigfdset = adjust_signal_delivery(&s.fs.ch[CHANNEL_II_SIGNAL].fd);
-    //s.channel[CHANNEL_NO_PAYMENT] = open("payment", O_WRONLY | O_CLOEXEC);
+    event_loop(&s);
 
-    ucspi_adjust_if_detected(&s.fs);
-
-    s.select_params = (struct select_params) {
-        .timeout_sec = ac == 2 ? atoi(av[1]) : 0,
-        .maxfd = get_max_fd(&s.fs.ch),
-        .pings_on_inactivity = 2
-    };
-
-    if (event_loop(&s) == 0)
-        return s.select_params.timeout_sec > 0 ? EXIT_FAILURE : EXIT_SUCCESS;
-    return EXIT_FAILURE;
+    return EXIT_SUCCESS;
 }

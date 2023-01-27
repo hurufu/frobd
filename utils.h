@@ -42,14 +42,15 @@ typedef uint8_t byte_t;
 #define NAIVE_ELEMENTSOF(Arr) ( sizeof(Arr) / (sizeof((Arr)[0]) ?: 1) )
 
 #define elementsof(Arr) APPLY_TO_ARRAY(Arr, NAIVE_ELEMENTSOF(Arr))
-#define endof(Arr) APPLY_TO_ARRAY(Arr, (Arr) + sizeof (Arr))
-#define lastof(Arr) APPLY_TO_ARRAY(Arr, &(Arr)[sizeof (Arr) - 1])
+#define endof(Arr)  ( (Arr) + elementsof(Arr)     )
+#define lastof(Arr) ( (Arr) + elementsof(Arr) - 1 )
 
 #define min(A, B) (A < B ? A : B)
 
 // Used to simplify access to environment variables with computed names
 #define getenvfx(Buf, Size, Fmt, ...) ({\
-    char* v = getenv(snprintfx(Buf, Size, Fmt, __VA_ARGS__));\
+    snprintfx(Buf, Size, Fmt, __VA_ARGS__);\
+    char* v = getenv(Buf);\
     if (v)\
         v = trim_whitespaces(v);\
     v;\
@@ -59,7 +60,7 @@ byte_t hex2nibble(char h);
 byte_t unhex(const char h[static 2]);
 
 // Same as snprintf, but returns buf and aborts on error
-const char* snprintfx(char* buf, size_t s, const char* fmt, ...);
+unsigned snprintfx(char* buf, size_t s, const char* fmt, ...);
 
 // Removes leading and trailing whitespaces in-place. Returns pointer to the first non-whitespace character
 char* trim_whitespaces(char* s);
