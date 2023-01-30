@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/resource.h>
+#include <limits.h>
 
 #ifndef IO_BUF_SIZE
 #   define IO_BUF_SIZE (4 * 1024)
@@ -250,6 +251,12 @@ static size_t free_space(const struct chstate* const ch) {
     return lastof(ch->buf) - ch->cur;
 }
 
+static size_t used_space(const struct chstate* const ch) {
+    assert(ch->cur >= ch->buf);
+    assert(ch->cur <= lastof(ch->buf));
+    return ch->cur - ch->buf;
+}
+
 static void compute_next_token(const enum role r, char (*t)[6]) {
     static unsigned int token = 0;
     const unsigned int offset = r == ROLE_ECR ? 10000 : 20000;
@@ -401,24 +408,38 @@ static void print_stats(const struct statistics* const st) {
 }
 
 static void process_signal(struct state* const s) {
-    // FIXME: Multiple signals can be placed into the input buffer
-    assert(sizeof (struct signalfd_siginfo) == s->fs.ch[CHANNEL_II_SIGNAL].cur - s->fs.ch[CHANNEL_II_SIGNAL].buf);
-    const struct signalfd_siginfo* const inf = (struct signalfd_siginfo*)s->fs.ch[CHANNEL_II_SIGNAL].buf;
-    switch (inf->ssi_signo) {
-        case SIGINT:
-            start_master_channel(s);
-            break;
-        case SIGALRM:
-            // TODO: Reschedule last message, but only if underlying fd isn't already closed
-            LOGDX("Retransmission isn't implemented yet");
-            break;
-        case SIGPWR:
-            print_stats(&s->stats);
-            break;
-        default:
-            LOGFX("Unexpected signal. Bailing out");
+    struct chstate* const ch = &s->fs.ch[CHANNEL_II_SIGNAL];
+
+    // Sanity checks, before casting raw buffer to array of struct signalfd_siginfo
+    assert(used_space(ch) > 0 && used_space(ch) % sizeof (struct signalfd_siginfo) == 0);
+
+    const size_t n = used_space(ch) / sizeof (struct signalfd_siginfo);
+    const struct signalfd_siginfo (* const inf)[n] = (struct signalfd_siginfo(*)[])&ch->buf;
+    uintmax_t handled = 0;
+    for (size_t i = 0; i < n; i++) {
+        const uint32_t signo = (*inf)[i].ssi_signo;
+
+        assert(signo == SIGINT || signo == SIGALRM || signo == SIGPWR);
+        assert(sizeof (uintmax_t) * CHAR_BIT > signo);
+
+        const uintmax_t m = 1 << signo;
+        if (handled & m)
+            continue;
+        handled |= m;
+        switch (signo) {
+            case SIGINT:
+                start_master_channel(s);
+                break;
+            case SIGALRM:
+                // TODO: Reschedule last message, but only if underlying fd isn't already closed
+                LOGDX("Retransmission isn't implemented yet");
+                break;
+            case SIGPWR:
+                print_stats(&s->stats);
+                break;
+        }
     }
-    s->fs.ch[CHANNEL_II_SIGNAL].cur = s->fs.ch[CHANNEL_II_SIGNAL].buf;
+    ch->cur = ch->buf;
 }
 
 static void process_master(struct state* const s) {
@@ -429,8 +450,10 @@ static void process_master(struct state* const s) {
 static void process_main(struct state* const s, struct frob_frame_fsm_state* const f) {
     int e;
     for (f->pe = s->fs.ch[CHANNEL_FI_MAIN].cur; (e = frob_frame_process(f)) != EAGAIN; *f = fnext(s->fs.ch[CHANNEL_FI_MAIN].cur, *f)) {
+
         // Message length shall be positive
         assert(f->pe > f->p);
+
         commission_ack_on_main(s, e);
         if (0 == e) {
             struct frob_msg parsed = { .magic = FROB_MAGIC };
@@ -476,7 +499,7 @@ static void perform_pending_write(const enum channel i, struct chstate* const ch
         default:
             assert(false);
     }
-    const ptrdiff_t l = ch->cur - ch->buf;
+    const ptrdiff_t l = used_space(ch);
     const ssize_t s = write(ch->fd, ch->buf, l);
     if (s != l) {
         LOGF("Can't write %td bytes to %s channel (fd %d)", l, channel_to_string(i), ch->fd);
@@ -485,6 +508,7 @@ static void perform_pending_write(const enum channel i, struct chstate* const ch
             const unsigned int prev = alarm(3);
             if (prev != 0)
                 LOGWX("Duplicated alram scheduled. Previous was ought to be delivered in %us", prev);
+
             // Only one active timeout is expected
             assert(prev == 0);
         }
