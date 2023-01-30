@@ -15,6 +15,7 @@
 #include <fcntl.h>
 #include <sys/resource.h>
 #include <limits.h>
+#include <time.h>
 
 #ifndef IO_BUF_SIZE
 #   define IO_BUF_SIZE (4 * 1024)
@@ -82,9 +83,12 @@ struct state {
     // Signals to be handled by signalfd
     sigset_t sigfdset;
 
-    int ack;
+    bool ack;
 
     unsigned short pings_on_inactivity_left;
+
+    timer_t timer_ack;
+    timer_t timer_ping;
 
     struct fstate {
         fd_set eset;
@@ -294,7 +298,7 @@ static int commission_frame_on_main(struct state* const st, const char (* const 
         lrc ^= *c;
     ch->cur[ret - 1] = lrc;
 
-    st->ack = 1;
+    st->ack = true;
     FD_SET(ch->fd, &f->wset);
 
     // Parseable frame is created
@@ -407,6 +411,20 @@ static void print_stats(const struct statistics* const st) {
             st->received_bad_lrc, st->received_bad_parse, st->received_bad_handled);
 }
 
+static void alarm_set(timer_t timer, const int sec) {
+    LOGDX("Setting alarm to %d seconds", sec);
+    const struct itimerspec new = {
+        .it_interval = { .tv_sec = 0, .tv_nsec = 0 },
+        .it_value = { .tv_sec = sec, .tv_nsec = 0 }
+    };
+    struct itimerspec old;
+    if (timer_settime(timer, 0, &new, &old) != 0)
+        LOGF("Can't set timer");
+
+    // We shouldn't set duplicated alrams
+    assert(sec ? old.it_value.tv_sec == 0 && old.it_value.tv_nsec == 0 : 1);
+}
+
 static void process_signal(struct state* const s) {
     struct chstate* const ch = &s->fs.ch[CHANNEL_II_SIGNAL];
 
@@ -432,7 +450,7 @@ static void process_signal(struct state* const s) {
                 break;
             case SIGALRM:
                 // TODO: Reschedule last message, but only if underlying fd isn't already closed
-                LOGDX("Retransmission isn't implemented yet");
+                LOGDX("Retransmission isn't implemented yet (timer id: %d)", (*inf)[i].ssi_tid);
                 break;
             case SIGPWR:
                 print_stats(&s->stats);
@@ -489,7 +507,9 @@ static void process_channel(const enum channel c, struct state* const s, struct 
     }
 }
 
-static void perform_pending_write(const enum channel i, struct chstate* const ch, const int ack) {
+static void perform_pending_write(const enum channel i, struct state* const st) {
+    struct chstate* const ch = &st->fs.ch[i];
+
     // We shouldn't attempt to write 0 bytes
     assert(ch->cur > ch->buf);
     // We can write only to output channels
@@ -504,14 +524,8 @@ static void perform_pending_write(const enum channel i, struct chstate* const ch
     if (s != l) {
         LOGF("Can't write %td bytes to %s channel (fd %d)", l, channel_to_string(i), ch->fd);
     } else {
-        if (ack == 1 && i == CHANNEL_FO_MAIN) {
-            const unsigned int prev = alarm(3);
-            if (prev != 0)
-                LOGWX("Duplicated alram scheduled. Previous was ought to be delivered in %us", prev);
-
-            // Only one active timeout is expected
-            assert(prev == 0);
-        }
+        if (st->ack && i == CHANNEL_FO_MAIN)
+            alarm_set(st->timer_ack, 3);
         char tmp[3*s];
         LOGDX("← %c %zu\t%s", channel_to_code(i), s, PRETTV(ch->buf, ch->cur, tmp));
     }
@@ -558,7 +572,7 @@ static void perform_pending_read(const enum channel i, struct state* const s) {
             switch (ch->cur[0]) {
                 case ACK:
                 case NAK:
-                    alarm(0);
+                    alarm_set(s->timer_ack, 0);
                     s->ack = false;
                     break;
                 default:
@@ -579,7 +593,7 @@ static void perform_pending_io(struct state* const s) {
         if (FD_ISSET(fd, &s->fs.eset))
             LOGFX("Exceptional data isn't supported");
         if (FD_ISSET(fd, &s->fs.wset))
-            perform_pending_write(i, &s->fs.ch[i], s->ack);
+            perform_pending_write(i, s);
         if (FD_ISSET(fd, &s->fs.rset))
             perform_pending_read(i, s);
         FD_CLR(fd, &s->fs.wset);
@@ -690,6 +704,10 @@ static void initialize(struct state* const s, const int ac, const char* av[stati
         .timeout_sec = ac == 2 ? atoi(av[1]) : 0,
         .maxfd = get_max_fd(&s->fs.ch),
     };
+    if (timer_create(CLOCK_MONOTONIC, NULL, &s->timer_ack) != 0)
+        LOGF("timer_create");
+    if (timer_create(CLOCK_MONOTONIC, NULL, &s->timer_ping) != 0)
+        LOGF("timer_create");
 }
 
 static void adjust_rlimit(void) {
