@@ -259,20 +259,21 @@ static void compute_next_token(const enum role r, char (*t)[6]) {
     token = (token + 1) % offset;
 }
 
-static void commission_native_message(struct fstate* const f, const enum channel dst, const struct frob_msg* const msg) {
+static int commission_native_message(struct fstate* const f, const enum channel dst, const struct frob_msg* const msg) {
     // Magic string should match
     assert(strcmp(msg->magic, FROB_MAGIC) == 0);
 
     struct chstate* const ch = &f->ch[dst];
     if (sizeof *msg >= free_space(ch))
-        return LOGEX("Message skipped: %s", strerror(ENOBUFS));
+        return LOGEX("Message skipped: %s", strerror(ENOBUFS)), -1;
     memcpy(ch->cur, msg, sizeof *msg);
 
     FD_SET(ch->fd, &f->wset);
     ch->cur += sizeof *msg;
+    return 0;
 }
 
-static void commission_frame_on_main(struct state* const st, const char (* const token)[6], const char* const body) {
+static int commission_frame_on_main(struct state* const st, const char (* const token)[6], const char* const body) {
     struct fstate* const f = &st->fs;
     struct chstate* const ch = &f->ch[CHANNEL_FO_MAIN];
     const size_t s = free_space(ch);
@@ -280,7 +281,7 @@ static void commission_frame_on_main(struct state* const st, const char (* const
     if (ret < 0)
         LOGF("Can't place frame");
     if ((unsigned)ret >= s || ret == 0)
-        return LOGEX("Frame skipped: %s", (ret ? strerror(ENOBUFS): "Empty message"));
+        return LOGEX("Frame skipped: %s", (ret ? strerror(ENOBUFS): "Empty message")), -1;
     uint8_t lrc = 0;
     for (const input_t* c = ch->cur + 1; c < ch->cur + ret - 1; c++)
         lrc ^= *c;
@@ -295,6 +296,7 @@ static void commission_frame_on_main(struct state* const st, const char (* const
     assert(parse_message(ch->cur + 1, ch->cur + ret - 2, &(struct frob_msg){ .magic = FROB_MAGIC }) == 0);
 
     ch->cur += ret;
+    return 0;
 }
 
 static int commission_response(struct state* const s, const struct frob_msg* const received_msg) {
@@ -306,13 +308,10 @@ static int commission_response(struct state* const s, const struct frob_msg* con
         if (h == H_NONE)
             return LOGDX("Message %s concludes communication sequence", frob_message_to_string(received_msg->header.type)), 0;
         // Reply with hardcoded response
-        commission_frame_on_main(s, &received_msg->header.token, s->hm[h]);
-    } else {
-        // Forward message without changing it
-        commission_native_message(&s->fs, dst, received_msg);
+        return commission_frame_on_main(s, &received_msg->header.token, s->hm[h]);
     }
-
-    return 0;
+    // Forward message without changing it
+    return commission_native_message(&s->fs, dst, received_msg);
 };
 
 static void commission_prompt_on_master(struct state* const st) {
@@ -325,8 +324,7 @@ static int commission_ping_on_main(struct state* const s) {
         return 0;
     char token[6];
     compute_next_token(s->role, &token);
-    commission_frame_on_main(s, &token, "T1" FS);
-    return s->pings_on_inactivity_left--;
+    return commission_frame_on_main(s, &token, "T1" FS) == 0;
 }
 
 static void commission_ack_on_main(struct state* const s, const bool is_nak) {
@@ -582,7 +580,7 @@ static int wait_for_io(struct state* const s) {
     if (l < 0 || (l == 0 && s->select_params.timeout_sec != 0)) {
         if (l == 0) {
             errno = ETIMEDOUT;
-            if (s->pings_on_inactivity_left)
+            if (s->pings_on_inactivity_left--)
                 return commission_ping_on_main(s);
         }
         LOGF("select");
