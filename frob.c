@@ -47,7 +47,7 @@ enum channel {
 
 // FIXME: Should be removed and constructed from actual values
 enum hardcoded_message {
-    H_NONE = -1, H_T1, H_T2, H_T4, H_T5, H_D5, H_B2, H_S2, H_K0, H_K1, H_COUNT
+    H_NONE = -1, H_T2, H_T4, H_T5, H_D5, H_B2, H_S2, H_K0, H_K1, H_COUNT
 };
 
 enum role {
@@ -179,37 +179,6 @@ bail:
     return -1;
 }
 
-static ssize_t place_message(const size_t s, input_t cur[static const s], const struct frob_msg* const msg) {
-    // Magic string should match
-    assert(strcmp(msg->magic, FROB_MAGIC) == 0);
-
-    // TODO: Consider aborting on error
-    if (sizeof *msg >= s)
-        return -ENOBUFS;
-    memcpy(cur, msg, sizeof *msg);
-    return sizeof *msg;
-}
-
-static ssize_t place_frame(const size_t s, input_t cur[static const s], const char (* const token)[6], const char* const body) {
-    const int ret = snprintf((char*)cur, s, STX "%.6s" FS "%s" ETX "_", *token, body);
-    // TODO: Consider aborting on error
-    if (ret < 0)
-        return -errno;
-    else if ((unsigned)ret >= s)
-        return -ENOBUFS;
-    uint8_t lrc = 0;
-    for (const input_t* c = cur + 1; c < cur + ret - 1; c++)
-        lrc ^= *c;
-    cur[ret - 1] = lrc;
-
-    // Parseable frame is created
-    assert(frob_frame_process(&(struct frob_frame_fsm_state){.p = cur, .pe = cur + s}) == 0);
-    // Parseable message within that frame is created
-    assert(parse_message(cur + 1, cur + ret - 2, &(struct frob_msg){ .magic = FROB_MAGIC }) == 0);
-
-    return ret;
-}
-
 static enum channel choose_destination_from_message(const struct frob_msg* const msg) {
     switch (msg->header.type & FROB_MESSAGE_CHANNEL_MASK) {
         case FROB_PAYMENT:
@@ -263,6 +232,12 @@ static enum hardcoded_message choose_hardcoded_response(const enum FrobMessageTy
     return -1;
 }
 
+static size_t free_space(const struct chstate* const ch) {
+    assert(ch->cur >= ch->buf);
+    assert(ch->cur <= lastof(ch->buf));
+    return lastof(ch->buf) - ch->cur;
+}
+
 static void compute_next_token(const enum role r, char (*t)[6]) {
     static unsigned int token = 0;
     const unsigned int offset = r == ROLE_ECR ? 10000 : 20000;
@@ -272,53 +247,79 @@ static void compute_next_token(const enum role r, char (*t)[6]) {
     token = (token + 1) % offset;
 }
 
-static int commission_message(struct state* const st, const struct frob_msg* const received_msg) {
-    const enum channel dst = choose_destination(&st->fs, received_msg);
-    struct chstate* const ch = &st->fs.ch[dst];
-    const ptrdiff_t free_space = ch->buf + elementsof(ch->buf) - ch->cur;
+static void commission_native_message(struct fstate* const f, const enum channel dst, const struct frob_msg* const msg) {
+    // Magic string should match
+    assert(strcmp(msg->magic, FROB_MAGIC) == 0);
 
-    // Pointer sanity checks
-    assert(ch->cur >= ch->buf && free_space >= 0);
+    struct chstate* const ch = &f->ch[dst];
+    if (sizeof *msg >= free_space(ch))
+        return LOGEX("Message skipped: %s", strerror(ENOBUFS));
+    memcpy(ch->cur, msg, sizeof *msg);
 
-    int res;
+    FD_SET(ch->fd, &f->wset);
+    ch->cur += sizeof *msg;
+}
+
+static void commission_frame_on_main(struct state* const st, const char (* const token)[6], const char* const body) {
+    struct fstate* const f = &st->fs;
+    struct chstate* const ch = &f->ch[CHANNEL_FO_MAIN];
+    const size_t s = free_space(ch);
+    const int ret = snprintf((char*)ch->cur, s, STX "%.6s" FS "%s" ETX "_", *token, body);
+    if (ret < 0)
+        LOGF("Can't place frame");
+    if ((unsigned)ret >= s || ret == 0)
+        return LOGEX("Frame skipped: %s", (ret ? strerror(ENOBUFS): "Empty message"));
+    uint8_t lrc = 0;
+    for (const input_t* c = ch->cur + 1; c < ch->cur + ret - 1; c++)
+        lrc ^= *c;
+    ch->cur[ret - 1] = lrc;
+
+    st->ack = 1;
+    FD_SET(ch->fd, &f->wset);
+
+    // Parseable frame is created
+    assert(frob_frame_process(&(struct frob_frame_fsm_state){.p = ch->cur, .pe = ch->cur + s}) == 0);
+    // Parseable message within that frame is created
+    assert(parse_message(ch->cur + 1, ch->cur + ret - 2, &(struct frob_msg){ .magic = FROB_MAGIC }) == 0);
+
+    ch->cur += ret;
+}
+
+static int commission_response(struct state* const s, const struct frob_msg* const received_msg) {
+    const enum channel dst = choose_destination(&s->fs, received_msg);
     if (dst == CHANNEL_FO_MAIN) {
         if (received_msg->header.type == FROB_T2)
-            st->pings_on_inactivity_left++;
+            s->pings_on_inactivity_left++;
         const enum hardcoded_message h = choose_hardcoded_response(received_msg->header.type);
         if (h == H_NONE)
             return LOGDX("Message %s concludes communication sequence", frob_message_to_string(received_msg->header.type)), 0;
         // Reply with hardcoded response
-        res = place_frame(free_space, ch->cur, &received_msg->header.token, st->hm[h]);
+        commission_frame_on_main(s, &received_msg->header.token, s->hm[h]);
     } else {
         // Forward message without changing it
-        res = place_message(free_space, ch->cur, received_msg);
+        commission_native_message(&s->fs, dst, received_msg);
     }
-    if (res < 0)
-        return LOGEX("Failed to place message %s: %s", frob_message_to_string(received_msg->header.type), strerror(-res)), -1;
-    ch->cur += res;
-    FD_SET(ch->fd, &st->fs.wset);
-    st->ack = 1;
+
     return 0;
 };
 
-static void commission_prompt(struct state* const st) {
-    struct chstate* const ch = &st->fs.ch[CHANNEL_CO_MASTER];
-    MCOPY(ch->cur, "\n> ");
-    FD_SET(ch->fd, &st->fs.wset);
+static void commission_prompt_on_master(struct state* const st) {
+    MCOPY(st->fs.ch[CHANNEL_CO_MASTER].cur, "> ");
+    FD_SET(st->fs.ch[CHANNEL_CO_MASTER].fd, &st->fs.wset);
 }
 
-static int commission_ping(struct state* const s) {
-    struct chstate* const ch = &s->fs.ch[CHANNEL_FO_MAIN];
-    if (ch->fd < 0)
+static int commission_ping_on_main(struct state* const s) {
+    if (s->fs.ch[CHANNEL_FO_MAIN].fd < 0)
         return 0;
     char token[6];
     compute_next_token(s->role, &token);
-    const int res = place_frame(lastof(ch->buf) - ch->cur, ch->cur, &token, "T1" FS);
-    if (res < 0)
-        LOGF("Can't send ping");
-    ch->cur += res;
-    FD_SET(ch->fd, &s->fs.wset);
+    commission_frame_on_main(s, &token, "T1" FS);
     return s->pings_on_inactivity_left--;
+}
+
+static void commission_ack_on_main(struct state* const s, const bool is_nak) {
+    *s->fs.ch[CHANNEL_FO_MAIN].cur++ = is_nak ? NAK : ACK ;
+    FD_SET(s->fs.ch[CHANNEL_FO_MAIN].fd, &s->fs.wset);
 }
 
 static int setup_signalfd(const int ch, const sigset_t blocked) {
@@ -330,6 +331,7 @@ static int setup_signalfd(const int ch, const sigset_t blocked) {
     return fd;
 }
 
+// IMPORTANT: Remember to call this function after every fd update
 static int get_max_fd(const struct chstate (* const ch)[CHANNEL_COUNT]) {
     int max = (*ch)[0].fd;
     for (int i = 1; i < CHANNEL_COUNT; i++)
@@ -366,7 +368,7 @@ static void start_master_channel(struct state* const s) {
         LOGF("Can't unblock received singal");
 
     MCOPY(s->fs.ch[CHANNEL_CO_MASTER].cur, "Press ^C again to exit the program or ^D end interactive session...\n");
-    commission_prompt(s);
+    commission_prompt_on_master(s);
 }
 
 static struct frob_frame_fsm_state fnext(byte_t* const cursor, const struct frob_frame_fsm_state prev) {
@@ -411,7 +413,7 @@ static void process_signal(struct state* const s) {
 
 static void process_master(struct state* const s) {
     LOGWX("No commands are currently supported: %s", strerror(ENOSYS));
-    commission_prompt(s);
+    commission_prompt_on_master(s);
 }
 
 static void process_main(struct state* const s, struct frob_frame_fsm_state* const f) {
@@ -419,16 +421,14 @@ static void process_main(struct state* const s, struct frob_frame_fsm_state* con
     for (f->pe = s->fs.ch[CHANNEL_FI_MAIN].cur; (e = frob_frame_process(f)) != EAGAIN; *f = fnext(s->fs.ch[CHANNEL_FI_MAIN].cur, *f)) {
         // Message length shall be positive
         assert(f->pe > f->p);
-        const byte_t ack[] = { e ? NAK : ACK };
-        *s->fs.ch[CHANNEL_FO_MAIN].cur++ = ack[0];
-        FD_SET(s->fs.ch[CHANNEL_FO_MAIN].fd, &s->fs.wset);
+        commission_ack_on_main(s, e);
         if (0 == e) {
             struct frob_msg parsed = { .magic = FROB_MAGIC };
             if (parse_message(f->p, f->pe, &parsed) != 0) {
                 LOGWX("Can't process message");
                 s->stats.received_bad_parse++;
             } else {
-                if (commission_message(s, &parsed) != 0) {
+                if (commission_response(s, &parsed) != 0) {
                     LOGWX("Message wasn't handled");
                     s->stats.received_bad_handled++;
                 } else {
@@ -487,7 +487,7 @@ static void perform_pending_write(const enum channel i, struct chstate* const ch
 
 static void perform_pending_read(const enum channel i, struct state* const s) {
     struct chstate* const ch = &s->fs.ch[i];
-    const ssize_t r = read(ch->fd, ch->cur, ch->buf + sizeof ch->buf - ch->cur);
+    const ssize_t r = read(ch->fd, ch->cur, free_space(ch));
     if (r < 0) {
         LOGF("Can't read data on %s channel (fd %d)", channel_to_string(i), ch->fd);
     } else if (r == 0) {
@@ -518,6 +518,7 @@ static void perform_pending_read(const enum channel i, struct state* const s) {
                 // We can read only from input channels
                 assert(false);
         }
+        s->select_params.maxfd = get_max_fd(&s->fs.ch);
     } else {
         if (s->ack) {
             switch (ch->cur[0]) {
@@ -570,7 +571,7 @@ static int wait_for_io(struct state* const s) {
         if (l == 0) {
             errno = ETIMEDOUT;
             if (s->pings_on_inactivity_left)
-                return commission_ping(s);
+                return commission_ping_on_main(s);
         }
         LOGF("select");
     }
@@ -647,6 +648,7 @@ static void initialize(struct state* const s, const int ac, const char* av[stati
     const char* const proto = getenv("PROTO");
     if (proto)
         ucspi_log(proto, ucspi_adjust(proto, &s->fs));
+    s->select_params.maxfd = get_max_fd(&s->fs.ch);
     FD_ZERO(&s->fs.eset);
     FD_ZERO(&s->fs.wset);
     FD_ZERO(&s->fs.eset);
@@ -671,7 +673,6 @@ int main(const int ac, const char* av[static const ac]) {
     static struct state s = {
         .role = ROLE_EFT,
         .hm = {
-            [H_T1] = "T1" FS,
             [H_T2] = "T2" FS "170" FS "TEST" FS "SIM" FS "0" FS,
             [H_B2] = "B2" FS "170" FS "TEST" FS "SIM" FS "0" FS "0" FS "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" FS "00" FS,
             [H_T4] = "T4" FS "160" US "170" US FS,
