@@ -612,13 +612,16 @@ static void ucspi_log(const char* const proto, const char* const connnum) {
             ed[j][i] = getenvfx(tmp, sizeof tmp, "%s%s%s", proto, rl[j], ev[i]);
 
     LOGIX("UCSPI compatible environment detected (%s)", (connnum ? "server" : "client"));
-    LOGDX("proto: %s; remote: %s%s%s:%s%s%s%s%s%s%s%s;",
+    // FIXME: Fix this madness
+    LOGDX("proto: %s; remote: %s%s%s%s%s:%s%s%s%s%s%s%s%s%s%s;",
             proto,
-            (ed[0][0] ?: ""),
+            (ed[0][0] ? "\"" : ""), (ed[0][0] ?: ""), (ed[0][0] ? "\"" : ""),
             (ed[0][0] ? " (" : ""), ed[0][1], ed[0][2], (ed[0][0] ? ")" : ""),
             (connnum ? " connections: " : ""), (connnum ?: ""),
             (ed[0][3] ? " identification: " : ""), (ed[0][3] ?: ""),
-            (ed[1][0] ? "; local: ": ""), (ed[1][0] ?: ""));
+            (ed[1][0] ? "; local: ": ""),
+            (ed[0][0] ? "\"" : ""), (ed[1][0] ?: ""), (ed[0][0] ? "\"" : "")
+    );
 }
 
 static const char* ucspi_adjust(const char* const proto, struct fstate* const f) {
