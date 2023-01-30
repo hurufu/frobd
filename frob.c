@@ -55,6 +55,18 @@ enum role {
     ROLE_EFT
 };
 
+struct config {
+    char* hm[H_COUNT];
+    enum role role;
+    struct timeouts {
+        unsigned short ack, // Timeout for ACK/NAK
+                ping,       // Timeout for T2
+                payment,    // Timeout for "action during payment" (sic)
+                response;   // Timeout for any other message
+        short inactivity;   // Timeout for inactivity
+    } timeout;
+};
+
 struct state {
     const char* hm[H_COUNT];
     const enum role role;
