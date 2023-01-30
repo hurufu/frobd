@@ -654,6 +654,17 @@ static void initialize(struct state* const s, const int ac, const char* av[stati
     };
 }
 
+static void adjust_rlimit(void) {
+    // This will force syscalls that allocate file descriptors to fail if it
+    // doesn't fit into fd_set, so we don't have to check for that in the code.
+    struct rlimit rl;
+    if (getrlimit(RLIMIT_NOFILE, &rl) != 0)
+        LOGF("getrlimit");
+    if (rl.rlim_cur > FD_SETSIZE)
+        if (setrlimit(RLIMIT_NOFILE, &(struct rlimit){ .rlim_cur = FD_SETSIZE, .rlim_max = rl.rlim_max }) != 0)
+            LOGF("setrlimit");
+}
+
 int main(const int ac, const char* av[static const ac]) {
     static struct state s = {
         .role = ROLE_EFT,
@@ -672,13 +683,7 @@ int main(const int ac, const char* av[static const ac]) {
         }
     };
     initialize(&s, ac, av);
-
-    // This will force syscalls that allocate file descriptors to fail if it
-    // doesn't fit into fd_set, so we don't have to check for that in the code.
-    if (setrlimit(RLIMIT_NOFILE, &(struct rlimit){ .rlim_cur = FD_SETSIZE, .rlim_max = FD_SETSIZE }) != 0)
-        LOGF("setrlimit");
-
+    adjust_rlimit();
     event_loop(&s);
-
     return EXIT_SUCCESS;
 }

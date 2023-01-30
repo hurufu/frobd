@@ -1,6 +1,7 @@
 .PHONY: index clean graph-% run run-% test tcp scan
 
 #CPPFLAGS := -DNO_LOGS_ON_STDERR
+CPPFLAGS := -D_FORTIFY_SOURCE=2
 OPTLEVEL ?= g
 CFLAGS   := -O$(OPTLEVEL) -ggdb3 -Wall -Wextra -ffat-lto-objects -mtune=native -march=native
 CFLAGS_gcc   := -fanalyzer -fanalyzer-checker=taint
