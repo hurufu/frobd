@@ -84,6 +84,7 @@ struct state {
     sigset_t sigfdset;
 
     bool ack;
+    bool ping;
 
     unsigned short pings_on_inactivity_left;
 
@@ -335,7 +336,10 @@ static int commission_ping_on_main(struct state* const s) {
         return 0;
     char token[6];
     compute_next_token(s->role, &token);
-    return commission_frame_on_main(s, &token, "T1" FS) == 0;
+    const int ret = commission_frame_on_main(s, &token, "T1" FS) == 0;
+    if (ret)
+        s->ping = true;
+    return ret;
 }
 
 static void commission_ack_on_main(struct state* const s, const bool is_nak) {
@@ -412,7 +416,6 @@ static void print_stats(const struct statistics* const st) {
 }
 
 static void alarm_set(timer_t timer, const int sec) {
-    LOGDX("Setting alarm to %d seconds", sec);
     const struct itimerspec new = {
         .it_interval = { .tv_sec = 0, .tv_nsec = 0 },
         .it_value = { .tv_sec = sec, .tv_nsec = 0 }
@@ -421,8 +424,22 @@ static void alarm_set(timer_t timer, const int sec) {
     if (timer_settime(timer, 0, &new, &old) != 0)
         LOGF("Can't set timer");
 
+    LOGDX("New alarm: %ld.%09ld", new.it_value.tv_sec, new.it_value.tv_nsec);
+    LOGDX("Old alarm: %ld.%09ld", old.it_value.tv_sec, old.it_value.tv_nsec);
+
     // We shouldn't set duplicated alrams
     assert(sec ? old.it_value.tv_sec == 0 && old.it_value.tv_nsec == 0 : 1);
+}
+
+static void close_main_channel(struct state* const s) {
+    close(s->fs.ch[CHANNEL_FO_MAIN].fd);
+    close(s->fs.ch[CHANNEL_FI_MAIN].fd);
+    s->fs.ch[CHANNEL_FO_MAIN].fd = s->fs.ch[CHANNEL_FI_MAIN].fd = -1;
+    // If main channel is closed by remote side then the only
+    // meaningful thing we can do is to exit gracefully after all
+    // pending writes are done by setting timeout to a small value.
+    if (s->select_params.timeout_sec != 0)
+        s->select_params.timeout_sec = 1;
 }
 
 static void process_signal(struct state* const s) {
@@ -449,8 +466,14 @@ static void process_signal(struct state* const s) {
                 start_master_channel(s);
                 break;
             case SIGALRM:
-                // TODO: Reschedule last message, but only if underlying fd isn't already closed
-                LOGDX("Retransmission isn't implemented yet (timer id: %d)", (*inf)[i].ssi_tid);
+                if (s->fs.ch[CHANNEL_FO_MAIN].fd == -1)
+                    break;
+                if ((*inf)[i].ssi_tid == (uintmax_t)s->timer_ack) {
+                    FD_SET(s->fs.ch[CHANNEL_FO_MAIN].fd, &s->fs.wset);
+                } else if ((*inf)[i].ssi_tid == (uintmax_t)s->timer_ping) {
+                    LOGWX("Response to ping timed out. Assuming connection is broken");
+                    close_main_channel(s);
+                }
                 break;
             case SIGPWR:
                 print_stats(&s->stats);
@@ -479,6 +502,10 @@ static void process_main(struct state* const s, struct frob_frame_fsm_state* con
                 LOGWX("Can't process message");
                 s->stats.received_bad_parse++;
             } else {
+                if (parsed.header.type == FROB_T2) {
+                    s->ping = false;
+                    alarm_set(s->timer_ping, 0);
+                }
                 if (commission_response(s, &parsed) != 0) {
                     LOGWX("Message wasn't handled");
                     s->stats.received_bad_handled++;
@@ -524,13 +551,15 @@ static void perform_pending_write(const enum channel i, struct state* const st) 
     if (s != l) {
         LOGF("Can't write %td bytes to %s channel (fd %d)", l, channel_to_string(i), ch->fd);
     } else {
-        if (st->ack && i == CHANNEL_FO_MAIN)
-            alarm_set(st->timer_ack, 3);
+        if (i == CHANNEL_FO_MAIN) {
+            if (st->ack)
+                alarm_set(st->timer_ack, 3);
+            if (st->ping)
+                alarm_set(st->timer_ping, 10);
+        }
         char tmp[3*s];
         LOGDX("← %c %zu\t%s", channel_to_code(i), s, PRETTV(ch->buf, ch->cur, tmp));
     }
-    // FIXME: This pointer shall be reset only on ACK or last retransmission
-    ch->cur = ch->buf;
 }
 
 static void perform_pending_read(const enum channel i, struct state* const s) {
@@ -545,13 +574,7 @@ static void perform_pending_read(const enum channel i, struct state* const s) {
         ch->fd = -1;
         switch (i) {
             case CHANNEL_FI_MAIN:
-                // If main channel is closed by remote side then the only
-                // meaningful thing we can do is to exit gracefully after all
-                // pending writes are done by setting timeout to a small value.
-                if (s->select_params.timeout_sec != 0)
-                    s->select_params.timeout_sec = 1;
-                close(s->fs.ch[CHANNEL_FO_MAIN].fd);
-                s->fs.ch[CHANNEL_FO_MAIN].fd = -1;
+                close_main_channel(s);
                 break;
             case CHANNEL_CI_MASTER:
                 // If console output channel is closed then we should close
@@ -574,6 +597,7 @@ static void perform_pending_read(const enum channel i, struct state* const s) {
                 case NAK:
                     alarm_set(s->timer_ack, 0);
                     s->ack = false;
+                    s->fs.ch[CHANNEL_FO_MAIN].cur = s->fs.ch[CHANNEL_FO_MAIN].buf;
                     break;
                 default:
                     break;
