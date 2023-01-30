@@ -318,7 +318,7 @@ static int commission_response(struct state* const s, const struct frob_msg* con
             s->pings_on_inactivity_left++;
         const enum hardcoded_message h = choose_hardcoded_response(received_msg->header.type);
         if (h == H_NONE)
-            return LOGDX("Message %s concludes communication sequence", frob_message_to_string(received_msg->header.type)), 0;
+            return 0;
         // Reply with hardcoded response
         return commission_frame_on_main(s, &received_msg->header.token, s->hm[h]);
     }
@@ -423,9 +423,6 @@ static void alarm_set(timer_t timer, const int sec) {
     struct itimerspec old;
     if (timer_settime(timer, 0, &new, &old) != 0)
         LOGF("Can't set timer");
-
-    LOGDX("New alarm: %ld.%09ld", new.it_value.tv_sec, new.it_value.tv_nsec);
-    LOGDX("Old alarm: %ld.%09ld", old.it_value.tv_sec, old.it_value.tv_nsec);
 
     // We shouldn't set duplicated alrams
     assert(sec ? old.it_value.tv_sec == 0 && old.it_value.tv_nsec == 0 : 1);
