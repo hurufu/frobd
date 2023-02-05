@@ -29,7 +29,7 @@
     S -= rs + 1;\
 } while (0)
 
-#define FCOPY(S, P, V) DCOPY(S, P, V, 0x1C)
+#define FCOPY(S, P, V) DCOPY(S, P, V, '\x1C')
 
 static size_t serialize_type(const size_t s, input_t p[static const s], size_t _, const enum FrobMessageType t) {
     if (s >= 2)
@@ -70,7 +70,7 @@ ssize_t serialize(const struct frob_msg* const msg, const size_t s, input_t buf[
 
     if (f < 1)
         goto bail;
-    *p++ = 0x02; // Start of the frame
+    *p++ = '\x02'; // Start of the frame
     f -= 1;
     FCOPY(f, p, msg->header.token);
     FCOPY(f, p, msg->header.type);
@@ -89,8 +89,13 @@ ssize_t serialize(const struct frob_msg* const msg, const size_t s, input_t buf[
             FCOPY(f, p, b->t2.device_id);
             break;
         case FROB_T4:
-            for (size_t i = 0; i < elementsof(b->t4.supported_versions[0]); i++)
-                DCOPY(f, p, b->t4.supported_versions[i], 0x1F);
+            for (size_t i = 0; i < elementsof(b->t4.supported_versions[0]); i++) {
+                if (b->t4.supported_versions[i][0] == '\0')
+                    continue;
+                DCOPY(f, p, b->t4.supported_versions[i], '\x1F');
+            }
+            *p++ = '\x1C';
+            f -= 1;
             break;
         case FROB_T5:
             FCOPY(f, p, b->t5.selected_version);
@@ -187,9 +192,13 @@ ssize_t serialize(const struct frob_msg* const msg, const size_t s, input_t buf[
             assert(false);
             goto bail;
     }
-    // TODO: Serialize addtional attributes
+    for (size_t i = 0; i < elementsof(msg->attr); i++) {
+        if (msg->attr[i][0] == '\0')
+            continue;
+        DCOPY(f, p, b->t4.supported_versions[i], '\x1F');
+    }
 
-    *p++ = 0x03; // End of the frame
+    *p++ = '\x03'; // End of the frame
     f--;
 
     *p = calculate_lrc(buf + 1, p - 2);
