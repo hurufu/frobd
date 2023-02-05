@@ -47,18 +47,12 @@ enum channel {
     CHANNEL_LAST         = CHANNEL_FI_MAIN
 };
 
-// FIXME: Should be removed and constructed from actual values
-enum hardcoded_message {
-    H_NONE = -1, H_T2, H_T4, H_T5, H_D5, H_B2, H_S2, H_K0, H_K1, H_COUNT
-};
-
 enum role {
     ROLE_ECR,
     ROLE_EFT
 };
 
 struct config {
-    char* hm[H_COUNT];
     enum role role;
     struct timeouts {
         unsigned short ack, // Timeout for ACK/NAK
@@ -70,11 +64,11 @@ struct config {
     version_t supported_versions[4];
     struct frob_device_info info;
     struct frob_d5 parameters;
+    char fallback_s2[64];
 };
 
 struct state {
-    const char* hm[H_COUNT];
-    const enum role role;
+    const struct config cfg;
 
     struct statistics {
         unsigned short received_good,
@@ -184,17 +178,18 @@ static enum channel choose_destination(const struct fstate* const f, const struc
     return dst;
 }
 
-static enum hardcoded_message choose_hardcoded_response(const enum FrobMessageType t) {
+static enum FrobMessageType choose_hardcoded_response(const enum FrobMessageType t) {
     switch (t) {
-        case FROB_T1: return H_T2;
-        case FROB_T3: return H_T4;
-        case FROB_T4: return H_T5;
-        case FROB_D4: return H_D5;
-        case FROB_B1: return H_B2;
-        case FROB_S1: return H_S2;
-        case FROB_K1: return H_K0;
+        case FROB_T1: return FROB_T2;
+        case FROB_T3: return FROB_T4;
+        case FROB_T4: return FROB_T5;
+        case FROB_D4: return FROB_D5;
+        case FROB_B1: return FROB_B2;
+        case FROB_S1: return FROB_S2;
+        case FROB_K1: return FROB_K0;
         case FROB_T2:
-        case FROB_T5: return H_NONE;
+        case FROB_T5:
+            return 0;
         default:
             LOGWX("No hardcoded response for %s (%#x)", frob_type_to_string(t), t);
             break;
@@ -214,6 +209,41 @@ static size_t used_space(const struct chstate* const ch) {
     assert(ch->cur >= ch->buf);
     assert(ch->cur <= lastof(ch->buf));
     return ch->cur - ch->buf;
+}
+
+static union frob_body construct_hardcoded_message_body(const struct config* const cfg, const enum FrobMessageType t) {
+    union frob_body ret = {};
+    switch (t) {
+        case FROB_T1:
+        case FROB_T3:
+        case FROB_D4:
+        case FROB_P1:
+        case FROB_A1:
+        case FROB_K1:
+            break;
+        case FROB_T2:
+            ret.t2.info = cfg->info;
+            break;
+        case FROB_B1:
+            ret.b1.info = cfg->info;
+            break;
+        case FROB_B2:
+            ret.b2.info = cfg->info;
+            break;
+        case FROB_T4:
+            _Static_assert(sizeof ret.t4.supported_versions >= sizeof cfg->supported_versions, "Array size mismatch");
+            memcpy(ret.t4.supported_versions, cfg->supported_versions, sizeof cfg->supported_versions);
+            break;
+        case FROB_T5:
+            memcpy(ret.t5.selected_version, cfg->info.version, sizeof cfg->info.version);
+            break;
+        case FROB_D5:
+            ret.d5 = cfg->parameters;
+            break;
+        default:
+            assert(false);
+    }
+    return ret;
 }
 
 static void compute_next_token(const enum role r, char (*t)[6]) {
@@ -262,16 +292,43 @@ static int commission_frame_on_main(struct state* const st, const char (* const 
     return 0;
 }
 
+static int commission_hardcoded_message_on_main(struct state* const s, const char (* const t)[6], const enum FrobMessageType m) {
+    struct chstate* const main = &s->fs.ch[CHANNEL_FO_MAIN];
+    const struct frob_msg response = {
+        .magic = FROB_MAGIC,
+        .header = {
+            .token = {(*t)[0],(*t)[1],(*t)[2],(*t)[3],(*t)[4],(*t)[5]},
+            .type = m
+        },
+        .body = construct_hardcoded_message_body(&s->cfg, m)
+    };
+    const ssize_t w = serialize(free_space(main), main->cur, &response);
+    if (w < 0)
+        return LOGEX("Message skipped"), -1;
+
+    s->ack = true;
+    FD_SET(main->fd, &s->fs.wset);
+
+    main->cur += w;
+    return 0;
+}
+
 static int commission_response(struct state* const s, const struct frob_msg* const received_msg) {
     const enum channel dst = choose_destination(&s->fs, received_msg);
     if (dst == CHANNEL_FO_MAIN) {
         if (received_msg->header.type == FROB_T2)
             s->pings_on_inactivity_left++;
-        const enum hardcoded_message h = choose_hardcoded_response(received_msg->header.type);
-        if (h == H_NONE)
-            return 0;
+        const enum FrobMessageType resp = choose_hardcoded_response(received_msg->header.type);
+        switch (resp) {
+            case FROB_NONE:
+                return 0;
+            case FROB_S2:
+                return commission_frame_on_main(s, &received_msg->header.token, s->cfg.fallback_s2);
+            default:
+                break;
+        }
         // Reply with hardcoded response
-        return commission_frame_on_main(s, &received_msg->header.token, s->hm[h]);
+        return commission_hardcoded_message_on_main(s, &received_msg->header.token, resp);
     }
     // Forward message without changing it
     return commission_native_message(&s->fs, dst, received_msg);
@@ -286,7 +343,7 @@ static int commission_ping_on_main(struct state* const s) {
     if (s->fs.ch[CHANNEL_FO_MAIN].fd < 0)
         return 0;
     char token[6];
-    compute_next_token(s->role, &token);
+    compute_next_token(s->cfg.role, &token);
     const int ret = commission_frame_on_main(s, &token, "T1" FS) == 0;
     if (ret)
         s->ping = true;
@@ -476,7 +533,7 @@ static void process_device(struct state* const s) {
     const size_t n = used_space(dev) / sizeof (struct frob_msg);
     const struct frob_msg (* const msgs)[n] = (struct frob_msg(*)[])&dev->buf;
     for (size_t i = 0; i < n; i++) {
-        if (serialize(msgs[i], free_space(main), main->cur) < 0) {
+        if (serialize(free_space(main), main->cur, msgs[i]) < 0) {
             LOGEX("Message skipped");
         }
     }
@@ -671,6 +728,7 @@ static const char* ucspi_adjust(const char* const proto, struct fstate* const f)
 }
 
 static void initialize(struct state* const s, const int ac, const char* av[static const ac]) {
+    assert(s->cfg.role == ROLE_ECR ? s->cfg.parameters.device_topo == FROB_DEVICE_TYPE_ECR : true);
     s->pings_on_inactivity_left = 2;
     for (enum channel i = CHANNEL_FIRST; i <= CHANNEL_LAST; i++) {
         s->fs.ch[i].fd = -1;
@@ -711,18 +769,50 @@ static void adjust_rlimit(void) {
 
 int main(const int ac, const char* av[static const ac]) {
     static struct state s = {
-        .role = ROLE_EFT,
-        .hm = {
-            [H_T2] = "T2" FS "170" FS "TEST" FS "SIM" FS "0" FS,
-            [H_B2] = "B2" FS "170" FS "TEST" FS "SIM" FS "0" FS "0" FS "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" FS "00" FS,
-            [H_T4] = "T4" FS "160" US "170" US FS,
-            [H_T5] = "T5" FS "170" FS,
-            [H_S2] = "S2" FS "993" FS FS "M000" FS "T000" FS "N/A" FS FS FS "NONE" FS "Payment endopoint not available" FS,
-            [H_K0] = "K0" FS "0" FS,
-            [H_D5] = "D5" FS "24" FS "12" FS "6" FS "19" FS "1" FS "1" FS "1"
-                    FS "0" FS "0" FS "0" FS FS FS "4" FS "9999" FS "4" FS "15"
-                    FS "ENTER" US "CANCEL" US "CHECK" US "BACKSPACE" US "DELETE" US "UP" US "DOWN" US "LEFT" US "RIGHT" US
-                    FS "1" FS "1" FS "1" FS "1" FS "0" FS
+        .cfg = {
+            .fallback_s2 = "S2" FS "993" FS FS "M000" FS "T000" FS "N/A" FS FS FS "NONE" FS "Payment endopoint not available" FS,
+            .role = ROLE_EFT,
+            .supported_versions = { "160", "170" },
+            .info = {
+                .version = "170",
+                .vendor = "TEST",
+                .device_type = "SIM",
+                .device_id = "0"
+            },
+            .parameters = {
+                .printer_cpl = 24,
+                .printer_cpl2x = 12,
+                .printer_cpl4x = 6,
+                .printer_cpln = 19,
+                .printer_h2 = 1,
+                .printer_h4 = 1,
+                .printer_inv = 1,
+                .printer_max_barcode_length = 0,
+                .printer_max_qrcode_length = 0,
+                .printer_max_bitmap_count = 0,
+                .printer_max_bitmap_width = 0,
+                .printer_max_bitmap_height = 0,
+                .printer_aspect_ratio = 120,
+                .printer_buffer_max_lines = 9999,
+                .display_lc = 4,
+                .display_cpl = 15,
+                .key_name = {
+                    .enter = "ENTER",
+                    .cancel = "CANCEL",
+                    .check = "CHECK",
+                    .backspace ="BACKSPACE",
+                    .delete = "DELETE",
+                    .up = "UP",
+                    .down = "DOWN",
+                    .left = "LEFT",
+                    .right = "RIGHT"
+                },
+                .device_topo = FROB_DEVICE_TYPE_EFT_WITH_PINPAD_BUILTIN,
+                .nfc = true,
+                .ccr = true,
+                .mcr = true,
+                .bar = true
+            }
         }
     };
     initialize(&s, ac, av);

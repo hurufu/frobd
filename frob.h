@@ -22,6 +22,8 @@ typedef bcd_t amount_t[12];
 typedef char version_t[4];
 
 enum FrobMessageType {
+    FROB_NONE = -1,
+
     // Message classes, numbering is arbitrary
     FROB_MESSAGE_CLASS_MASK = 0xf0,
     FROB_T = 0x00,

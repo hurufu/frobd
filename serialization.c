@@ -62,7 +62,7 @@ static size_t serialize_integer(const size_t s, input_t p[static const s], size_
     return snprintfx((char*)p, s, "%u", v);
 }
 
-ssize_t serialize(const struct frob_msg* const msg, const size_t s, input_t buf[static const s]) {
+ssize_t serialize(const size_t s, input_t buf[static const s], const struct frob_msg* const msg) {
     input_t* p = buf; // Cursor
     size_t f = s; // Free space
     const union frob_body* const b = &msg->body;

@@ -88,4 +88,4 @@ char frob_trx_type_to_code(enum FrobTransactionType);
 int parse_message(const input_t* p, const input_t* pe, struct frob_msg*);
 
 // Returns number of bytes written to buf or -1 on error
-ssize_t serialize(const struct frob_msg*, size_t l, input_t buf[static l]);
+ssize_t serialize(size_t s, input_t buf[static s], const struct frob_msg* msg);

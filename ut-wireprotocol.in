@@ -204,23 +204,23 @@ static const struct frob_msg t1 = {
 #test simple_frame_serialized_correctly
     input_t buf[64];
     static const input_t expected[] = STX "12" FS "T1" FS ETX "e";
-    const int ret = serialize(&t1, sizeof buf, buf);
+    const int ret = serialize(sizeof buf, buf, &t1);
     ck_assert_mem_eq(buf, expected, ret);
     ck_assert_int_eq(ret, sizeof expected - 1);
 
 #test empty_buffer_is_handled
     input_t buf[0];
-    const int ret = serialize(&t1, 0, buf);
+    const int ret = serialize(0, buf, &t1);
     ck_assert_int_eq(ret, -1);
 
 #test buffer_too_small_is_handled
     input_t buf[3];
-    const int ret = serialize(&t1, sizeof buf, buf);
+    const int ret = serialize(sizeof buf, buf, &t1);
     ck_assert_int_eq(ret, -1);
 
 #test complex_frame_serialized_correctly
     input_t buf[256];
-    const int ret = serialize(&d5, sizeof buf, buf);
+    const int ret = serialize(sizeof buf, buf, &d5);
     static const input_t expected[] = STX "AAA" FS "D5" FS "42" FS "42" FS "42"
             FS "42" FS "1" FS "1" FS "1" FS "42" FS "42" FS "42" FS "42" FS "42"
             FS "120" FS "256" FS "4" FS "20" FS "O" US "X" US "C" US "" US "" US
