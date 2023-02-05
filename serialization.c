@@ -48,7 +48,10 @@ static size_t serialize_string(const size_t s, input_t p[static const s], const 
 }
 
 static size_t serialize_hex(const size_t s, input_t p[static const s], const size_t l, const unsigned char a[static const l]) {
-    return s < l ? l : snprintfx((char*)p, s, "%.*H", (int)l, a);
+    if (s >= l)
+        for (size_t i = 0; i < l; ++i)
+            snprintfx((char*)p + i * 2, 3, "%02X", a[i]);
+    return l * 2;
 }
 
 static size_t serialize_integer(const size_t s, input_t p[static const s], size_t _, const int v) {
