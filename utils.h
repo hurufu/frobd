@@ -73,7 +73,9 @@ struct frob_frame_fsm_state {
     unsigned char* p, *pe;
 };
 
+// Calculates LRC of bytes between p and pe
 input_t calculate_lrc(input_t* p, const input_t* pe);
+
 int frob_frame_process(struct frob_frame_fsm_state*);
 int frob_header_extract(const input_t** p, const input_t* pe, struct frob_header*);
 int frob_protocol_transition(int*, const enum FrobMessageType);
@@ -81,5 +83,9 @@ int frob_body_extract(enum FrobMessageType, const input_t** p, const input_t* pe
 int frob_extract_additional_attributes(const input_t**, const input_t*, char (* const out)[10][16]);
 const char* frob_type_to_string(enum FrobMessageType);
 char frob_trx_type_to_code(enum FrobTransactionType);
+
+// Parses message between p and pe. Returns 0 on success, -1 on error
 int parse_message(const input_t* p, const input_t* pe, struct frob_msg*);
-ssize_t serialize(const struct frob_msg* msg, size_t l, input_t buf[static l]);
+
+// Returns number of bytes written to buf or -1 on error
+ssize_t serialize(const struct frob_msg*, size_t l, input_t buf[static l]);
