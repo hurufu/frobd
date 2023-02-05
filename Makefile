@@ -1,22 +1,24 @@
 .PHONY: index clean graph-% run run-% test tcp scan
 
 #CPPFLAGS := -DNO_LOGS_ON_STDERR
-CPPFLAGS := -D_FORTIFY_SOURCE=2
+CPPFLAGS := -D_FORTIFY_SOURCE=3
+#CPPFLAGS += -DNDEBUG
 OPTLEVEL ?= g
 CFLAGS   := -O$(OPTLEVEL) -ggdb3 -Wall -Wextra -ffat-lto-objects -mtune=native -march=native
-CFLAGS_gcc   := -fanalyzer -fanalyzer-checker=taint
+CFLAGS_gcc   := -fanalyzer -fanalyzer-checker=taint -fsanitize=bounds -fsanitize-undefined-trap-on-error
 CFLAGS_clang := -Xanalyzer
 CFLAGS += $(CFLAGS_$(CC))
+#CFLAGS   += -fstrict-flex-arrays
 # TODO: Remove those warnings only for generated files
 #CFLAGS   += -Wno-implicit-fallthrough -Wno-unused-const-variable -Wno-sign-compare -Wno-unused-variable -Wno-unused-parameter
 LDFLAGS  := -flto
 RL_FILES := $(wildcard *.rl)
 RL_C     := $(RL_FILES:.rl=.c)
 RL_O     := $(RL_FILES:.rl=.o)
-CFILES   := $(RL_C) frob.c log.c utils.c
+CFILES   := $(RL_C) frob.c log.c utils.c serialization.c futils.c
 OFILES   := $(CFILES:.c=.o)
 UT_T := $(wildcard *.in)
-UT_O := $(UT_T:.in=.o) utils.o
+UT_O := $(UT_T:.in=.o) utils.o serialization.o futils.o log.o
 
 run: run-01 run-02 run-T4 run-S1 run-D4
 run-%: frob sample%

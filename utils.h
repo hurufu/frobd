@@ -21,8 +21,13 @@ typedef uint8_t byte_t;
 
 // TODO: Unify COPY and MCOPY
 #define MCOPY(Dst, Src) do {\
+    const size_t len = strlen(Src);\
+    memcpy(Dst, Src, len);\
+    Dst += len;\
+} while (0)
+#define ECOPY(Dst, Src) do {\
     memcpy(Dst, Src, elementsof(Src));\
-    Dst += strlen(Src);\
+    Dst += elementsof(Src);\
 } while (0)
 
 #define COPY(Dest, Start, End) memcpy((Dest), Start, min(End - Start, (ptrdiff_t)elementsof(Dest)))

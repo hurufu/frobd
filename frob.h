@@ -2,6 +2,8 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
+#include <sys/types.h>
 
 #define FROB_MAGIC "FROBCr1"
 
@@ -12,6 +14,8 @@ typedef uint8_t input_t;
 
 typedef uint8_t bcd_t;
 typedef bcd_t amount_t[12];
+
+typedef uint64_t error_t; // FIXME: Type is too big
 
 enum FrobMessageType {
     // Message classes, numbering is arbitrary
@@ -186,7 +190,7 @@ struct frob_s1 {
 };
 
 struct frob_s2 {
-    uint32_t error;
+    error_t error;
     unsigned char card_token[32]; // WTF is this?
     char mid[20]; // or acquirer id? Who knows what they've tried to say...
     char tid[20];
@@ -207,7 +211,7 @@ struct frob_i1 {
 struct frob_a1 { };
 
 struct frob_a2 {
-    uint32_t error;
+    error_t error;
     char msg[100];
 };
 
@@ -223,7 +227,7 @@ struct frob_b2 {
     char vendor[20];
     char device_type[20];
     char device_id[20];
-    uint32_t result;
+    error_t result;
     unsigned char modulus[256];
     unsigned char exponent[3];
 };
@@ -234,11 +238,11 @@ struct frob_b3 {
 };
 
 struct frob_b4 {
-    uint32_t result;
+    error_t result;
 };
 
 struct frob_k0 {
-    uint32_t result;
+    error_t result;
     char output[100];
 };
 
@@ -285,3 +289,16 @@ int frob_header_extract(const input_t** p, const input_t* pe, struct frob_header
 int frob_protocol_transition(int*, const enum FrobMessageType);
 int frob_body_extract(enum FrobMessageType, const input_t** p, const input_t* pe, union frob_body*);
 int frob_extract_additional_attributes(const input_t**, const input_t*, char (* const out)[10][16]);
+
+const char* frob_type_to_string(enum FrobMessageType);
+char frob_trx_type_to_code(enum FrobTransactionType);
+int parse_message(const input_t* p, const input_t* pe, struct frob_msg*);
+
+ssize_t serialize(const struct frob_msg* msg, size_t l, input_t buf[static l]);
+
+static inline input_t calculate_lrc(input_t* const p, input_t* const pe) {
+    uint8_t lrc = 0;
+    for (const input_t* c = p + 1; c < pe - 1; c++)
+        lrc ^= *c;
+    return lrc;
+}

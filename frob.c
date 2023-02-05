@@ -124,6 +124,7 @@ static const char* channel_to_string(const enum channel o) {
         case CHANNEL_COUNT:
             break;
     }
+    assert(false);
     return NULL;
 }
 
@@ -143,58 +144,8 @@ static char channel_to_code(const enum channel o) {
         case CHANNEL_COUNT:
             break;
     }
+    assert(false);
     return '?';
-}
-
-static char class_to_char(const enum FrobMessageType m) {
-    switch (m & FROB_MESSAGE_CLASS_MASK) {
-        case FROB_T: return 'T';
-        case FROB_D: return 'D';
-        case FROB_S: return 'S';
-        case FROB_P: return 'P';
-        case FROB_I: return 'I';
-        case FROB_A: return 'A';
-        case FROB_K: return 'K';
-        case FROB_M: return 'M';
-        case FROB_L: return 'L';
-        case FROB_B: return 'B';
-    }
-    return '?';
-}
-
-static const char* frob_message_to_string(const enum FrobMessageType m) {
-    static char buf[3];
-    buf[0] = class_to_char(m);
-    buf[1] = (m & FROB_MESSAGE_NUMBER_MASK) + '0';
-    buf[2] = '\0';
-    return buf;
-}
-
-static int parse_message(const input_t* const p, const input_t* const pe, struct frob_msg* const msg) {
-    const input_t* cur = p;
-    const char* err;
-    int e;
-    if ((e = frob_header_extract(&cur, pe, &msg->header)) != 0) {
-        err = "Header";
-        goto bail;
-    }
-    if ((e = frob_body_extract(msg->header.type, &cur, pe, &msg->body)) != 0) {
-        err = "Body";
-        goto bail;
-    }
-    if ((e = frob_extract_additional_attributes(&cur, pe, &msg->attr)) != 0) {
-        err = "Attributes";
-        goto bail;
-    }
-    // Complete message shall be processed, ie cursor shall point to the end of message
-    assert(cur == pe);
-    return 0;
-bail:
-    LOGEX("%s parsing failed: %s", err, strerror(e));
-    char tmp[4 * (pe - p)];
-    LOGDX("\t%s", PRETTV(p, pe, tmp));
-    LOGDX("\t%*s", (int)(cur - p), "^");
-    return -1;
 }
 
 static enum channel choose_destination_from_message(const struct frob_msg* const msg) {
@@ -222,7 +173,7 @@ static enum channel choose_destination_from_message(const struct frob_msg* const
 static enum channel choose_destination(const struct fstate* const f, const struct frob_msg* const msg) {
     enum channel dst = choose_destination_from_message(msg);
     if (dst == CHANNEL_NONE)
-        return LOGEX("No destination for message %s: %s", frob_message_to_string(msg->header.type), strerror(ECHRNG)), -1;
+        return LOGEX("No destination for message %s: %s", frob_type_to_string(msg->header.type), strerror(ECHRNG)), -1;
     if (f->ch[dst].fd == -1) {
         LOGWX("Channel %s is not connected: %s", channel_to_string(dst), strerror(EUNATCH));
         dst = CHANNEL_FO_MAIN;
@@ -242,7 +193,7 @@ static enum hardcoded_message choose_hardcoded_response(const enum FrobMessageTy
         case FROB_T2:
         case FROB_T5: return H_NONE;
         default:
-            LOGWX("No hardcoded response for %s (%#x)", frob_message_to_string(t), t);
+            LOGWX("No hardcoded response for %s (%#x)", frob_type_to_string(t), t);
             break;
     }
     // All messages must be handled
@@ -294,10 +245,7 @@ static int commission_frame_on_main(struct state* const st, const char (* const 
         LOGF("Can't place frame");
     if ((unsigned)ret >= s || ret == 0)
         return LOGEX("Frame skipped: %s", (ret ? strerror(ENOBUFS): "Empty message")), -1;
-    uint8_t lrc = 0;
-    for (const input_t* c = ch->cur + 1; c < ch->cur + ret - 1; c++)
-        lrc ^= *c;
-    ch->cur[ret - 1] = lrc;
+    ch->cur[ret - 1] = calculate_lrc(ch->cur + 1, ch->cur + ret - 1);
 
     st->ack = true;
     FD_SET(ch->fd, &f->wset);
@@ -517,18 +465,29 @@ static void process_main(struct state* const s, struct frob_frame_fsm_state* con
     }
 }
 
+static void process_device(struct state* const s) {
+    struct chstate* const dev = &s->fs.ch[CHANNEL_NI_DEVICE], * const main = &s->fs.ch[CHANNEL_FO_MAIN];
+
+    assert(used_space(dev) > 0 && used_space(dev) % sizeof (struct frob_msg) == 0);
+
+    const size_t n = used_space(dev) / sizeof (struct frob_msg);
+    const struct frob_msg (* const msgs)[n] = (struct frob_msg(*)[])&dev->buf;
+    for (size_t i = 0; i < n; i++) {
+        if (serialize(msgs[i], free_space(main), main->cur) < 0) {
+            LOGEX("Message skipped");
+        }
+    }
+}
+
 static void process_channel(const enum channel c, struct state* const s, struct frob_frame_fsm_state* const r) {
     switch (c) {
         case CHANNEL_II_SIGNAL: return process_signal(s);
         case CHANNEL_CI_MASTER: return process_master(s);
         case CHANNEL_FI_MAIN:   return process_main(s, r);
-        case CHANNEL_NI_DEVICE:
-            LOGWX("Device channel isn't supported yet");
-            break;
+        case CHANNEL_NI_DEVICE: return process_device(s);
         default:
-            assert(false);
-            break;
     }
+    assert(false);
 }
 
 static void perform_pending_write(const enum channel i, struct state* const st) {
