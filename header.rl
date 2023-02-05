@@ -2,6 +2,7 @@
 #include "utils.h"
 #include <stddef.h>
 #include <errno.h>
+#include <assert.h>
 
 %%{
     machine frob_header;
