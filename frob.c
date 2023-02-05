@@ -189,14 +189,14 @@ static enum FrobMessageType choose_hardcoded_response(const enum FrobMessageType
         case FROB_K1: return FROB_K0;
         case FROB_T2:
         case FROB_T5:
-            return 0;
+            return FROB_NONE;
         default:
             LOGWX("No hardcoded response for %s (%#x)", frob_type_to_string(t), t);
             break;
     }
     // All messages must be handled
     assert(false);
-    return -1;
+    return FROB_NONE;
 }
 
 static size_t free_space(const struct chstate* const ch) {
@@ -241,6 +241,7 @@ static union frob_body construct_hardcoded_message_body(const struct config* con
             ret.d5 = cfg->parameters;
             break;
         default:
+            LOGEX("No hardcoded body for %s (%#x)", frob_type_to_string(t), t);
             assert(false);
     }
     return ret;
