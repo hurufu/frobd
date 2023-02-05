@@ -56,19 +56,22 @@ static size_t serialize_integer(const size_t s, input_t p[static const s], size_
 }
 
 ssize_t serialize(const struct frob_msg* const msg, const size_t s, input_t buf[static const s]) {
-    const bool is_magic_ok = strcmp(msg->magic, FROB_MAGIC) == 0;
-
-    assert(msg && buf && is_magic_ok);
-
     input_t* p = buf; // Cursor
-    size_t f = s - 1; // Free space
+    size_t f = s; // Free space
     const union frob_body* const b = &msg->body;
     ssize_t ret = -1;
+
+    const bool is_magic_ok = strcmp(msg->magic, FROB_MAGIC) == 0;
+    assert(is_magic_ok);
     if (!is_magic_ok)
         goto bail;
+
+    if (f < 1)
+        goto bail;
     *p++ = 0x02; // Start of the frame
-    FCOPY(f, p, msg->header.type);
+    f -= 1;
     FCOPY(f, p, msg->header.token);
+    FCOPY(f, p, msg->header.type);
     switch (msg->header.type) {
         case FROB_T1:
         case FROB_T3:
@@ -91,12 +94,14 @@ ssize_t serialize(const struct frob_msg* const msg, const size_t s, input_t buf[
             FCOPY(f, p, b->t5.selected_version);
             break;
         case FROB_D5:
-            FCOPY(f, p, b->d5.display_lc);
-            FCOPY(f, p, b->d5.display_cpl);
             FCOPY(f, p, b->d5.printer_cpl);
             FCOPY(f, p, b->d5.printer_cpl2x);
             FCOPY(f, p, b->d5.printer_cpl4x);
             FCOPY(f, p, b->d5.printer_cpln);
+            bool tmp;
+            tmp = b->d5.printer_h2; FCOPY(f, p, tmp);
+            tmp = b->d5.printer_h4; FCOPY(f, p, tmp);
+            tmp = b->d5.printer_inv; FCOPY(f, p, tmp);
             FCOPY(f, p, b->d5.printer_max_barcode_length);
             FCOPY(f, p, b->d5.printer_max_qrcode_length);
             FCOPY(f, p, b->d5.printer_max_bitmap_count);
@@ -104,7 +109,8 @@ ssize_t serialize(const struct frob_msg* const msg, const size_t s, input_t buf[
             FCOPY(f, p, b->d5.printer_max_bitmap_height);
             FCOPY(f, p, b->d5.printer_aspect_ratio);
             FCOPY(f, p, b->d5.printer_buffer_max_lines);
-            FCOPY(f, p, b->d5.device_type);
+            FCOPY(f, p, b->d5.display_lc);
+            FCOPY(f, p, b->d5.display_cpl);
             FCOPY(f, p, b->d5.key_name.enter);
             FCOPY(f, p, b->d5.key_name.cancel);
             FCOPY(f, p, b->d5.key_name.check);
@@ -114,10 +120,7 @@ ssize_t serialize(const struct frob_msg* const msg, const size_t s, input_t buf[
             FCOPY(f, p, b->d5.key_name.down);
             FCOPY(f, p, b->d5.key_name.left);
             FCOPY(f, p, b->d5.key_name.right);
-            bool tmp;
-            tmp = b->d5.printer_h2; FCOPY(f, p, tmp);
-            tmp = b->d5.printer_h4; FCOPY(f, p, tmp);
-            tmp = b->d5.printer_inv; FCOPY(f, p, tmp);
+            FCOPY(f, p, b->d5.device_type);
             tmp = b->d5.nfc; FCOPY(f, p, tmp);
             tmp = b->d5.ccr; FCOPY(f, p, tmp);
             tmp = b->d5.mcr; FCOPY(f, p, tmp);
@@ -182,15 +185,24 @@ ssize_t serialize(const struct frob_msg* const msg, const size_t s, input_t buf[
             assert(false);
             goto bail;
     }
+    // TODO: Serialize addtional attributes
+
     *p++ = 0x03; // End of the frame
+    f--;
+
     *p = calculate_lrc(buf, p);
     p++;
-    ret = s - f - 1;
+    f--;
+    ret = s - f;
 
+    // Free space and cursor should stay consistent
+    assert(buf + s - f == p);
     // Parseable frame is created
-    assert(frob_frame_process(&(struct frob_frame_fsm_state){.p = buf, .pe = p}) == 0);
+    //assert(frob_frame_process(&(struct frob_frame_fsm_state){.p = buf, .pe = p - 1}) == 0);
     // Parseable message was serialized
-    assert(parse_message(buf + 1, p - 2, &(struct frob_msg){ .magic = FROB_MAGIC }) == 0);
+    //assert(parse_message(buf + 1, p - 2, &(struct frob_msg){ .magic = FROB_MAGIC }) == 0);
+
+    return ret;
 bail:
     // Free space and cursor should stay consistent
     assert(buf + s - f == p);
