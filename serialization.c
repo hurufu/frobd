@@ -62,7 +62,6 @@ ssize_t serialize(const struct frob_msg* const msg, const size_t s, input_t buf[
     input_t* p = buf; // Cursor
     size_t f = s; // Free space
     const union frob_body* const b = &msg->body;
-    ssize_t ret = -1;
 
     const bool is_magic_ok = strcmp(msg->magic, FROB_MAGIC) == 0;
     assert(is_magic_ok);
@@ -196,7 +195,6 @@ ssize_t serialize(const struct frob_msg* const msg, const size_t s, input_t buf[
     *p = calculate_lrc(buf + 1, p - 2);
     p++;
     f--;
-    ret = s - f;
 
     // Free space and cursor should stay consistent
     assert(buf + s - f == p);
@@ -205,10 +203,10 @@ ssize_t serialize(const struct frob_msg* const msg, const size_t s, input_t buf[
     // Parseable message was serialized
     assert(parse_message(buf + 1, p - 2, &(struct frob_msg){ .magic = FROB_MAGIC }) == 0);
 
-    return ret;
+    return s - f;
 bail:
     // Free space and cursor should stay consistent
     assert(buf + s - f == p);
 
-    return ret;
+    return -1;
 }
