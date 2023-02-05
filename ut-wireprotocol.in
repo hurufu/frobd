@@ -193,7 +193,7 @@ static const struct frob_msg t1 = {
             .left = "<",
             .right = ">"
         },
-        .device_type = FROB_DEVICE_TYPE_ECR,
+        .device_topo = FROB_DEVICE_TYPE_ECR,
         .nfc = true,
         .ccr = true,
         .mcr = true,

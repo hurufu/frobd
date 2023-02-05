@@ -87,10 +87,10 @@ ssize_t serialize(const struct frob_msg* const msg, const size_t s, input_t buf[
         case FROB_K1:
             break;
         case FROB_T2:
-            FCOPY(f, p, b->t2.max_supported_version);
-            FCOPY(f, p, b->t2.vendor);
-            FCOPY(f, p, b->t2.device_type);
-            FCOPY(f, p, b->t2.device_id);
+            FCOPY(f, p, b->t2.info.version);
+            FCOPY(f, p, b->t2.info.vendor);
+            FCOPY(f, p, b->t2.info.device_type);
+            FCOPY(f, p, b->t2.info.device_id);
             break;
         case FROB_T4:
             for (size_t i = 0; i < elementsof(b->t4.supported_versions[0]); i++) {
@@ -133,7 +133,7 @@ ssize_t serialize(const struct frob_msg* const msg, const size_t s, input_t buf[
             DCOPY(f, p, b->d5.key_name.right, us);
             *p++ = fs;
             f -= 1;
-            FCOPY(f, p, b->d5.device_type);
+            FCOPY(f, p, b->d5.device_topo);
             tmp = b->d5.nfc; FCOPY(f, p, tmp);
             tmp = b->d5.ccr; FCOPY(f, p, tmp);
             tmp = b->d5.mcr; FCOPY(f, p, tmp);
@@ -169,16 +169,16 @@ ssize_t serialize(const struct frob_msg* const msg, const size_t s, input_t buf[
             FCOPY(f, p, b->a2.msg);
             break;
         case FROB_B1:
-            FCOPY(f, p, b->b1.version);
-            FCOPY(f, p, b->b1.vendor);
-            FCOPY(f, p, b->b1.device_type);
-            FCOPY(f, p, b->b1.device_id);
+            FCOPY(f, p, b->b1.info.version);
+            FCOPY(f, p, b->b1.info.vendor);
+            FCOPY(f, p, b->b1.info.device_type);
+            FCOPY(f, p, b->b1.info.device_id);
             break;
         case FROB_B2:
-            FCOPY(f, p, b->b2.version);
-            FCOPY(f, p, b->b2.vendor);
-            FCOPY(f, p, b->b2.device_type);
-            FCOPY(f, p, b->b2.device_id);
+            FCOPY(f, p, b->b2.info.version);
+            FCOPY(f, p, b->b2.info.vendor);
+            FCOPY(f, p, b->b2.info.device_type);
+            FCOPY(f, p, b->b2.info.device_id);
             FCOPY(f, p, b->b2.result);
             FCOPY(f, p, b->b2.modulus);
             FCOPY(f, p, b->b2.exponent);

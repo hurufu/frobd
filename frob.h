@@ -19,6 +19,7 @@ typedef uint8_t byte_t;
 typedef uint64_t error_t; // FIXME: Type is too big
 typedef uint8_t bcd_t; // FIXME: Use a real BCD type
 typedef bcd_t amount_t[12];
+typedef char version_t[4];
 
 enum FrobMessageType {
     // Message classes, numbering is arbitrary
@@ -114,23 +115,27 @@ struct frob_header {
     char token[6]; // FIXME: Replace with unsigned int
 };
 
-struct frob_t1 { };
-
-struct frob_t2 {
-    char max_supported_version[4];
+struct frob_device_info {
+    version_t version;
     char vendor[20];
     char device_type[20];
     char device_id[20];
 };
 
+struct frob_t1 { };
+
+struct frob_t2 {
+    struct frob_device_info info;
+};
+
 struct frob_t3 { };
 
 struct frob_t4 {
-    char supported_versions[20][4];
+    version_t supported_versions[20];
 };
 
 struct frob_t5 {
-    char selected_version[4];
+    version_t selected_version;
 };
 
 struct frob_d4 { };
@@ -154,7 +159,7 @@ struct frob_d5 {
         FROB_DEVICE_TYPE_EFT_WITH_PINPAD_BUILTIN,
         FROB_DEVICE_TYPE_EFT_WITH_PINPAD_EXTERNAL,
         FROB_DEVICE_TYPE_EFT_WITH_PINPAD_PROGRAMMABLE
-    } device_type;
+    } device_topo;
     struct {
         char enter[16];
         char cancel[16];
@@ -219,17 +224,11 @@ struct frob_a2 {
 };
 
 struct frob_b1 {
-    char version[4];
-    char vendor[20];
-    char device_type[20];
-    char device_id[20];
+    struct frob_device_info info;
 };
 
 struct frob_b2 {
-    char version[4];
-    char vendor[20];
-    char device_type[20];
-    char device_id[20];
+    struct frob_device_info info;
     error_t result;
     byte_t modulus[256];
     byte_t exponent[3];

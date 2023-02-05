@@ -19,16 +19,21 @@
     action C {
         c = fpc;
     }
+
+    action Version {
+        COPY(out->info.version, c, fpc);
+    }
     action Vendor {
-        COPY(out->vendor, c, fpc);
+        COPY(out->info.vendor, c, fpc);
     }
     action Type {
-        COPY(out->device_type, c, fpc);
+        COPY(out->info.device_type, c, fpc);
     }
     action Id {
-        COPY(out->device_id, c, fpc);
+        COPY(out->info.device_id, c, fpc);
     }
 
+    version = a+ >C fs @Version;
     vendor = (a+ >C fs @Vendor) | fs;
     type = (a+ >C fs @Type) | fs;
     id = (a+ >C fs @Id) | fs;
@@ -37,12 +42,6 @@
 %%{
     machine common_b;
     include status;
-
-    action Version {
-        COPY(out->version, c, fpc);
-    }
-
-    version = a+ >C fs @Version;
 }%%
 
 static int extract_t1(const byte_t** const pp, const byte_t* const pe, struct frob_t1* const out) {
@@ -66,12 +65,6 @@ static int extract_t2(const byte_t** const pp, const byte_t* const pe, struct fr
     %%{
         machine frob_t2;
         include status;
-
-        action Version {
-            COPY(out->max_supported_version, c, fpc);
-        }
-
-        version = a+ >C fs @Version;
 
         main := (version vendor type id) |
                 (version vendor type) |
@@ -407,16 +400,16 @@ static int extract_d5(const byte_t** const pp, const byte_t* const pe, struct fr
             out->bar = STRBOOL(c);
         }
         action IsEcr {
-            out->device_type = FROB_DEVICE_TYPE_ECR;
+            out->device_topo = FROB_DEVICE_TYPE_ECR;
         }
         action BuiltinPinpad {
-            out->device_type = FROB_DEVICE_TYPE_EFT_WITH_PINPAD_BUILTIN;
+            out->device_topo = FROB_DEVICE_TYPE_EFT_WITH_PINPAD_BUILTIN;
         }
         action ExternalPinpad {
-            out->device_type = FROB_DEVICE_TYPE_EFT_WITH_PINPAD_EXTERNAL;
+            out->device_topo = FROB_DEVICE_TYPE_EFT_WITH_PINPAD_EXTERNAL;
         }
         action ProgrammablePinpad {
-            out->device_type = FROB_DEVICE_TYPE_EFT_WITH_PINPAD_PROGRAMMABLE;
+            out->device_topo = FROB_DEVICE_TYPE_EFT_WITH_PINPAD_PROGRAMMABLE;
         }
 
         display_lc = n* >C fs @DisplayLc;

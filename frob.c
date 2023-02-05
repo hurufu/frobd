@@ -67,6 +67,9 @@ struct config {
                 response;   // Timeout for any other message
         short inactivity;   // Timeout for inactivity
     } timeout;
+    version_t supported_versions[4];
+    struct frob_device_info info;
+    struct frob_d5 parameters;
 };
 
 struct state {
