@@ -1,9 +1,11 @@
 #pragma once
 
+#include "frob.h"
+
 #include <string.h>
-#include <assert.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <sys/types.h>
 
 #define STX "\x02"
 #define ETX "\x03"
@@ -12,12 +14,6 @@
 
 #define ACK 0x06
 #define NAK 0x15
-
-/* uint8_t is better than unsigned char to define a byte, because on some
- * platforms (unsigned) char may have more than 8 bit (TI C54xx 16 bit).
- * The problem is purely theoretical, because I don't target MCUs, but still...
- */
-typedef uint8_t byte_t;
 
 // TODO: Unify COPY and MCOPY
 #define MCOPY(Dst, Src) do {\
@@ -69,3 +65,21 @@ unsigned snprintfx(char* buf, size_t s, const char* fmt, ...);
 
 // Removes leading and trailing whitespaces in-place. Returns pointer to the first non-whitespace character
 char* trim_whitespaces(char* s);
+
+struct frob_frame_fsm_state {
+    unsigned char lrc;
+    bool not_first;
+    int cs;
+    unsigned char* p, *pe;
+};
+
+input_t calculate_lrc(input_t* p, const input_t* pe);
+int frob_frame_process(struct frob_frame_fsm_state*);
+int frob_header_extract(const input_t** p, const input_t* pe, struct frob_header*);
+int frob_protocol_transition(int*, const enum FrobMessageType);
+int frob_body_extract(enum FrobMessageType, const input_t** p, const input_t* pe, union frob_body*);
+int frob_extract_additional_attributes(const input_t**, const input_t*, char (* const out)[10][16]);
+const char* frob_type_to_string(enum FrobMessageType);
+char frob_trx_type_to_code(enum FrobTransactionType);
+int parse_message(const input_t* p, const input_t* pe, struct frob_msg*);
+ssize_t serialize(const struct frob_msg* msg, size_t l, input_t buf[static l]);

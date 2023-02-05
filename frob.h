@@ -2,20 +2,23 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <stddef.h>
-#include <sys/types.h>
 
+/* ***************************************************************** *
+ * WARNING: All char arrays are NOT null-terminated, but null-padded *
+ * ***************************************************************** */
+
+// Every message shall specify version of API, using this magic string
 #define FROB_MAGIC "FROBCr1"
-
-// WARNING: All char arrays are NOT null-terminated, but null-padded
 
 // Input character type, can be changed to something else
 typedef uint8_t input_t;
-
-typedef uint8_t bcd_t;
-typedef bcd_t amount_t[12];
-
+// uint8_t is better than unsigned char to define a byte, because on some
+// platforms (unsigned) char may have more than 8 bit (TI C54xx 16 bit). The
+// problem is purely theoretical, because I don't target MCUs, but still...
+typedef uint8_t byte_t;
 typedef uint64_t error_t; // FIXME: Type is too big
+typedef uint8_t bcd_t; // FIXME: Use a real BCD type
+typedef bcd_t amount_t[12];
 
 enum FrobMessageType {
     // Message classes, numbering is arbitrary
@@ -82,11 +85,6 @@ enum FrobMessageType {
     FROB_B4 = FROB_LOCAL   | FROB_B | 0x4  // Key exchange acknowledge
 };
 
-struct frob_header {
-    enum FrobMessageType type;
-    char token[6]; // FIXME: Replace with unsigned int
-};
-
 enum FrobTransactionStatus {
     FROB_WAIT_FOR_CARD = 20,
     FROB_PAN_CHECKING = 30,
@@ -109,6 +107,11 @@ enum FrobTransactionStatus {
     FROB_TRANSACTION_ABORTING = 180,
     FROB_RECEIPT_PRINTING_VOID = 190,
     FROB_OTHER = 1000,
+};
+
+struct frob_header {
+    enum FrobMessageType type;
+    char token[6]; // FIXME: Replace with unsigned int
 };
 
 struct frob_t1 { };
@@ -191,7 +194,7 @@ struct frob_s1 {
 
 struct frob_s2 {
     error_t error;
-    unsigned char card_token[32]; // WTF is this?
+    byte_t card_token[32]; // WTF is this?
     char mid[20]; // or acquirer id? Who knows what they've tried to say...
     char tid[20];
     char trx_id[20];
@@ -228,13 +231,13 @@ struct frob_b2 {
     char device_type[20];
     char device_id[20];
     error_t result;
-    unsigned char modulus[256];
-    unsigned char exponent[3];
+    byte_t modulus[256];
+    byte_t exponent[3];
 };
 
 struct frob_b3 {
-    unsigned char kek[256];
-    unsigned char kcv[3];
+    byte_t kek[256];
+    byte_t kcv[3];
 };
 
 struct frob_b4 {
@@ -276,29 +279,3 @@ struct frob_msg {
     union frob_body body;
     char attr[10][16];
 };
-
-struct frob_frame_fsm_state {
-    unsigned char lrc;
-    bool not_first;
-    int cs;
-    unsigned char* p, *pe;
-};
-
-int frob_frame_process(struct frob_frame_fsm_state*);
-int frob_header_extract(const input_t** p, const input_t* pe, struct frob_header*);
-int frob_protocol_transition(int*, const enum FrobMessageType);
-int frob_body_extract(enum FrobMessageType, const input_t** p, const input_t* pe, union frob_body*);
-int frob_extract_additional_attributes(const input_t**, const input_t*, char (* const out)[10][16]);
-
-const char* frob_type_to_string(enum FrobMessageType);
-char frob_trx_type_to_code(enum FrobTransactionType);
-int parse_message(const input_t* p, const input_t* pe, struct frob_msg*);
-
-ssize_t serialize(const struct frob_msg* msg, size_t l, input_t buf[static l]);
-
-static inline input_t calculate_lrc(input_t* const p, input_t* const pe) {
-    uint8_t lrc = 0;
-    for (const input_t* c = p + 1; c < pe - 1; c++)
-        lrc ^= *c;
-    return lrc;
-}

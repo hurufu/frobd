@@ -1,7 +1,7 @@
 #include "frob.h"
 #include "log.h"
+#include "utils.h"
 #include <errno.h>
-#include <stddef.h>
 
 %%{
     machine frob_frame;

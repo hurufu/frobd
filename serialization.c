@@ -190,7 +190,7 @@ ssize_t serialize(const struct frob_msg* const msg, const size_t s, input_t buf[
     *p++ = 0x03; // End of the frame
     f--;
 
-    *p = calculate_lrc(buf, p);
+    *p = calculate_lrc(buf + 1, p - 2);
     p++;
     f--;
     ret = s - f;
@@ -198,9 +198,9 @@ ssize_t serialize(const struct frob_msg* const msg, const size_t s, input_t buf[
     // Free space and cursor should stay consistent
     assert(buf + s - f == p);
     // Parseable frame is created
-    //assert(frob_frame_process(&(struct frob_frame_fsm_state){.p = buf, .pe = p - 1}) == 0);
+    assert(frob_frame_process(&(struct frob_frame_fsm_state){.p = buf, .pe = p}) == 0);
     // Parseable message was serialized
-    //assert(parse_message(buf + 1, p - 2, &(struct frob_msg){ .magic = FROB_MAGIC }) == 0);
+    assert(parse_message(buf + 1, p - 2, &(struct frob_msg){ .magic = FROB_MAGIC }) == 0);
 
     return ret;
 bail:
