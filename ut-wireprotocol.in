@@ -203,7 +203,7 @@ static const struct frob_msg t1 = {
 
 #test simple_frame_serialized_correctly
     input_t buf[64];
-    static const input_t expected[] = STX "12" FS "T1" FS ETX "f";
+    static const input_t expected[] = STX "12" FS "T1" FS ETX "e";
     const int ret = serialize(&t1, sizeof buf, buf);
     ck_assert_mem_eq(buf, expected, ret);
     ck_assert_int_eq(ret, sizeof expected - 1);
@@ -223,7 +223,7 @@ static const struct frob_msg t1 = {
     const int ret = serialize(&d5, sizeof buf, buf);
     static const input_t expected[] = STX "AAA" FS "D5" FS "42" FS "42" FS "42"
             FS "42" FS "1" FS "1" FS "1" FS "42" FS "42" FS "42" FS "42" FS "42"
-            FS "120" FS "256" FS "4" FS "20" FS "O" FS "X" FS "C" FS "" FS "" FS
-            "^" FS "v" FS "<" FS ">" FS "1" FS "1" FS "1" FS "1" FS "1" FS ETX "|";
+            FS "120" FS "256" FS "4" FS "20" FS "O" US "X" US "C" US "" US "" US
+            "^" US "v" US "<" US ">" US FS "0" FS "1" FS "1" FS "1" FS "1" FS ETX "a";
     ck_assert_int_eq(ret, sizeof expected - 1);
     ck_assert_mem_eq(buf, expected, ret);

@@ -714,7 +714,7 @@ int main(const int ac, const char* av[static const ac]) {
             [H_D5] = "D5" FS "24" FS "12" FS "6" FS "19" FS "1" FS "1" FS "1"
                     FS "0" FS "0" FS "0" FS FS FS "4" FS "9999" FS "4" FS "15"
                     FS "ENTER" US "CANCEL" US "CHECK" US "BACKSPACE" US "DELETE" US "UP" US "DOWN" US "LEFT" US "RIGHT" US
-                    FS "1" FS "1" FS "1" FS "0" FS
+                    FS "1" FS "1" FS "1" FS "1" FS "0" FS
         }
     };
     initialize(&s, ac, av);

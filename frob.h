@@ -150,7 +150,7 @@ struct frob_d5 {
     unsigned short printer_aspect_ratio;
     unsigned short printer_buffer_max_lines;
     enum FrobDeviceType {
-        FROB_DEVICE_TYPE_ECR = 1,
+        FROB_DEVICE_TYPE_ECR = 0,
         FROB_DEVICE_TYPE_EFT_WITH_PINPAD_BUILTIN,
         FROB_DEVICE_TYPE_EFT_WITH_PINPAD_EXTERNAL,
         FROB_DEVICE_TYPE_EFT_WITH_PINPAD_PROGRAMMABLE

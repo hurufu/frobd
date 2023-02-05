@@ -406,6 +406,18 @@ static int extract_d5(const byte_t** const pp, const byte_t* const pe, struct fr
         action Bar {
             out->bar = STRBOOL(c);
         }
+        action IsEcr {
+            out->device_type = FROB_DEVICE_TYPE_ECR;
+        }
+        action BuiltinPinpad {
+            out->device_type = FROB_DEVICE_TYPE_EFT_WITH_PINPAD_BUILTIN;
+        }
+        action ExternalPinpad {
+            out->device_type = FROB_DEVICE_TYPE_EFT_WITH_PINPAD_EXTERNAL;
+        }
+        action ProgrammablePinpad {
+            out->device_type = FROB_DEVICE_TYPE_EFT_WITH_PINPAD_PROGRAMMABLE;
+        }
 
         display_lc = n* >C fs @DisplayLc;
         display_cpl = n* >C fs @DisplayCpl;
@@ -434,6 +446,11 @@ static int extract_d5(const byte_t** const pp, const byte_t* const pe, struct fr
         left = a* >C us @Left;
         right = a* >C us @Right;
         key_names = enter cancel check backspace delete up down left right fs;
+        is_ecr = "0" @IsEcr;
+        builtin_pinpad = "1" @BuiltinPinpad;
+        external_pinpad = "2" @ExternalPinpad;
+        programmable_pinpad = "3" @ProgrammablePinpad;
+        device_topo = (is_ecr | builtin_pinpad | external_pinpad | programmable_pinpad) fs;
 
         nfc = n >C fs @Nfc;
         ccr = n >C fs @Ccr;
@@ -446,6 +463,7 @@ static int extract_d5(const byte_t** const pp, const byte_t* const pe, struct fr
                    printer_max_bitmap_height printer_aspect_ratio printer_buffer_max_lines
                    display_lc display_cpl
                    key_names
+                   device_topo
                    nfc ccr mcr bar
         ;
 

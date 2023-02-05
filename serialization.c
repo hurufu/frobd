@@ -5,6 +5,10 @@
 #include <stdbool.h>
 
 #define _ __attribute__((__unused__))
+#define fs 0x1C
+#define us 0x1F
+#define stx 0x02
+#define etx 0x03
 
 #define XCOPY(S, P, V)\
     _Generic(V,\
@@ -29,7 +33,7 @@
     S -= rs + 1;\
 } while (0)
 
-#define FCOPY(S, P, V) DCOPY(S, P, V, '\x1C')
+#define FCOPY(S, P, V) DCOPY(S, P, V, fs)
 
 static size_t serialize_type(const size_t s, input_t p[static const s], size_t _, const enum FrobMessageType t) {
     if (s >= 2)
@@ -70,7 +74,7 @@ ssize_t serialize(const struct frob_msg* const msg, const size_t s, input_t buf[
 
     if (f < 1)
         goto bail;
-    *p++ = '\x02'; // Start of the frame
+    *p++ = stx;
     f -= 1;
     FCOPY(f, p, msg->header.token);
     FCOPY(f, p, msg->header.type);
@@ -92,9 +96,9 @@ ssize_t serialize(const struct frob_msg* const msg, const size_t s, input_t buf[
             for (size_t i = 0; i < elementsof(b->t4.supported_versions[0]); i++) {
                 if (b->t4.supported_versions[i][0] == '\0')
                     continue;
-                DCOPY(f, p, b->t4.supported_versions[i], '\x1F');
+                DCOPY(f, p, b->t4.supported_versions[i], us);
             }
-            *p++ = '\x1C';
+            *p++ = fs;
             f -= 1;
             break;
         case FROB_T5:
@@ -118,15 +122,17 @@ ssize_t serialize(const struct frob_msg* const msg, const size_t s, input_t buf[
             FCOPY(f, p, b->d5.printer_buffer_max_lines);
             FCOPY(f, p, b->d5.display_lc);
             FCOPY(f, p, b->d5.display_cpl);
-            FCOPY(f, p, b->d5.key_name.enter);
-            FCOPY(f, p, b->d5.key_name.cancel);
-            FCOPY(f, p, b->d5.key_name.check);
-            FCOPY(f, p, b->d5.key_name.backspace);
-            FCOPY(f, p, b->d5.key_name.delete);
-            FCOPY(f, p, b->d5.key_name.up);
-            FCOPY(f, p, b->d5.key_name.down);
-            FCOPY(f, p, b->d5.key_name.left);
-            FCOPY(f, p, b->d5.key_name.right);
+            DCOPY(f, p, b->d5.key_name.enter, us);
+            DCOPY(f, p, b->d5.key_name.cancel, us);
+            DCOPY(f, p, b->d5.key_name.check, us);
+            DCOPY(f, p, b->d5.key_name.backspace, us);
+            DCOPY(f, p, b->d5.key_name.delete, us);
+            DCOPY(f, p, b->d5.key_name.up, us);
+            DCOPY(f, p, b->d5.key_name.down, us);
+            DCOPY(f, p, b->d5.key_name.left, us);
+            DCOPY(f, p, b->d5.key_name.right, us);
+            *p++ = fs;
+            f -= 1;
             FCOPY(f, p, b->d5.device_type);
             tmp = b->d5.nfc; FCOPY(f, p, tmp);
             tmp = b->d5.ccr; FCOPY(f, p, tmp);
@@ -195,13 +201,13 @@ ssize_t serialize(const struct frob_msg* const msg, const size_t s, input_t buf[
     for (size_t i = 0; i < elementsof(msg->attr); i++) {
         if (msg->attr[i][0] == '\0')
             continue;
-        DCOPY(f, p, b->t4.supported_versions[i], '\x1F');
+        DCOPY(f, p, b->t4.supported_versions[i], us);
     }
 
-    *p++ = '\x03'; // End of the frame
+    *p++ = etx;
     f--;
 
-    *p = calculate_lrc(buf + 1, p - 2);
+    *p = calculate_lrc(buf + 1, p);
     p++;
     f--;
 
