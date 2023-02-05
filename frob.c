@@ -47,13 +47,8 @@ enum channel {
     CHANNEL_LAST         = CHANNEL_FI_MAIN
 };
 
-enum role {
-    ROLE_ECR,
-    ROLE_EFT
-};
-
 struct config {
-    enum role role;
+    enum role { ROLE_ECR, ROLE_EFT } role;
     struct timeouts {
         unsigned short ack, // Timeout for ACK/NAK
                 ping,       // Timeout for T2
