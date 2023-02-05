@@ -634,23 +634,28 @@ static void ucspi_log(const char* const proto, const char* const connnum) {
     static const char* const rl[] = { "REMOTE", "LOCAL" };
     static const char* const ev[] = { "HOST", "IP", "PORT", "INFO" };
 
-    char tmp[16];
+    char buf[512];
     const char* ed[elementsof(rl)][elementsof(ev)];
     for (size_t j = 0; j < elementsof(rl); j++)
         for (size_t i = 0; i < elementsof(ev); i++)
-            ed[j][i] = getenvfx(tmp, sizeof tmp, "%s%s%s", proto, rl[j], ev[i]);
+            ed[j][i] = getenvfx(buf, sizeof buf, "%s%s%s", proto, rl[j], ev[i]);
 
     LOGIX("UCSPI compatible environment detected (%s)", (connnum ? "server" : "client"));
-    // FIXME: Fix this madness
-    LOGDX("proto: %s; remote: %s%s%s%s%s:%s%s%s%s%s%s%s%s%s%s;",
-            proto,
-            (ed[0][0] ? "\"" : ""), (ed[0][0] ?: ""), (ed[0][0] ? "\"" : ""),
-            (ed[0][0] ? " (" : ""), ed[0][1], ed[0][2], (ed[0][0] ? ")" : ""),
-            (connnum ? " connections: " : ""), (connnum ?: ""),
-            (ed[0][3] ? " identification: " : ""), (ed[0][3] ?: ""),
-            (ed[1][0] ? "; local: ": ""),
-            (ed[0][0] ? "\"" : ""), (ed[1][0] ?: ""), (ed[0][0] ? "\"" : "")
-    );
+    char* p = buf;
+    p += snprintfx(p, buf + sizeof buf - p, "proto: %s;", proto);
+    for (size_t j = 0; j < elementsof(rl); j++) {
+        p += snprintfx(p, buf + sizeof buf - p, " %s:", rl[j]);
+        if (j == 0 && connnum)
+            p += snprintfx(p, buf + sizeof buf - p, " %s", connnum);
+        if (ed[j][0])
+            p += snprintfx(p, buf + sizeof buf - p, " \"%s\"", ed[j][0]);
+        if (ed[j][1] && ed[j][2])
+            p += snprintfx(p, buf + sizeof buf - p, " (%s:%s)", ed[j][1], ed[j][2]);
+        if (ed[j][3])
+            p += snprintfx(p, buf + sizeof buf - p, " [%s]", ed[j][3]);
+        p += snprintfx(p, buf + sizeof buf - p, ";");
+    }
+    LOGDX("%s", buf);
 }
 
 static const char* ucspi_adjust(const char* const proto, struct fstate* const f) {
