@@ -44,7 +44,6 @@ enum FrobMessageType {
     FROB_STORAGE = 0x300, //     S1 with type C message forwarded to transaction_store channel
     FROB_MAPPED  = 0x400, // M – message is mapped (TBD)
     FROB_UI      = 0x500, // U – message is forwarded to GUI channel
-    FROB_EVENT   = 0x600, // E – message is forwarded to event channel
 
     // All message types are in the same order as in the documentation
     FROB_MESSAGE_NUMBER_MASK = 0x0f,
@@ -80,7 +79,7 @@ enum FrobMessageType {
     FROB_K7 = FROB_UI      | FROB_K | 0x7, // Attendant interaction – input
     FROB_K8 = FROB_UI      | FROB_K | 0x8, // Attendant interaction – card
     FROB_K9 = FROB_UI      | FROB_K | 0x9, // Attendant interaction – sound
-    FROB_M1 = FROB_EVENT   | FROB_M | 0x1, // Event – notification
+    FROB_M1 = FROB_STORAGE | FROB_M | 0x1, // Event – notification
     FROB_L1 = FROB_LOCAL   | FROB_L | 0x1, // Unavailability – notification
     FROB_B1 = FROB_LOCAL   | FROB_B | 0x1, // Key pairing – request
     FROB_B2 = FROB_LOCAL   | FROB_B | 0x2, // Key pairing – response

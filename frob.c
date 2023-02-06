@@ -28,7 +28,6 @@ enum channel {
     CHANNEL_NO_PAYMENT,
     CHANNEL_NO_STORAGE,
     CHANNEL_NO_UI,
-    CHANNEL_NO_EVENTS,
     CHANNEL_CO_MASTER,
     CHANNEL_FO_MAIN,
 
@@ -105,7 +104,6 @@ static const char* channel_to_string(const enum channel o) {
         case CHANNEL_NO_PAYMENT: return "PAYMENT (native output)";
         case CHANNEL_NO_STORAGE: return "STORAGE (native output)";
         case CHANNEL_NO_UI:      return "UI (native output)";
-        case CHANNEL_NO_EVENTS:  return "EVENTS (native output)";
         case CHANNEL_NI_DEVICE:  return "DEVICE (native input)";
         case CHANNEL_FO_MAIN:    return "MAIN (foreign output)";
         case CHANNEL_FI_MAIN:    return "MAIN (foreign input)";
@@ -125,7 +123,6 @@ static char channel_to_code(const enum channel o) {
         case CHANNEL_NO_PAYMENT: return 'P';
         case CHANNEL_NO_STORAGE: return 'S';
         case CHANNEL_NO_UI:      return 'U';
-        case CHANNEL_NO_EVENTS:  return 'E';
         case CHANNEL_NI_DEVICE:  return 'D';
         case CHANNEL_FO_MAIN:
         case CHANNEL_FI_MAIN:    return 'M';
@@ -152,7 +149,6 @@ static enum channel choose_destination_from_message(const struct frob_msg* const
                 }
             break;
         case FROB_UI: return CHANNEL_NO_UI;
-        case FROB_EVENT: return CHANNEL_NO_EVENTS;
         case FROB_LOCAL: return CHANNEL_FO_MAIN;
         default:
             break;
