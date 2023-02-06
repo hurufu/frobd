@@ -6,7 +6,7 @@
 
   - [x] SIGINT should enter the interactive console
   - [x] SIGINFO/SIGPWR should display status or statistics
-  - [ ] SIGSTP/SIGUSR1 should enter "busy" mode - can be used for synchronization
+  - [-] SIGSTP/SIGUSR1 should enter "busy" mode - can be used for synchronization
         between different instances
 
 ### Configurability

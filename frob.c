@@ -47,7 +47,6 @@ enum channel {
 };
 
 struct config {
-    enum role { ROLE_ECR, ROLE_EFT } role;
     struct timeouts {
         unsigned short ack, // Timeout for ACK/NAK
                 ping,       // Timeout for T2
@@ -58,11 +57,12 @@ struct config {
     version_t supported_versions[4];
     struct frob_device_info info;
     struct frob_d5 parameters;
+    bool parameters_set;
     char fallback_s2[64];
 };
 
 struct state {
-    const struct config cfg;
+    struct config cfg;
 
     struct statistics {
         unsigned short received_good,
@@ -76,6 +76,7 @@ struct state {
 
     bool ack;
     bool ping;
+    bool busy;
 
     unsigned short pings_on_inactivity_left;
 
@@ -238,9 +239,9 @@ static union frob_body construct_hardcoded_message_body(const struct config* con
     return ret;
 }
 
-static void compute_next_token(const enum role r, char (*t)[6]) {
+static void compute_next_token(const enum FrobDeviceType r, char (*t)[6]) {
     static unsigned int token = 0;
-    const unsigned int offset = r == ROLE_ECR ? 10000 : 20000;
+    const unsigned int offset = r == FROB_DEVICE_TYPE_ECR ? 10000 : 20000;
     snprintfx(*t, sizeof *t, "%X", token + offset);
 
     // Specification doesn't define what to do in case of token overflow
@@ -306,7 +307,7 @@ static int commission_hardcoded_message_on_main(struct state* const s, const cha
 }
 
 static int commission_response(struct state* const s, const struct frob_msg* const received_msg) {
-    const enum channel dst = choose_destination(&s->fs, received_msg);
+    enum channel dst = choose_destination(&s->fs, received_msg);
     if (dst == CHANNEL_FO_MAIN) {
         if (received_msg->header.type == FROB_T2)
             s->pings_on_inactivity_left++;
@@ -316,12 +317,20 @@ static int commission_response(struct state* const s, const struct frob_msg* con
                 return 0;
             case FROB_S2:
                 return commission_frame_on_main(s, &received_msg->header.token, s->cfg.fallback_s2);
+            case FROB_D5:
+                if (!s->cfg.parameters_set) {
+                    dst = CHANNEL_NO_PAYMENT;
+                    if (s->fs.ch[dst].fd == -1)
+                        return LOGEX("D5 response is not configured, and channel %s isn't connected", channel_to_string(dst)), -1;
+                    goto forward_to_native_client;
+                }
             default:
                 break;
         }
         // Reply with hardcoded response
         return commission_hardcoded_message_on_main(s, &received_msg->header.token, resp);
     }
+forward_to_native_client:
     // Forward message without changing it
     return commission_native_message(&s->fs, dst, received_msg);
 };
@@ -335,7 +344,8 @@ static int commission_ping_on_main(struct state* const s) {
     if (s->fs.ch[CHANNEL_FO_MAIN].fd < 0)
         return 0;
     char token[6];
-    compute_next_token(s->cfg.role, &token);
+    assert(s->cfg.parameters_set);
+    compute_next_token(s->cfg.parameters.device_topo, &token);
     const int ret = commission_frame_on_main(s, &token, "T1" FS) == 0;
     if (ret)
         s->ping = true;
@@ -474,6 +484,12 @@ static void process_signal(struct state* const s) {
                 break;
             case SIGPWR:
                 print_stats(&s->stats);
+                break;
+            case SIGUSR1:
+                s->cfg.parameters_set = false;
+                break;
+            case SIGUSR2:
+                s->busy = !s->busy;
                 break;
         }
     }
@@ -672,6 +688,8 @@ static sigset_t adjust_signal_delivery(int* const ch) {
     static const int blocked_signals[] = {
         SIGALRM,
         SIGPWR,
+        SIGUSR1,
+        SIGUSR2,
         SIGINT
     };
     sigset_t s;
@@ -720,15 +738,29 @@ static const char* ucspi_adjust(const char* const proto, struct fstate* const f)
 }
 
 static void initialize(struct state* const s, const int ac, const char* av[static const ac]) {
-    assert(s->cfg.role == ROLE_ECR ? s->cfg.parameters.device_topo == FROB_DEVICE_TYPE_ECR : true);
-    s->pings_on_inactivity_left = 2;
+    *s = (struct state){
+        .cfg = {
+            .fallback_s2 = "S2" FS "993" FS FS "M000" FS "T000" FS "N/A" FS FS FS "NONE" FS "Payment endopoint not available" FS,
+            .supported_versions = { "160", "170" },
+            .info = {
+                .version = "170",
+                .vendor = "TEST",
+                .device_type = "SIM",
+                .device_id = "0"
+            }
+        },
+        .pings_on_inactivity_left = 2,
+        .select_params = {
+            .timeout_sec = ac == 2 ? atoi(av[1]) : 0
+        }
+    };
     for (enum channel i = CHANNEL_FIRST; i <= CHANNEL_LAST; i++) {
         s->fs.ch[i].fd = -1;
         s->fs.ch[i].cur = s->fs.ch[i].buf;
     }
-    s->sigfdset = adjust_signal_delivery(&s->fs.ch[CHANNEL_II_SIGNAL].fd);
     s->fs.ch[CHANNEL_FO_MAIN].fd = STDOUT_FILENO;
     s->fs.ch[CHANNEL_FI_MAIN].fd = STDIN_FILENO;
+    s->sigfdset = adjust_signal_delivery(&s->fs.ch[CHANNEL_II_SIGNAL].fd);
     if ((s->fs.ch[CHANNEL_NO_PAYMENT].fd = open("./payment", O_WRONLY | O_CLOEXEC)) == -1)
         LOGI("%s channel not available at %s", channel_to_string(CHANNEL_NO_PAYMENT), "./payment");
     const char* const proto = getenv("PROTO");
@@ -738,10 +770,6 @@ static void initialize(struct state* const s, const int ac, const char* av[stati
     FD_ZERO(&s->fs.eset);
     FD_ZERO(&s->fs.wset);
     FD_ZERO(&s->fs.eset);
-    s->select_params = (struct select_params) {
-        .timeout_sec = ac == 2 ? atoi(av[1]) : 0,
-        .maxfd = get_max_fd(&s->fs.ch),
-    };
     if (timer_create(CLOCK_MONOTONIC, NULL, &s->timer_ack) != 0)
         LOGF("timer_create");
     if (timer_create(CLOCK_MONOTONIC, NULL, &s->timer_ping) != 0)
@@ -760,53 +788,7 @@ static void adjust_rlimit(void) {
 }
 
 int main(const int ac, const char* av[static const ac]) {
-    static struct state s = {
-        .cfg = {
-            .fallback_s2 = "S2" FS "993" FS FS "M000" FS "T000" FS "N/A" FS FS FS "NONE" FS "Payment endopoint not available" FS,
-            .role = ROLE_EFT,
-            .supported_versions = { "160", "170" },
-            .info = {
-                .version = "170",
-                .vendor = "TEST",
-                .device_type = "SIM",
-                .device_id = "0"
-            },
-            .parameters = {
-                .printer_cpl = 24,
-                .printer_cpl2x = 12,
-                .printer_cpl4x = 6,
-                .printer_cpln = 19,
-                .printer_h2 = 1,
-                .printer_h4 = 1,
-                .printer_inv = 1,
-                .printer_max_barcode_length = 0,
-                .printer_max_qrcode_length = 0,
-                .printer_max_bitmap_count = 0,
-                .printer_max_bitmap_width = 0,
-                .printer_max_bitmap_height = 0,
-                .printer_aspect_ratio = 120,
-                .printer_buffer_max_lines = 9999,
-                .display_lc = 4,
-                .display_cpl = 15,
-                .key_name = {
-                    .enter = "ENTER",
-                    .cancel = "CANCEL",
-                    .check = "CHECK",
-                    .backspace ="BACKSPACE",
-                    .delete = "DELETE",
-                    .up = "UP",
-                    .down = "DOWN",
-                    .left = "LEFT",
-                    .right = "RIGHT"
-                },
-                .device_topo = FROB_DEVICE_TYPE_EFT_WITH_PINPAD_BUILTIN,
-                .nfc = true,
-                .ccr = true,
-                .mcr = true,
-                .bar = true
-            }
-        }
-    };
+    static struct state s;
     initialize(&s, ac, av);
     adjust_rlimit();
     event_loop(&s);
