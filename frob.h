@@ -277,7 +277,7 @@ struct frob_msg {
     const char magic[8]; // Shall be set to FROB_MAGIC
     struct frob_header header;
     union frob_body body;
-    char attr[8][21];
+    char attr[21][8];
 };
 
 _Static_assert(sizeof (struct frob_msg) % 16 == 0, "Message shall fit into 16-byte blocks, so output of od(1) will line up nicely");

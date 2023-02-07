@@ -10,8 +10,8 @@
 #define LOGIX(Fmt, ...) LOG_X(LOG_INFO, "I", Fmt, ##__VA_ARGS__)
 #define LOGWX(Fmt, ...) LOG_X(LOG_WARNING, "W", Fmt, ##__VA_ARGS__)
 #define LOGEX(Fmt, ...) LOG_X(LOG_ERROR, "E", Fmt, ##__VA_ARGS__)
-#define LOGFX(Fmt, ...) LOGF_(errx, Fmt, ##__VA_ARGS__)
-#define LOGF(Fmt, ...) LOGF_(err, Fmt, ##__VA_ARGS__)
+#define EXITFX(Fmt, ...) LOGF_(errx, Fmt, ##__VA_ARGS__)
+#define EXITF(Fmt, ...) LOGF_(err, Fmt, ##__VA_ARGS__)
 
 #define PRETTY(Arr) to_printable(Arr, endof(Arr), 4*sizeof(Arr), (char[4*sizeof(Arr)]){})
 #define PRETTV(P, Pe, Buf) to_printable(P, Pe, sizeof(Buf), Buf)

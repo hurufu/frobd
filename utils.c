@@ -40,7 +40,7 @@ unsigned snprintfx(char* const buf, const size_t s, const char* const fmt, ...) 
         else
             errno = ENOBUFS;
     }
-    LOGF("vsnprintf failed");
+    EXITF("vsnprintf failed");
 }
 
 char* trim_whitespaces(char* const s) {

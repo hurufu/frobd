@@ -268,7 +268,7 @@ static int commission_frame_on_main(struct state* const st, const char (* const 
     const size_t s = free_space(ch);
     const int ret = snprintf((char*)ch->cur, s, STX "%.6s" FS "%s" ETX "_", *token, body);
     if (ret < 0)
-        LOGF("Can't place frame");
+        EXITF("Can't place frame");
     if ((unsigned)ret >= s || ret == 0)
         return LOGEX("Frame skipped: %s", (ret ? strerror(ENOBUFS): "Empty message")), -1;
     ch->cur[ret - 1] = calculate_lrc(ch->cur + 1, ch->cur + ret - 1);
@@ -359,10 +359,10 @@ static void commission_ack_on_main(struct state* const s, const bool is_nak) {
 
 static int setup_signalfd(const int ch, const sigset_t blocked) {
     if (sigprocmask(SIG_BLOCK, &blocked, NULL) != 0)
-        LOGF("Couldn't adjust signal mask");
+        EXITF("Couldn't adjust signal mask");
     const int fd = signalfd(ch, &blocked, SFD_CLOEXEC);
     if (fd == -1)
-        LOGF("Couldn't setup sigfd for %d", ch);
+        EXITF("Couldn't setup sigfd for %d", ch);
     return fd;
 }
 
@@ -400,7 +400,7 @@ static void start_master_channel(struct state* const s) {
     sigemptyset(&tmp);
     sigaddset(&tmp, SIGINT);
     if (sigprocmask(SIG_UNBLOCK, &tmp, NULL) != 0)
-        LOGF("Can't unblock received singal");
+        EXITF("Can't unblock received singal");
 
     MCOPY(s->fs.ch[CHANNEL_CO_MASTER].cur, "Press ^C again to exit the program or ^D end interactive session...\n");
     commission_prompt_on_master(s);
@@ -432,7 +432,7 @@ static void alarm_set(timer_t timer, const int sec) {
     };
     struct itimerspec old;
     if (timer_settime(timer, 0, &new, &old) != 0)
-        LOGF("Can't set timer");
+        EXITF("Can't set timer");
 
     // We shouldn't set duplicated alrams
     assert(sec ? old.it_value.tv_sec == 0 && old.it_value.tv_nsec == 0 : 1);
@@ -573,7 +573,7 @@ static void perform_pending_write(const enum channel i, struct state* const st) 
     const ptrdiff_t l = used_space(ch);
     const ssize_t s = write(ch->fd, ch->buf, l);
     if (s != l) {
-        LOGF("Can't write %td bytes to %s channel (fd %d)", l, channel_to_string(i), ch->fd);
+        EXITF("Can't write %td bytes to %s channel (fd %d)", l, channel_to_string(i), ch->fd);
     } else {
         if (i == CHANNEL_FO_MAIN) {
             if (st->ack)
@@ -590,7 +590,7 @@ static void perform_pending_read(const enum channel i, struct state* const s) {
     struct chstate* const ch = &s->fs.ch[i];
     const ssize_t r = read(ch->fd, ch->cur, free_space(ch));
     if (r < 0) {
-        LOGF("Can't read data on %s channel (fd %d)", channel_to_string(i), ch->fd);
+        EXITF("Can't read data on %s channel (fd %d)", channel_to_string(i), ch->fd);
     } else if (r == 0) {
         LOGIX("Channel %s (fd %d) was closed", channel_to_string(i), ch->fd);
         close(ch->fd);
@@ -639,7 +639,7 @@ static void perform_pending_io(struct state* const s) {
         if (fd < 0)
             continue;
         if (FD_ISSET(fd, &s->fs.eset))
-            LOGFX("Exceptional data isn't supported");
+            EXITFX("Exceptional data isn't supported");
         if (FD_ISSET(fd, &s->fs.wset))
             perform_pending_write(i, s);
         if (FD_ISSET(fd, &s->fs.rset))
@@ -669,7 +669,7 @@ static int wait_for_io(struct state* const s) {
             if (s->pings_on_inactivity_left--)
                 return commission_ping_on_main(s);
         }
-        LOGF("select");
+        EXITF("select");
     }
     return l;
 }
@@ -771,9 +771,9 @@ static void initialize(struct state* const s, const int ac, const char* av[stati
     FD_ZERO(&s->fs.wset);
     FD_ZERO(&s->fs.eset);
     if (timer_create(CLOCK_MONOTONIC, NULL, &s->timer_ack) != 0)
-        LOGF("timer_create");
+        EXITF("timer_create");
     if (timer_create(CLOCK_MONOTONIC, NULL, &s->timer_ping) != 0)
-        LOGF("timer_create");
+        EXITF("timer_create");
 }
 
 static void adjust_rlimit(void) {
@@ -781,10 +781,10 @@ static void adjust_rlimit(void) {
     // doesn't fit into fd_set, so we don't have to check for that in the code.
     struct rlimit rl;
     if (getrlimit(RLIMIT_NOFILE, &rl) != 0)
-        LOGF("getrlimit");
+        EXITF("getrlimit");
     if (rl.rlim_cur > FD_SETSIZE)
         if (setrlimit(RLIMIT_NOFILE, &(struct rlimit){ .rlim_cur = FD_SETSIZE, .rlim_max = rl.rlim_max }) != 0)
-            LOGF("setrlimit");
+            EXITF("setrlimit");
 }
 
 int main(const int ac, const char* av[static const ac]) {
