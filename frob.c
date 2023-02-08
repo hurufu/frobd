@@ -57,7 +57,6 @@ struct config {
     version_t supported_versions[4];
     struct frob_device_info info;
     struct frob_d5 parameters;
-    bool parameters_set;
     char fallback_s2[64];
 };
 
@@ -317,20 +316,12 @@ static int commission_response(struct state* const s, const struct frob_msg* con
                 return 0;
             case FROB_S2:
                 return commission_frame_on_main(s, &received_msg->header.token, s->cfg.fallback_s2);
-            case FROB_D5:
-                if (!s->cfg.parameters_set) {
-                    dst = CHANNEL_NO_PAYMENT;
-                    if (s->fs.ch[dst].fd == -1)
-                        return LOGEX("D5 response is not configured, and channel %s isn't connected", channel_to_string(dst)), -1;
-                    goto forward_to_native_client;
-                }
             default:
                 break;
         }
         // Reply with hardcoded response
         return commission_hardcoded_message_on_main(s, &received_msg->header.token, resp);
     }
-forward_to_native_client:
     // Forward message without changing it
     return commission_native_message(&s->fs, dst, received_msg);
 };
@@ -344,7 +335,6 @@ static int commission_ping_on_main(struct state* const s) {
     if (s->fs.ch[CHANNEL_FO_MAIN].fd < 0)
         return 0;
     char token[6];
-    assert(s->cfg.parameters_set);
     compute_next_token(s->cfg.parameters.device_topo, &token);
     const int ret = commission_frame_on_main(s, &token, "T1" FS) == 0;
     if (ret)
@@ -484,9 +474,6 @@ static void process_signal(struct state* const s) {
                 break;
             case SIGPWR:
                 print_stats(&s->stats);
-                break;
-            case SIGUSR1:
-                s->cfg.parameters_set = false;
                 break;
             case SIGUSR2:
                 s->busy = !s->busy;
@@ -688,7 +675,6 @@ static sigset_t adjust_signal_delivery(int* const ch) {
     static const int blocked_signals[] = {
         SIGALRM,
         SIGPWR,
-        SIGUSR1,
         SIGUSR2,
         SIGINT
     };
@@ -737,6 +723,23 @@ static const char* ucspi_adjust(const char* const proto, struct fstate* const f)
     return connnum;
 }
 
+static void load_d5_from_file(const char* const name, struct frob_d5* const out) {
+    const int d5 = open(name, O_RDONLY | O_CLOEXEC);
+    if (d5 < 0)
+        EXITF("open %s", name);
+    input_t buf[256];
+    const ssize_t r = slurp(d5, sizeof buf, buf);
+    if (r < 0)
+        EXITF("slurp %s", name);
+    close(d5);
+    struct frob_msg msg = { .magic = FROB_MAGIC };
+    if (parse_message(buf, buf + r, &msg) != 0)
+        EXITF("parse %s", name);
+    if (msg.header.type != FROB_D5)
+        EXITF("parse %s: not a D5", name);
+    *out = msg.body.d5;
+}
+
 static void initialize(struct state* const s, const int ac, const char* av[static const ac]) {
     *s = (struct state){
         .cfg = {
@@ -770,6 +773,7 @@ static void initialize(struct state* const s, const int ac, const char* av[stati
     FD_ZERO(&s->fs.eset);
     FD_ZERO(&s->fs.wset);
     FD_ZERO(&s->fs.eset);
+    load_d5_from_file("d5.txt", &s->cfg.parameters);
     if (timer_create(CLOCK_MONOTONIC, NULL, &s->timer_ack) != 0)
         EXITF("timer_create");
     if (timer_create(CLOCK_MONOTONIC, NULL, &s->timer_ping) != 0)

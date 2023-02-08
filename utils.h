@@ -89,3 +89,6 @@ int parse_message(const input_t* p, const input_t* pe, struct frob_msg*);
 
 // Returns number of bytes written to buf or -1 on error
 ssize_t serialize(size_t s, input_t buf[static s], const struct frob_msg* msg);
+
+// Slurp whole file into memory
+ssize_t slurp(int fd, size_t s, input_t buf[static s]);
