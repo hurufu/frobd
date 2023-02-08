@@ -115,14 +115,14 @@ bail:
 }
 
 ssize_t slurp(const int fd, const size_t s, input_t buf[static const s]) {
-    size_t r = 0;
-    while (r < s) {
+    ssize_t r = 0;
+    while (r <= (ssize_t)s) {
         const ssize_t l = read(fd, buf + r, s - r);
         if (l < 0)
             return -1;
         if (l == 0)
-            break;
+            return read(fd, (char[1]){}, 1) == 0 ? r : -1;
         r += l;
     }
-    return r;
+    return -1;
 }
