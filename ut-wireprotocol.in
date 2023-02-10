@@ -66,14 +66,14 @@ static void test_frame(const size_t bs, byte_t buf[static bs],
     ck_assert_ptr_eq(st.pe, expected_pe);
 }
 
-#define TEST_SLURP(Data, BufSize, ExpectedRet)\
-    test_slurpa(sizeof Data, Data, BufSize, ExpectedRet)
-#define TEST_SLURP_OK(Data, BufSize)\
-    TEST_SLURP(Data, BufSize, sizeof Data)
-static void test_slurpa(const size_t data_size, const char data[static const data_size], const size_t buf_size, const ssize_t expected_ret) {
+#define TEST_EREAD(Data, BufSize, ExpectedRet)\
+    test_eread(sizeof Data, Data, BufSize, ExpectedRet)
+#define TEST_EREAD_OK(Data, BufSize)\
+    TEST_EREAD(Data, BufSize, sizeof Data)
+static void test_eread(const size_t data_size, const char data[static const data_size], const size_t buf_size, const ssize_t expected_ret) {
     const int fd = write_data_to_pipe(data_size, data);
     input_t out[buf_size];
-    const ssize_t r = slurpa(fd, sizeof out, out);
+    const ssize_t r = eread(fd, sizeof out, out);
     ck_assert_int_eq(r, expected_ret);
     ck_assert_mem_eq(out, data, min(data_size, buf_size));
     if (data_size >= buf_size)
@@ -190,31 +190,31 @@ static void test_slurpa(const size_t data_size, const char data[static const dat
     char buf[] = "hello";
     ck_assert_str_eq(trim_whitespaces(buf), "hello");
 
-#test slurp_file
-    TEST_SLURP_OK("Hello, this is some test data", 64);
+#test eread_file
+    TEST_EREAD_OK("Hello, this is some test data", 64);
 
-#test slurp_empty_file
-    TEST_SLURP_OK(((char[0]){}), 64);
+#test eread_empty_file
+    TEST_EREAD_OK(((char[0]){}), 64);
 
-#test slurp_empty_file_into_empty_buffer
-    TEST_SLURP(((char[0]){}), 0, -1);
+#test eread_empty_file_into_empty_buffer
+    TEST_EREAD(((char[0]){}), 0, -1);
 
-#test slurp_big_file
+#test eread_big_file
     char buf[64 * 1024];
     for (size_t i = 0; i < sizeof buf; i++)
         buf[i] = (i % 0x5F) + 0x20;
 
-#test slurp_file_into_buffer_with_the_same_size_as_the_file
+#test eread_file_into_buffer_with_the_same_size_as_the_file
     char buf[64 * 1024];
     for (size_t i = 0; i < sizeof buf; i++)
         buf[i] = (i % 0x5F) + 0x20;
-    TEST_SLURP(buf, sizeof buf, -1);
+    TEST_EREAD(buf, sizeof buf, -1);
 
-#test slurp_file_works_with_empty_buffer
-    TEST_SLURP("Hello, this is some test data", 0, -1);
+#test eread_file_works_with_empty_buffer
+    TEST_EREAD("Hello, this is some test data", 0, -1);
 
-#test slurp_file_works_with_small_buffer
-    TEST_SLURP("Hello, this is some test data", 1, -1);
+#test eread_file_works_with_small_buffer
+    TEST_EREAD("Hello, this is some test data", 1, -1);
 
 #suite serializing
 

@@ -724,16 +724,9 @@ static const char* ucspi_adjust(const char* const proto, struct fstate* const f)
 }
 
 static struct frob_d5 load_d5_from_file(const char* const name) {
-    const int d5 = open(name, O_RDONLY | O_CLOEXEC);
-    if (d5 < 0)
-        EXITF("open %s", name);
     input_t buf[256];
-    const ssize_t r = slurpa(d5, sizeof buf, buf);
-    if (r < 0)
-        EXITF("slurpa %s", name);
-    close(d5);
     struct frob_msg msg = { .magic = FROB_MAGIC };
-    if (parse_message(buf, buf + r, &msg) != 0)
+    if (parse_message(buf, buf + slurpx(name, sizeof buf, buf), &msg) != 0)
         EXITF("parse %s", name);
     if (msg.header.type != FROB_D5)
         EXITF("parse %s: not a D5", name);

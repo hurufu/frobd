@@ -7,8 +7,7 @@
 #include <assert.h>
 #include <string.h>
 #include <unistd.h>
-
-extern inline ssize_t slurpa(int fd, size_t s, input_t buf[static s]);
+#include <fcntl.h>
 
 input_t calculate_lrc(input_t* p, const input_t* const pe) {
     uint8_t lrc = 0;
@@ -123,7 +122,7 @@ ssize_t rread(const int fd, void* const buf, const size_t count) {
     return r;
 }
 
-ssize_t slurp(const int fd, const size_t s, input_t buf[static const s]) {
+ssize_t aread(const int fd, const size_t s, input_t buf[static const s]) {
     ssize_t l;
     ssize_t r = 0;
     do {
@@ -133,4 +132,32 @@ ssize_t slurp(const int fd, const size_t s, input_t buf[static const s]) {
         r += l;
     } while (l != 0);
     return r;
+}
+
+ssize_t eread(const int fd, const size_t s, input_t buf[static const s]) {
+    const ssize_t ret = aread(fd, s, buf);
+    if (ret >= 0 && (size_t)ret < s)
+        return ret;
+    assert((size_t)ret == s);
+    errno = ENOBUFS;
+    return -1;
+}
+
+ssize_t slurp(const char* const name, const size_t s, input_t buf[static const s]) {
+    const int fd = open(name, O_RDONLY | O_CLOEXEC);
+    if (fd < 0)
+        return -1;
+    const ssize_t ret = eread(fd, s, buf);
+    const int e = errno;
+    if (close(fd) < 0)
+        LOGW("close %s", name);
+    errno = e;
+    return ret;
+}
+
+size_t slurpx(const char* const name, const size_t s, input_t buf[static const s]) {
+    const ssize_t ret = slurp(name, s, buf);
+    if (ret < 0)
+        EXITF("slurp %s", name);
+    return ret;
 }

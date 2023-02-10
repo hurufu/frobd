@@ -96,18 +96,17 @@ ssize_t serialize(size_t s, input_t buf[static s], const struct frob_msg* msg);
 // it was interrupted by a signal.
 ssize_t rread(int fd, void* buf, size_t count);
 
-// Slurps file into buf
+// Reads file into buf
 // If whole file was read returns positive interger less than s - bytes read.
 // if only part of file was read returns s.
 // if error occurs returns -1
-ssize_t slurp(int fd, size_t s, input_t buf[static s]);
+ssize_t eread(int fd, size_t s, input_t buf[static s]);
 
-// Slurps full file into buf, returns -1 on error or if file is too big to fit into buf
-static inline ssize_t slurpa(const int fd, const size_t s, input_t buf[static const s]) {
-    const ssize_t ret = slurp(fd, s, buf);
-    if (ret >= 0 && (size_t)ret < s)
-        return ret;
-    assert((size_t)ret == s);
-    errno = ENOBUFS;
-    return -1;
-}
+// Reads full file into buf, returns -1 on error or if file is too big to fit into buf and sets errno accordingly
+ssize_t aread(int fd, size_t s, input_t buf[static s]);
+
+// Slurps whole file into buf, returns -1 on error or if the file is too big to fit into buf and sets errno accordingly
+ssize_t slurp(const char* name, size_t s, input_t buf[static s]);
+
+// Same as slurp, but exits on error
+size_t slurpx(const char* name, size_t s, input_t buf[static s]);
