@@ -115,31 +115,25 @@ bail:
     return -1;
 }
 
-ssize_t rread(const int fd, void* const buf, const size_t count) {
-    ssize_t r;
-    while ((r = read(fd, buf, count)) < 0 && errno == EINTR)
-        continue;
-    return r;
-}
-
-ssize_t aread(const int fd, const size_t s, input_t buf[static const s]) {
+ssize_t rread(const int fd, const size_t s, input_t buf[static const s]) {
     ssize_t l;
     ssize_t r = 0;
     do {
-        l = rread(fd, buf + r, s - r);
+        while ((l = read(fd, buf + r, s - r)) < 0 && errno == EINTR)
+            continue;
         if (l < 0)
-            return assert(errno != EINTR), -1;
+            return -1;
         r += l;
     } while (l != 0);
     return r;
 }
 
 ssize_t eread(const int fd, const size_t s, input_t buf[static const s]) {
-    const ssize_t ret = aread(fd, s, buf);
+    const ssize_t ret = rread(fd, s, buf);
     if (ret >= 0 && (size_t)ret < s)
         return ret;
     assert((size_t)ret == s);
-    errno = ENOBUFS;
+    errno = EFBIG;
     return -1;
 }
 
