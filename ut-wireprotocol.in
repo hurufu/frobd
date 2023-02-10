@@ -2,10 +2,25 @@
 #include "utils.h"
 #include "log.h"
 
+#ifdef CK_MAX_ASSERT_MEM_PRINT_SIZE
+#   undef CK_MAX_ASSERT_MEM_PRINT_SIZE
+#endif
 #define CK_MAX_ASSERT_MEM_PRINT_SIZE 256
-#include <check.h>
+
 #include <errno.h>
 #include <unistd.h>
+
+// We aren't testing actual I/O here, those functions are used only in the test
+// fixtures and support code, so we can just abort on error.
+#define XSYSCALL(Type, Func, ...) ({\
+    const Type ret = Func(__VA_ARGS__);\
+    if (ret == -1)\
+        ck_abort_msg(#Func "(" #__VA_ARGS__ ") failed: %m");\
+    ret;\
+})
+#define xpipe(...) XSYSCALL(int, pipe, ##__VA_ARGS__)
+#define xclose(...) XSYSCALL(int, close, ##__VA_ARGS__)
+#define xwrite(...) XSYSCALL(ssize_t, write, ##__VA_ARGS__)
 
 #define OFFSET_OR_PTR(Start, Value)\
     _Generic((Value),\
@@ -13,6 +28,14 @@
         size_t: (Start) + (intptr_t)(Value),\
         void*: (Value)\
     )
+
+static int write_data_to_pipe(const size_t l, const char data[static const l]) {
+    int pfd[2];
+    xpipe(pfd);
+    xwrite(pfd[1], data, l);
+    xclose(pfd[1]);
+    return pfd[0];
+}
 
 #define TEST_HEADER1(Input, ExpectedRet)\
     TEST_HEADER3(Input, ExpectedRet, 0, "")
@@ -41,6 +64,21 @@ static void test_frame(const size_t bs, byte_t buf[static bs],
     ck_assert_int_eq(x, expected_return_value);
     ck_assert_ptr_eq(st.p, expected_p);
     ck_assert_ptr_eq(st.pe, expected_pe);
+}
+
+#define TEST_SLURP(Data, BufSize, ExpectedRet)\
+    test_slurpa(sizeof Data, Data, BufSize, ExpectedRet)
+#define TEST_SLURP_OK(Data, BufSize)\
+    TEST_SLURP(Data, BufSize, sizeof Data)
+static void test_slurpa(const size_t data_size, const char data[static const data_size], const size_t buf_size, const ssize_t expected_ret) {
+    const int fd = write_data_to_pipe(data_size, data);
+    input_t out[buf_size];
+    const ssize_t r = slurpa(fd, sizeof out, out);
+    ck_assert_int_eq(r, expected_ret);
+    ck_assert_mem_eq(out, data, min(data_size, buf_size));
+    if (data_size >= buf_size)
+        ck_assert_int_eq(errno, ENOBUFS);
+    xclose(fd);
 }
 
 #suite frame_parsing
@@ -128,32 +166,6 @@ static void test_frame(const size_t bs, byte_t buf[static bs],
 
 #suite utils
 
-static int write_data_to_pipe(const size_t l, const char data[static const l]) {
-    int pfd[2];
-    if (pipe(pfd) == -1)
-        ck_abort_msg("pfd() failed: %m");
-    if (write(pfd[1], data, l) != l)
-        ck_abort_msg("write() failed: %m");
-    close(pfd[1]);
-    return pfd[0];
-}
-
-#define TEST_SLURP(Data, BufSize, ExpectedRet)\
-    test_slurp(sizeof Data, Data, BufSize, ExpectedRet)
-#define TEST_SLURP_OK(Data, BufSize)\
-    TEST_SLURP(Data, BufSize, sizeof Data)
-static void test_slurp(const size_t data_size, const char data[static const data_size], const size_t buf_size, const ssize_t expected_ret) {
-    const int fd = write_data_to_pipe(data_size, data);
-    input_t out[buf_size];
-    const ssize_t r = slurp(fd, sizeof out, out);
-    if (expected_ret >= 0 && r < 0)
-        ck_abort_msg("slurp() failed: %m");
-    ck_assert_int_eq(r, expected_ret);
-    if (r >= 0)
-        ck_assert_mem_eq(out, data, data_size);
-    close(fd);
-}
-
 #test space_trimming_works_with_only_trailing_spaces
     char buf[] = "hello    ";
     ck_assert_str_eq(trim_whitespaces(buf), "hello");
@@ -185,13 +197,18 @@ static void test_slurp(const size_t data_size, const char data[static const data
     TEST_SLURP_OK(((char[0]){}), 64);
 
 #test slurp_empty_file_into_empty_buffer
-    TEST_SLURP_OK(((char[0]){}), 0);
+    TEST_SLURP(((char[0]){}), 0, -1);
 
 #test slurp_big_file
     char buf[64 * 1024];
     for (size_t i = 0; i < sizeof buf; i++)
         buf[i] = (i % 0x5F) + 0x20;
-    TEST_SLURP_OK(buf, sizeof buf);
+
+#test slurp_file_into_buffer_with_the_same_size_as_the_file
+    char buf[64 * 1024];
+    for (size_t i = 0; i < sizeof buf; i++)
+        buf[i] = (i % 0x5F) + 0x20;
+    TEST_SLURP(buf, sizeof buf, -1);
 
 #test slurp_file_works_with_empty_buffer
     TEST_SLURP("Hello, this is some test data", 0, -1);

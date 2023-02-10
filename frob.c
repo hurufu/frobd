@@ -723,21 +723,21 @@ static const char* ucspi_adjust(const char* const proto, struct fstate* const f)
     return connnum;
 }
 
-static void load_d5_from_file(const char* const name, struct frob_d5* const out) {
+static struct frob_d5 load_d5_from_file(const char* const name) {
     const int d5 = open(name, O_RDONLY | O_CLOEXEC);
     if (d5 < 0)
         EXITF("open %s", name);
     input_t buf[256];
-    const ssize_t r = slurp(d5, sizeof buf, buf);
+    const ssize_t r = slurpa(d5, sizeof buf, buf);
     if (r < 0)
-        EXITF("slurp %s", name);
+        EXITF("slurpa %s", name);
     close(d5);
     struct frob_msg msg = { .magic = FROB_MAGIC };
     if (parse_message(buf, buf + r, &msg) != 0)
         EXITF("parse %s", name);
     if (msg.header.type != FROB_D5)
         EXITF("parse %s: not a D5", name);
-    *out = msg.body.d5;
+    return msg.body.d5;
 }
 
 static void initialize(struct state* const s, const int ac, const char* av[static const ac]) {
@@ -750,7 +750,8 @@ static void initialize(struct state* const s, const int ac, const char* av[stati
                 .vendor = "TEST",
                 .device_type = "SIM",
                 .device_id = "0"
-            }
+            },
+            .parameters = load_d5_from_file("d5.txt")
         },
         .pings_on_inactivity_left = 2,
         .select_params = {
@@ -773,7 +774,6 @@ static void initialize(struct state* const s, const int ac, const char* av[stati
     FD_ZERO(&s->fs.eset);
     FD_ZERO(&s->fs.wset);
     FD_ZERO(&s->fs.eset);
-    load_d5_from_file("d5.txt", &s->cfg.parameters);
     if (timer_create(CLOCK_MONOTONIC, NULL, &s->timer_ack) != 0)
         EXITF("timer_create");
     if (timer_create(CLOCK_MONOTONIC, NULL, &s->timer_ping) != 0)

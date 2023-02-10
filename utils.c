@@ -8,6 +8,8 @@
 #include <string.h>
 #include <unistd.h>
 
+extern inline ssize_t slurpa(int fd, size_t s, input_t buf[static s]);
+
 input_t calculate_lrc(input_t* p, const input_t* const pe) {
     uint8_t lrc = 0;
     assert(p < pe);
@@ -114,15 +116,21 @@ bail:
     return -1;
 }
 
+ssize_t rread(const int fd, void* const buf, const size_t count) {
+    ssize_t r;
+    while ((r = read(fd, buf, count)) < 0 && errno == EINTR)
+        continue;
+    return r;
+}
+
 ssize_t slurp(const int fd, const size_t s, input_t buf[static const s]) {
+    ssize_t l;
     ssize_t r = 0;
-    while (r <= (ssize_t)s) {
-        const ssize_t l = read(fd, buf + r, s - r);
+    do {
+        l = rread(fd, buf + r, s - r);
         if (l < 0)
-            return -1;
-        if (l == 0)
-            return read(fd, (char[1]){}, 1) == 0 ? r : -1;
+            return assert(errno != EINTR), -1;
         r += l;
-    }
-    return -1;
+    } while (l != 0);
+    return r;
 }
