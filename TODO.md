@@ -1,6 +1,11 @@
 ## Features to consider
 
+### Testing
+
    * [ ] Use DejaGnu to test the program with different configurations and inputs.
+   * [ ] Use [Mull][6] to perfrom mutation testing on the code.
+   * [ ] Use [KLEE][7] to perform symbolic execution on the code.
+   * [ ] Use [gcov][8] to generate coverage reports.
 
 ### Signal handling
 
@@ -78,3 +83,6 @@ Possible topics to have a look at:
 [3]: https://en.wikipedia.org/wiki/Fluent_(artificial_intelligence)
 [4]: https://www.researchgate.net/publication/2276002_Reasoning_about_Fluents_in_Logic_Programming
 [5]: https://www.researchgate.net/publication/2841600_Fluent_Logic_Programming
+[6]: https://github.com/mull-project/mull
+[7]: https://klee.github.io/
+[8]: https://gcc.gnu.org/onlinedocs/gcc/Gcov.html
