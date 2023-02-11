@@ -6,6 +6,8 @@
    * [ ] Use [Mull][6] to perfrom mutation testing on the code.
    * [ ] Use [KLEE][7] to perform symbolic execution on the code.
    * [ ] Use [gcov][8] to generate coverage reports.
+   * [ ] Use [fuzzing][9] to test the program with random inputs. Fuzzing can be
+         done with [AFL][10] or [libFuzzer][11].
 
 ### Signal handling
 
@@ -86,3 +88,6 @@ Possible topics to have a look at:
 [6]: https://github.com/mull-project/mull
 [7]: https://klee.github.io/
 [8]: https://gcc.gnu.org/onlinedocs/gcc/Gcov.html
+[9]: https://en.wikipedia.org/wiki/Fuzzing
+[10]: http://lcamtuf.coredump.cx/afl/
+[11]: https://llvm.org/docs/LibFuzzer.html
