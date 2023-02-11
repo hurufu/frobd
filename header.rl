@@ -108,14 +108,13 @@ int frob_header_extract(const input_t** px, const input_t* const pe, struct frob
 
     if (!type_end || !token_end)
         return EBADMSG;
+    *px = p;
     const enum FrobMessageType type = deserialize_type(type_end[-2], type_end[-1]);
-    if (header->type == 0 || header->type == type)
-        header->type = type;
-    else
+    // If header type is predefined, it must match
+    if (header->type && header->type != type)
         return ENOMSG;
-    int i = 0;
+    header->type = type;
     assert(token_end - start <= 6);
     memcpy(header->token, start, token_end - start);
-    *px = p;
     return 0;
 }
