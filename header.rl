@@ -3,6 +3,9 @@
 #include <stddef.h>
 #include <errno.h>
 #include <assert.h>
+#include <stdlib.h>
+
+_Static_assert(sizeof (unsigned long) >= sizeof (token_t), "token_t is too big for strtoul");
 
 %%{
     machine frob_header;
@@ -116,7 +119,7 @@ int frob_header_extract(const input_t** px, const input_t* const pe, struct frob
     header->type = type;
     assert(token_end - start <= 6);
     char* end;
-    header->token = strtotoken(start, &end, 16);
-    assert(end == token_end);
+    header->token = strtoul((char*)start, &end, 16);
+    assert(end == (char*)token_end);
     return 0;
 }

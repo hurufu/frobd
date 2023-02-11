@@ -46,7 +46,7 @@ static int write_data_to_pipe(const size_t l, const char data[static const l]) {
 #define TEST_HEADER1(Input, ExpectedRet)\
     TEST_HEADER3(Input, ExpectedRet, 0, "")
 #define TEST_HEADER3(Input, ExpectedRet, ExpectedType, ExpectedToken)\
-    test_header(elementsof(Input), (byte_t*)Input, ExpectedRet, ExpectedType, strtotoken(ExpectedToken, NULL, 16))
+    test_header(elementsof(Input), (byte_t*)Input, ExpectedRet, ExpectedType, strtoul(ExpectedToken, NULL, 16))
 static void test_header(const size_t bs, const byte_t buf[static bs],
                         const int expected_return_value,
                         const enum FrobMessageType expected_type,

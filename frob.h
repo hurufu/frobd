@@ -21,10 +21,9 @@ typedef uint64_t error_t; // FIXME: Type is too big
 typedef uint8_t bcd_t; // FIXME: Use a real BCD type
 typedef bcd_t amount_t[12];
 typedef char version_t[4];
-// Important: Use appropriate macro to print and parse token_t
+// Important: Use appropriate macro to print token_t
 typedef uint_least32_t token_t;
 #define PRIXTOKEN PRIXLEAST32
-#define strtotoken strtoul
 
 enum FrobMessageType {
     FROB_NONE = -1,
