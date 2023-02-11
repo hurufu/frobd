@@ -5,9 +5,9 @@
    * [ ] Use DejaGnu to test the program with different configurations and inputs.
    * [ ] Use [Mull][6] to perfrom mutation testing on the code.
    * [ ] Use [KLEE][7] to perform symbolic execution on the code.
-   * [x] Use [gcov][8] to generate coverage reports.
-   * [ ] Use [fuzzing][9] to test the program with random inputs. Fuzzing can be
-         done with [AFL][10] or [libFuzzer][11].
+   * [x] Use gcov to generate coverage reports.
+   * [ ] Use fuzzing to test the program with random inputs. It can be done with
+         [AFL][10] or [libFuzzer][11].
 
 ### Signal handling
 
@@ -87,7 +87,5 @@ Possible topics to have a look at:
 [5]: https://www.researchgate.net/publication/2841600_Fluent_Logic_Programming
 [6]: https://github.com/mull-project/mull
 [7]: https://klee.github.io/
-[8]: https://gcc.gnu.org/onlinedocs/gcc/Gcov.html
-[9]: https://en.wikipedia.org/wiki/Fuzzing
 [10]: http://lcamtuf.coredump.cx/afl/
 [11]: https://llvm.org/docs/LibFuzzer.html
