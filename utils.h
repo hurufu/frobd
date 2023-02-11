@@ -1,4 +1,5 @@
 #pragma once
+// FIXME: This file should be renamed to common.h
 
 #include "frob.h"
 
@@ -58,6 +59,9 @@
         v = trim_whitespaces(v);\
     v;\
 })
+
+// Input character type, can be changed to something else
+typedef uint8_t input_t;
 
 byte_t hex2nibble(char h);
 byte_t unhex(const char h[static 2]);
