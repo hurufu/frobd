@@ -92,18 +92,13 @@ int parse_message(const input_t* p, const input_t* pe, struct frob_msg*);
 // Returns number of bytes written to buf or -1 on error
 ssize_t serialize(size_t s, input_t buf[static s], const struct frob_msg* msg);
 
-// Has exactly the same semantics as read(2) except that it restarts itself if
-// it was interrupted by a signal or until file is fully read
-// If whole file was read returns positive interger less than s - bytes read.
-// if only part of file was read returns s.
-// if error occurs returns -1 and sets errno accordingly
-ssize_t rread(int fd, size_t s, input_t buf[static s]);
-
-// Same as rread, but returns -1 if file is too big to fit into buf
+// Same as read, but returns -1 if file is too big to fit into buf
+// TODO: Make this function static
 ssize_t eread(int fd, size_t s, input_t buf[static s]);
 
 // Slurps whole file into buf, returns -1 on error or if the file is too big to fit into buf and sets errno accordingly
 ssize_t slurp(const char* name, size_t s, input_t buf[static s]);
 
 // Same as slurp, but exits on error
+// TODO: Rename to xslurp
 size_t slurpx(const char* name, size_t s, input_t buf[static s]);

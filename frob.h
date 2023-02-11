@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <inttypes.h>
 
 /* ***************************************************************** *
  * WARNING: All char arrays are NOT null-terminated, but null-padded *
@@ -20,6 +21,10 @@ typedef uint64_t error_t; // FIXME: Type is too big
 typedef uint8_t bcd_t; // FIXME: Use a real BCD type
 typedef bcd_t amount_t[12];
 typedef char version_t[4];
+// Important: Use appropriate macro to print and parse token_t
+typedef uint_least32_t token_t;
+#define PRIXTOKEN PRIXLEAST32
+#define strtotoken strtoul
 
 enum FrobMessageType {
     FROB_NONE = -1,
@@ -113,7 +118,7 @@ enum FrobTransactionStatus {
 
 struct frob_header {
     enum FrobMessageType type;
-    char token[6]; // FIXME: Replace with unsigned int
+    token_t token;
 };
 
 struct frob_device_info {
@@ -277,7 +282,7 @@ struct frob_msg {
     const char magic[8]; // Shall be set to FROB_MAGIC
     struct frob_header header;
     union frob_body body;
-    char attr[21][8];
+    char attr[19][3];
 };
 
 _Static_assert(sizeof (struct frob_msg) % 16 == 0, "Message shall fit into 16-byte blocks, so output of od(1) will line up nicely");

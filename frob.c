@@ -238,13 +238,11 @@ static union frob_body construct_hardcoded_message_body(const struct config* con
     return ret;
 }
 
-static void compute_next_token(const enum FrobDeviceType r, char (*t)[6]) {
-    static unsigned int token = 0;
-    const unsigned int offset = r == FROB_DEVICE_TYPE_ECR ? 10000 : 20000;
-    snprintfx(*t, sizeof *t, "%X", token + offset);
-
+// FIXME: Rewrite this function, so it wouldn't use condtion on device type
+static token_t compute_next_token(const enum FrobDeviceType r) {
+    static token_t token = 0;
     // Specification doesn't define what to do in case of token overflow
-    token = (token + 1) % offset;
+    return token = (token + 1) % (r == FROB_DEVICE_TYPE_ECR ? 10000 : 20000);
 }
 
 static int commission_native_message(struct fstate* const f, const enum channel dst, const struct frob_msg* const msg) {
@@ -261,11 +259,11 @@ static int commission_native_message(struct fstate* const f, const enum channel 
     return 0;
 }
 
-static int commission_frame_on_main(struct state* const st, const char (* const token)[6], const char* const body) {
+static int commission_frame_on_main(struct state* const st, const token_t t, const char* const body) {
     struct fstate* const f = &st->fs;
     struct chstate* const ch = &f->ch[CHANNEL_FO_MAIN];
     const size_t s = free_space(ch);
-    const int ret = snprintf((char*)ch->cur, s, STX "%.6s" FS "%s" ETX "_", *token, body);
+    const int ret = snprintf((char*)ch->cur, s, STX "%" PRIXTOKEN FS "%s" ETX "_", t, body);
     if (ret < 0)
         EXITF("Can't place frame");
     if ((unsigned)ret >= s || ret == 0)
@@ -284,12 +282,12 @@ static int commission_frame_on_main(struct state* const st, const char (* const 
     return 0;
 }
 
-static int commission_hardcoded_message_on_main(struct state* const s, const char (* const t)[6], const enum FrobMessageType m) {
+static int commission_hardcoded_message_on_main(struct state* const s, const token_t t, const enum FrobMessageType m) {
     struct chstate* const main = &s->fs.ch[CHANNEL_FO_MAIN];
     const struct frob_msg response = {
         .magic = FROB_MAGIC,
         .header = {
-            .token = {(*t)[0],(*t)[1],(*t)[2],(*t)[3],(*t)[4],(*t)[5]},
+            .token = t,
             .type = m
         },
         .body = construct_hardcoded_message_body(&s->cfg, m)
@@ -315,12 +313,12 @@ static int commission_response(struct state* const s, const struct frob_msg* con
             case FROB_NONE:
                 return 0;
             case FROB_S2:
-                return commission_frame_on_main(s, &received_msg->header.token, s->cfg.fallback_s2);
+                return commission_frame_on_main(s, received_msg->header.token, s->cfg.fallback_s2);
             default:
                 break;
         }
         // Reply with hardcoded response
-        return commission_hardcoded_message_on_main(s, &received_msg->header.token, resp);
+        return commission_hardcoded_message_on_main(s, received_msg->header.token, resp);
     }
     // Forward message without changing it
     return commission_native_message(&s->fs, dst, received_msg);
@@ -334,9 +332,7 @@ static void commission_prompt_on_master(struct state* const st) {
 static int commission_ping_on_main(struct state* const s) {
     if (s->fs.ch[CHANNEL_FO_MAIN].fd < 0)
         return 0;
-    char token[6];
-    compute_next_token(s->cfg.parameters.device_topo, &token);
-    const int ret = commission_frame_on_main(s, &token, "T1" FS) == 0;
+    const int ret = commission_frame_on_main(s, compute_next_token(s->cfg.parameters.device_topo), "T1" FS) == 0;
     if (ret)
         s->ping = true;
     return ret;

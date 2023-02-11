@@ -115,14 +115,19 @@ bail:
     return -1;
 }
 
-ssize_t rread(const int fd, const size_t s, input_t buf[static const s]) {
+// Has similar semantics to read(2) except that it restarts itself if
+// it was interrupted by a signal or until file is fully read
+// If whole file was read returns positive interger less than s - bytes read.
+// if only part of file was read returns s.
+// if error occurs returns -1 and sets errno accordingly
+static ssize_t rread(const int fd, const size_t s, input_t buf[static const s]) {
     ssize_t l;
     ssize_t r = 0;
     do {
         while ((l = read(fd, buf + r, s - r)) < 0 && errno == EINTR)
             continue;
         if (l < 0)
-            return -1;
+            return l;
         r += l;
     } while (l != 0);
     return r;
@@ -130,7 +135,7 @@ ssize_t rread(const int fd, const size_t s, input_t buf[static const s]) {
 
 ssize_t eread(const int fd, const size_t s, input_t buf[static const s]) {
     const ssize_t ret = rread(fd, s, buf);
-    if (ret >= 0 && (size_t)ret < s)
+    if (ret < 0 || (ret >= 0 && (size_t)ret < s))
         return ret;
     assert((size_t)ret == s);
     errno = EFBIG;
@@ -140,13 +145,16 @@ ssize_t eread(const int fd, const size_t s, input_t buf[static const s]) {
 ssize_t slurp(const char* const name, const size_t s, input_t buf[static const s]) {
     const int fd = open(name, O_RDONLY | O_CLOEXEC);
     if (fd < 0)
-        return -1;
+        return fd;
     const ssize_t ret = eread(fd, s, buf);
-    const int e = errno;
-    if (close(fd) < 0)
-        LOGW("close %s", name);
-    errno = e;
-    return ret;
+    if (ret < 0) {
+        const int e = errno;
+        if (close(fd) < 0)
+            LOGW("close %s", name);
+        errno = e;
+        return ret;
+    }
+    return close(fd) < 0 ? -1 : ret;
 }
 
 size_t slurpx(const char* const name, const size_t s, input_t buf[static const s]) {

@@ -76,7 +76,15 @@ ssize_t serialize(const size_t s, input_t buf[static const s], const struct frob
         goto bail;
     *p++ = stx;
     f -= 1;
-    FCOPY(f, p, msg->header.token);
+
+    {
+        const int t = snprintfx((char*)p, f, "%" PRIXTOKEN FS, msg->header.token);
+        if (t >= (ssize_t)f)
+            goto bail;
+        p += t;
+        f -= t;
+    }
+
     FCOPY(f, p, msg->header.type);
     switch (msg->header.type) {
         case FROB_T1:

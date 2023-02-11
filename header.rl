@@ -115,6 +115,8 @@ int frob_header_extract(const input_t** px, const input_t* const pe, struct frob
         return ENOMSG;
     header->type = type;
     assert(token_end - start <= 6);
-    memcpy(header->token, start, token_end - start);
+    char* end;
+    header->token = strtotoken(start, &end, 16);
+    assert(end == token_end);
     return 0;
 }
