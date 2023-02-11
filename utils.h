@@ -82,7 +82,7 @@ int frob_frame_process(struct frob_frame_fsm_state*);
 int frob_header_extract(const input_t** p, const input_t* pe, struct frob_header*);
 int frob_protocol_transition(int*, const enum FrobMessageType);
 int frob_body_extract(enum FrobMessageType, const input_t** p, const input_t* pe, union frob_body*);
-int frob_extract_additional_attributes(const input_t**, const input_t*, char (* const out)[21][8]);
+int frob_extract_additional_attributes(const input_t**, const input_t*, char (* const out)[19][3]);
 const char* frob_type_to_string(enum FrobMessageType);
 char frob_trx_type_to_code(enum FrobTransactionType);
 

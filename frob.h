@@ -282,6 +282,7 @@ struct frob_msg {
     const char magic[8]; // Shall be set to FROB_MAGIC
     struct frob_header header;
     union frob_body body;
+    // FIXME: Consider removing attributes, as they are not used anywhere
     char attr[19][3];
 };
 
