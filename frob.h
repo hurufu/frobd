@@ -20,7 +20,7 @@ typedef uint8_t byte_t;
 typedef uint64_t error_t; // FIXME: Type is too big, it should be uint_least32_t
 typedef uint8_t bcd_t; // FIXME: Use a real BCD type
 typedef bcd_t amount_t[12];
-// TODO: Consider changing type to uint8_t, because in practice I doubt that version will go beyond 255
+// TODO: Consider changing type to uint_least8_t, because in practice I doubt that version will go beyond 255
 typedef uint8_t version_t[4];
 // Important: Use appropriate macro to print token_t
 typedef uint_least32_t token_t;
