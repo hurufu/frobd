@@ -564,8 +564,11 @@ static void perform_pending_write(const enum channel i, struct state* const st) 
             if (st->ping)
                 alarm_set(st->timer_ping, 10);
         }
-        char tmp[3*s];
-        LOGDX("← %c %zu\t%s", channel_to_code(i), s, PRETTV(ch->buf, ch->cur, tmp));
+        if (i != CHANNEL_CO_MASTER) {
+            char tmp[3*s];
+            LOGDX("← %c %zu\t%s", channel_to_code(i), s, PRETTV(ch->buf, ch->cur, tmp));
+        }
+        ch->cur = ch->buf;
     }
 }
 
@@ -610,8 +613,10 @@ static void perform_pending_read(const enum channel i, struct state* const s) {
                     break;
             }
         }
-        char tmp[3*r];
-        LOGDX("→ %c %zu\t%s", channel_to_code(i), r, PRETTV(ch->cur, ch->cur + r, tmp));
+        if (i != CHANNEL_CI_MASTER) {
+            char tmp[3*r];
+            LOGDX("→ %c %zu\t%s", channel_to_code(i), r, PRETTV(ch->cur, ch->cur + r, tmp));
+        }
     }
     ch->cur += r;
 }
@@ -696,9 +701,11 @@ static void ucspi_log(const char* const proto, const char* const connnum) {
     char* p = buf;
     p += snprintfx(p, buf + sizeof buf - p, "proto: %s;", proto);
     for (size_t j = 0; j < elementsof(rl); j++) {
+        if (!(ed[j][0] || ed[j][1] || ed[j][2] || ed[j][3]))
+            continue;
         p += snprintfx(p, buf + sizeof buf - p, " %s:", rl[j]);
         if (j == 0 && connnum)
-            p += snprintfx(p, buf + sizeof buf - p, " %s", connnum);
+            p += snprintfx(p, buf + sizeof buf - p, " #%s", connnum);
         if (ed[j][0])
             p += snprintfx(p, buf + sizeof buf - p, " \"%s\"", ed[j][0]);
         if (ed[j][1] && ed[j][2])
