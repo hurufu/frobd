@@ -224,7 +224,7 @@ ssize_t serialize(const size_t s, input_t buf[static const s], const struct frob
     // Parseable frame is created
     assert(frob_frame_process(&(struct frob_frame_fsm_state){.p = buf, .pe = p}) == 0);
     // Parseable message was serialized
-    assert(parse_message(buf + 1, p - 2, &(struct frob_msg){ .magic = FROB_MAGIC }) == 0);
+    assert(parse_message(buf + 1, p - 2, &(struct frob_msg){ .magic = FROB_MAGIC, .header.type = msg->header.type }) == 0);
 
     return s - f;
 bail:
