@@ -5,7 +5,7 @@
    * [ ] Use DejaGnu to test the program with different configurations and inputs.
    * [ ] Use [Mull][6] to perfrom mutation testing on the code.
    * [ ] Use [KLEE][7] to perform symbolic execution on the code.
-   * [ ] Use [gcov][8] to generate coverage reports.
+   * [x] Use [gcov][8] to generate coverage reports.
    * [ ] Use [fuzzing][9] to test the program with random inputs. Fuzzing can be
          done with [AFL][10] or [libFuzzer][11].
 
