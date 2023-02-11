@@ -90,6 +90,7 @@ char frob_trx_type_to_code(enum FrobTransactionType);
 int parse_message(const input_t* p, const input_t* pe, struct frob_msg*);
 
 // Returns number of bytes written to buf or -1 on error
+// FIXME: Make this function no exit on error
 ssize_t serialize(size_t s, input_t buf[static s], const struct frob_msg* msg);
 
 // Same as read, but returns -1 if file is too big to fit into buf
