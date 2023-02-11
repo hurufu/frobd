@@ -17,10 +17,11 @@ typedef uint8_t input_t;
 // platforms (unsigned) char may have more than 8 bit (TI C54xx 16 bit). The
 // problem is purely theoretical, because I don't target MCUs, but still...
 typedef uint8_t byte_t;
-typedef uint64_t error_t; // FIXME: Type is too big
+typedef uint64_t error_t; // FIXME: Type is too big, it should be uint_least32_t
 typedef uint8_t bcd_t; // FIXME: Use a real BCD type
 typedef bcd_t amount_t[12];
-typedef char version_t[4];
+// TODO: Consider changing type to uint8_t, because in practice I doubt that version will go beyond 255
+typedef uint8_t version_t[4];
 // Important: Use appropriate macro to print token_t
 typedef uint_least32_t token_t;
 #define PRIXTOKEN PRIXLEAST32
