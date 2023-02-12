@@ -49,7 +49,9 @@ ut: $(UT_O) $(RL_O)
 	$(LINK.o) -o $@ $^ $(LDLIBS)
 frob: $(OFILES)
 	$(LINK.o) -o $@ $^ $(LDLIBS)
+	objcopy --only-keep-debug $@ $@.debug
 	strip --strip-unneeded $@
+	objcopy --add-gnu-debuglink=$@.debug $@
 %.c: %.rl
 	ragel -G2 -L $<
 %.s: %.c
@@ -61,7 +63,7 @@ graph-%: frame.rl adjust-%.sed
 	ragel -p -V $< | sed -Ef $(word 2,$^) | dot -Tpng | feh -
 clean: F += $(wildcard $(RL_C) $(RL_C:.c=.s) $(UT_O) $(UT_T:.in=.c) $(UT_T:.in=.s) $(OFILES) frob frob.s log.s tags cscope.out ut)
 clean: F += $(wildcard *.gcda *.gcno *.gcov)
-clean: F += $(wildcard frob.log frob.sum)
+clean: F += $(wildcard frob.log frob.sum frob.debug)
 clean:
 	$(if $(strip $F),$(RM) -- $F)
 
