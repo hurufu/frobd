@@ -38,10 +38,8 @@ test-random: frob
 test-unit: ut
 	./$<
 test-functional: frob.log frob.sum
-%.log %.sum: % | logs
+%.log %.sum: %
 	runtest --tool $<
-logs:
-	mkfifo $@
 cscope.out:
 	cscope -bR
 ut: LDLIBS   := -lcheck -lsubunit -lm
