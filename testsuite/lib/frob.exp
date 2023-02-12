@@ -20,10 +20,16 @@ set fs "\x1c"
 set us "\x1f"
 
 set global_token_id 0
+
 proc token {} {
     global global_token_id
-    incr global_token_id
     return [format %x $global_token_id]
+}
+
+proc next_token {} {
+    global global_token_id
+    incr global_token_id
+    return [token]
 }
 
 proc toascii {str} {
@@ -42,9 +48,9 @@ proc lrc {msg} {
     return [format %c $lrc]
 }
 
-proc prep {elements} {
+proc prep {get_token elements} {
     global fs
-    foreach e [concat [token] $elements] {
+    foreach e [concat [$get_token] $elements] {
         append msg $e$fs
     }
     return $msg
@@ -52,11 +58,12 @@ proc prep {elements} {
 
 proc msg {args} {
     set opts {
-        {nolrc "Don't include LRC in the message"}
+        {nolrc  "Don't include LRC in the message"}
+        {noincr "Don't increment token id"}
     }
     array set par [::cmdline::getoptions args $opts]
 
-    set msg [prep $args]
+    set msg [prep [expr {$par(noincr) ? {token} : {next_token}}] $args]
     global stx etx
     return $stx$msg$etx[expr {$par(nolrc) ? {} : [lrc $msg$etx]}]
 }

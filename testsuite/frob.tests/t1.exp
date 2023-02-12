@@ -1,0 +1,11 @@
+spawn {*}$cmdline
+
+send [msg T1]
+expect {
+    [string cat $stx [token] $fs T2 $fs] {
+        pass "Correctly responds to T1"
+    }
+    default {
+        fail "Didn't respond to T1 $expect_out(buffer)"
+    }
+}
