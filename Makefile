@@ -34,7 +34,7 @@ tags:
 	ctags --kinds-C=+p -R .
 
 test-random: frob
-	pv -Ss100M /dev/urandom | ./$< 1 &>/dev/null
+	pv -Ss100M /dev/urandom | ./$< 1 2>/dev/null 1>/dev/null
 test-unit: ut
 	./$<
 test-functional: frob.log frob.sum
