@@ -3,7 +3,9 @@
 if_coverage = $(if $(findstring coverage,$(MAKECMDGOALS)),$(1),)
 
 #CPPFLAGS := -DNO_LOGS_ON_STDERR
-CPPFLAGS := -D_FORTIFY_SOURCE=3
+# Some gcc builds (depends on the distro) set _FORTIFY_SOURCE by default,
+# so we need undefine it and then redefine it
+CPPFLAGS := -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3
 #CPPFLAGS += -DNDEBUG
 OPTLEVEL ?= g
 CFLAGS   := -O$(OPTLEVEL) -ggdb3 -Wall -Wextra -ffat-lto-objects -mtune=native -march=native
