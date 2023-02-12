@@ -1,4 +1,4 @@
-.PHONY: index clean graph-% test tcp scan coverage all test-unit test-functional
+.PHONY: index clean graph-% test tcp scan coverage all test-unit test-functional test-random
 
 if_coverage = $(if $(findstring coverage,$(MAKECMDGOALS)),$(1),)
 
@@ -27,12 +27,14 @@ UT_O := $(UT_C:.c=.o)
 
 all: frob
 index: tags cscope.out
-test: test-unit test-functional
+test: test-unit test-functional test-random
 coverage: test | $(RL_C) $(UT_C)
 	gcov -o . $|
 tags:
 	ctags --kinds-C=+p -R .
 
+test-random: frob
+	pv -Ss100M /dev/urandom | ./$< 1 &>/dev/null
 test-unit: ut
 	./$<
 test-functional: frob.log frob.sum

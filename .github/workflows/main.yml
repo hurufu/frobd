@@ -12,7 +12,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Instal dependencies
-      run: sudo apt-get install ragel check dejagnu tcllib
+      run: sudo apt-get install ragel check dejagnu tcllib pv
     - name: Build frobd
       run: make frob
     - name: Run unit tests
