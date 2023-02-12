@@ -67,3 +67,10 @@ proc msg {args} {
     global stx etx
     return $stx$msg$etx[expr {$par(nolrc) ? {} : [lrc $msg$etx]}]
 }
+
+proc random {length} {
+    set dev [open /dev/urandom rb]
+    set data [read $dev $length]
+    close $dev
+    return $data
+}

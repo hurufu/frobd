@@ -1,0 +1,11 @@
+spawn {*}$cmdline
+
+send [random 12][msg T1]
+expect {
+    $ack[string cat $stx [token] $fs T2 $fs] {
+        pass "Garbage is properly ignored"
+    }
+    default {
+        fail "Garbage bytes were not ignored"
+    }
+}
