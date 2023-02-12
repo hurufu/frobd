@@ -1,4 +1,4 @@
-.PHONY: index clean graph-% test tcp scan coverage all
+.PHONY: index clean graph-% test tcp scan coverage all test-unit test-functional
 
 if_coverage = $(if $(findstring coverage,$(MAKECMDGOALS)),$(1),)
 
@@ -27,17 +27,19 @@ UT_O := $(UT_C:.c=.o)
 
 all: frob
 index: tags cscope.out
-test: ut
-	./$<
-check: dejagnu-frob
-dejagnu-%: % | logs
-	runtest --tool $<
-logs:
-	mkfifo $@
+test: test-unit test-functional
 coverage: test | $(RL_C) $(UT_C)
 	gcov -o . $|
 tags:
 	ctags --kinds-C=+p -R .
+
+test-unit: ut
+	./$<
+test-functional: frob.log frob.sum
+%.log %.sum: % | logs
+	runtest --tool $<
+logs:
+	mkfifo $@
 cscope.out:
 	cscope -bR
 ut: LDLIBS   := -lcheck -lsubunit -lm
@@ -57,6 +59,7 @@ graph-%: frame.rl adjust-%.sed
 	ragel -p -V $< | sed -Ef $(word 2,$^) | dot -Tpng | feh -
 clean: F += $(wildcard $(RL_C) $(RL_C:.c=.s) $(UT_O) $(UT_T:.in=.c) $(UT_T:.in=.s) $(OFILES) frob frob.s log.s tags cscope.out ut)
 clean: F += $(wildcard *.gcda *.gcno *.gcov)
+clean: F += $(wildcard frob.log frob.sum)
 clean:
 	$(if $(strip $F),$(RM) -- $F)
 
