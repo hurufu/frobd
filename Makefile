@@ -1,4 +1,4 @@
-.PHONY: index clean graph-% run run-% test tcp scan coverage
+.PHONY: index clean graph-% test tcp scan coverage all
 
 if_coverage = $(if $(findstring coverage,$(MAKECMDGOALS)),$(1),)
 
@@ -25,9 +25,7 @@ UT_T := $(wildcard *.in)
 UT_C := $(UT_T:.in=.c) utils.c serialization.c log.c
 UT_O := $(UT_C:.c=.o)
 
-run: run-01 run-02 run-T4 run-S1 run-D4
-run-%: frob sample%
-	./$< <$(word 2,$^) | od -tx1z
+all: frob
 index: tags cscope.out
 test: ut
 	./$<
