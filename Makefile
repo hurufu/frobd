@@ -31,6 +31,11 @@ run-%: frob sample%
 index: tags cscope.out
 test: ut
 	./$<
+check: dejagnu-frob
+dejagnu-%: % | logs
+	runtest --tool $<
+logs:
+	mkfifo $@
 coverage: test | $(RL_C) $(UT_C)
 	gcov -o . $|
 tags:

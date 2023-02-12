@@ -1,0 +1,13 @@
+spawn {*}$cmdline
+
+send [msg -nolrc T1]x
+expect {
+    $nak { pass "NAK received" }
+    default { fail "Message with bad LRC needs to be NAK'ed" }
+}
+
+send [msg T1]
+expect {
+    $ack { pass "ACK received" }
+    default { fail "Message with good LRC needs to be ACK'ed" }
+}

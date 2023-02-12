@@ -1,0 +1,62 @@
+package require cmdline
+
+# FROB ECR-EFT protocol uses 0x03 as the end of a frame and 0x1c as the field
+# separator, but normally, terminal driver uses 0x03 as the interrupt character
+# (^C) and 0x1c as quit character (^Q). So we have to disable both of them.
+# Also we have to put console in the raw mode, so we don't need to send newline
+# after each command.
+set stty_init {raw intr undef quit undef}
+
+# During normal test run stderr is redirected to a named pipe, so we can read
+# it in the background and check for errors.
+set cmdline {sh -c "exec ./frob 1 2>logs"}
+
+# Aliases for special characters
+set stx "\x02"
+set etx "\x03"
+set ack "\x06"
+set nak "\x15"
+set fs "\x1c"
+set us "\x1f"
+
+set global_token_id 0
+proc token {} {
+    global global_token_id
+    incr global_token_id
+    return [format %x $global_token_id]
+}
+
+proc toascii {str} {
+    foreach c [split $str {}] {
+        scan $c %c c
+        lappend ascii $c
+    }
+    return $ascii
+}
+
+proc lrc {msg} {
+    set lrc 0
+    foreach c [toascii $msg] {
+        set lrc [expr $lrc ^ $c]
+    }
+    return [format %c $lrc]
+}
+
+proc prep {elements} {
+    global fs
+    foreach e [concat [token] $elements] {
+        append msg $e$fs
+    }
+    return $msg
+}
+
+proc msg {args} {
+    set opts {
+        {nolrc "Don't include LRC in the message"}
+    }
+    array set par [::cmdline::getoptions args $opts]
+
+    set msg [prep $args]
+    global stx etx
+    return $stx$msg$etx[expr {$par(nolrc) ? {} : [lrc $msg$etx]}]
+}
