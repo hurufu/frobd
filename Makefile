@@ -30,7 +30,7 @@ UT_O := $(UT_C:.c=.o)
 all: frob
 index: tags cscope.out
 test: test-unit test-functional test-random
-coverage: test | $(RL_C) $(UT_C)
+coverage: test | $(CFILES) $(UT_C)
 	gcov -o . $|
 tags:
 	ctags --kinds-C=+p -R .
