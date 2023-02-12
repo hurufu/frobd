@@ -392,13 +392,6 @@ static void start_master_channel(struct state* const s) {
     commission_prompt_on_master(s);
 }
 
-static struct frob_frame_fsm_state fnext(byte_t* const cursor, const struct frob_frame_fsm_state prev) {
-    return (struct frob_frame_fsm_state){
-        .p = prev.pe + 2,
-        .pe = cursor
-    };
-}
-
 static void print_stats(const struct statistics* const st) {
     const unsigned int bad = st->received_bad_lrc + st->received_bad_parse + st->received_bad_handled;
     const double ratio = (double)st->received_good / (bad + st->received_good);
@@ -484,15 +477,31 @@ static void process_master(struct state* const s) {
     commission_prompt_on_master(s);
 }
 
+static struct frob_frame_fsm_state fnext(byte_t* const cursor, const struct frob_frame_fsm_state prev) {
+    assert(prev.pe + 2 <= cursor);
+    return (struct frob_frame_fsm_state){
+        .p = prev.pe + 2, // Skip ETX and LRC
+        .pe = cursor
+    };
+}
+
 static void process_main(struct state* const s, struct frob_frame_fsm_state* const f) {
     int e;
-    for (f->pe = s->fs.ch[CHANNEL_FI_MAIN].cur; (e = frob_frame_process(f)) != EAGAIN; *f = fnext(s->fs.ch[CHANNEL_FI_MAIN].cur, *f)) {
+    struct chstate* const ch = &s->fs.ch[CHANNEL_FI_MAIN];
+    for (f->pe = ch->cur; (e = frob_frame_process(f)) != EAGAIN; *f = fnext(ch->cur, *f)) {
 
-        // Message length shall be positive
-        assert(f->pe > f->p);
+        // Cursor shall be within the buffer
+        assert(ch->cur >= ch->buf && ch->cur < ch->buf + sizeof (ch->buf));
+
+        // Message shall be fully contained by cursor
+        assert(f->p >= ch->buf && f->p < ch->cur);
+        assert(f->pe >= ch->buf && f->pe <= ch->cur);
 
         commission_ack_on_main(s, e);
         if (0 == e) {
+            // Message length shall be positive
+            assert(f->pe > f->p);
+
             struct frob_msg parsed = { .magic = FROB_MAGIC };
             if (parse_message(f->p, f->pe, &parsed) != 0) {
                 LOGWX("Can't process message");
@@ -514,6 +523,8 @@ static void process_main(struct state* const s, struct frob_frame_fsm_state* con
             s->stats.received_bad_lrc++;
         }
     }
+    f->p = ch->cur = ch->buf;
+    f->pe = NULL;
 }
 
 static void process_device(struct state* const s) {
