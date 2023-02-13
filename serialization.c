@@ -4,7 +4,7 @@
 #include <assert.h>
 #include <stdbool.h>
 
-#define _ __attribute__((__unused__))
+#define _ __attribute__((__unused__)) ignored
 #define fs 0x1C
 #define us 0x1F
 #define stx 0x02

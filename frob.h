@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 #include <inttypes.h>
+#include <assert.h>
 
 /* ***************************************************************** *
  * WARNING: All char arrays are NOT null-terminated, but null-padded *
@@ -283,4 +284,4 @@ struct frob_msg {
     char attr[19][3];
 };
 
-_Static_assert(sizeof (struct frob_msg) % 16 == 0, "Message shall fit into 16-byte blocks, so output of od(1) will line up nicely");
+static_assert(sizeof (struct frob_msg) % 16 == 0, "Message shall fit into 16-byte blocks, so output of od(1) will line up nicely");

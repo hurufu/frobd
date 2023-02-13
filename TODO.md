@@ -3,7 +3,7 @@
 ### Testing
 
    * [x] Use DejaGnu to test the program with different configurations and inputs.
-   * [ ] Use [Mull][6] to perfrom mutation testing on the code.
+   * [x] Use [Mull][6] to perfrom mutation testing on the code.
    * [ ] Use [KLEE][7] to perform symbolic execution on the code.
    * [x] Use gcov to generate coverage reports.
    * [-] Use fuzzing to test the program with random inputs. It can be done with

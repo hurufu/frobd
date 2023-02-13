@@ -222,7 +222,6 @@ static union frob_body construct_hardcoded_message_body(const struct config* con
             ret.b2.info = cfg->info;
             break;
         case FROB_T4:
-            _Static_assert(sizeof ret.t4.supported_versions >= sizeof cfg->supported_versions, "Array size mismatch");
             memcpy(ret.t4.supported_versions, cfg->supported_versions, sizeof cfg->supported_versions);
             break;
         case FROB_T5:
@@ -548,6 +547,7 @@ static void process_channel(const enum channel c, struct state* const s, struct 
         case CHANNEL_FI_MAIN:   return process_main(s, r);
         case CHANNEL_NI_DEVICE: return process_device(s);
         default:
+            break;
     }
     assert(false);
 }

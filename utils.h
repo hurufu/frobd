@@ -8,7 +8,6 @@
 #include <stddef.h>
 #include <sys/types.h>
 #include <errno.h>
-#include <assert.h>
 
 #define STX "\x02"
 #define ETX "\x03"
