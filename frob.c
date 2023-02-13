@@ -745,6 +745,30 @@ static struct frob_d5 load_d5_from_file(const char* const name) {
     return msg.body.d5;
 }
 
+static ssize_t test_channel(const enum channel c, const int fd) {
+    switch (c) {
+        case CHANNEL_FIRST_INPUT ... CHANNEL_LAST_INPUT:
+            return read(fd, NULL, 0);
+        case CHANNEL_FIRST_OUTPUT ... CHANNEL_LAST_OUTPUT:
+            return write(fd, NULL, 0);
+        default:
+            return 0;
+    }
+}
+
+// We rely on the UCSPI environment (if detected) to provide us usable file
+// descriptors. But some programs (e.g. mull-runner) keep environment variables,
+// but because they fork() we lose the file descriptors. So we need to test
+// them. Important: we need to test all channels before we set signalfd, because
+// read of zero bytes from it will always result in EINVAL.
+static void test_all_channels(struct fstate* const f) {
+    for (enum channel i = CHANNEL_FIRST; i <= CHANNEL_LAST; i++) {
+        const int fd = f->ch[i].fd;
+        if (fd >= 0 && test_channel(i, fd) != 0)
+            LOGE("Channel %s (fd %d) is unusable", channel_to_string(i), fd);
+    }
+}
+
 static void initialize(struct state* const s, const int ac, const char* av[static const ac]) {
     *s = (struct state){
         .cfg = {
@@ -769,12 +793,13 @@ static void initialize(struct state* const s, const int ac, const char* av[stati
     }
     s->fs.ch[CHANNEL_FO_MAIN].fd = STDOUT_FILENO;
     s->fs.ch[CHANNEL_FI_MAIN].fd = STDIN_FILENO;
-    s->sigfdset = adjust_signal_delivery(&s->fs.ch[CHANNEL_II_SIGNAL].fd);
     if ((s->fs.ch[CHANNEL_NO_PAYMENT].fd = open("./payment", O_WRONLY | O_CLOEXEC)) == -1)
         LOGI("%s channel not available at %s", channel_to_string(CHANNEL_NO_PAYMENT), "./payment");
     const char* const proto = getenv("PROTO");
     if (proto)
         ucspi_log(proto, ucspi_adjust(proto, &s->fs));
+    test_all_channels(&s->fs);
+    s->sigfdset = adjust_signal_delivery(&s->fs.ch[CHANNEL_II_SIGNAL].fd);
     s->select_params.maxfd = get_max_fd(&s->fs.ch);
     FD_ZERO(&s->fs.eset);
     FD_ZERO(&s->fs.wset);
