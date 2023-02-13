@@ -80,6 +80,13 @@ Possible topics to have a look at:
     [Fluent programming][5]
   * [Action language][4]
 
+## Interesting links
+
+  * https://github.com/fuzzdb-project/fuzzdb
+  * https://www.fuzzingbook.org/
+  * https://tratt.net/laurie/src/supuner/
+  * https://www.gnu.org/software/coreutils/timeout
+
 [1]: https://en.wikipedia.org/wiki/Situation_calculus
 [2]: https://en.wikipedia.org/wiki/Event_calculus
 [3]: https://en.wikipedia.org/wiki/Fluent_(artificial_intelligence)
