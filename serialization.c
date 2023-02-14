@@ -70,11 +70,17 @@ static size_t serialize_string(const size_t s, input_t p[static const s], const 
 }
 
 static size_t serialize_integer(const size_t s, input_t p[static const s], size_t _, const int v) {
-    return snprintfx((char*)p, s, "%u", v);
+    const int ret = snprintf((char*)p, s, "%u", v);
+    if (ret < 0)
+        EXITF("snprintf");
+    return ret;
 }
 
 static size_t serialize_token(const size_t s, input_t p[static const s], size_t _, const unsigned int* const v) {
-    return snprintfx((char*)p, s, "%" PRIXTOKEN, *v);
+    const int ret = snprintf((char*)p, s, "%" PRIXTOKEN, *v);
+    if (ret < 0)
+        EXITF("snprintf");
+    return ret;
 }
 
 ssize_t serialize(const size_t s, input_t buf[static const s], const struct frob_msg* const msg) {
