@@ -9,6 +9,8 @@
 
 #include <errno.h>
 #include <unistd.h>
+#include <ctype.h>
+#include <limits.h>
 
 // We aren't testing actual I/O here, those functions are used only in the test
 // fixtures and support code, so we can just abort on error.
@@ -195,6 +197,25 @@ static void test_eread(const size_t data_size, const char data[static const data
 #test space_trimming_works_with_no_spaces
     char buf[] = "hello";
     ck_assert_str_eq(trim_whitespaces(buf), "hello");
+
+#test hex_to_nibble_works_inside_the_range
+    static const char hex[] = "0123456789abcdef";
+    for (byte_t i = 0x0; i <= 0xF; i++) {
+        ck_assert_int_eq(hex2nibble(hex[i]), i);
+        ck_assert_int_eq(hex2nibble(toupper(hex[i])), i);
+    }
+
+#test hex_to_nibble_handles_values_outside_the_range
+    for (char i = CHAR_MIN; i < CHAR_MAX; i++)
+        switch (i) {
+            case 'A' ... 'F':
+            case 'a' ... 'f':
+            case '0' ... '9':
+                continue;
+            default:
+                ck_assert_int_eq(hex2nibble(i), 0);
+                break;
+        }
 
 #test eread_file
     TEST_EREAD_OK("Hello, this is some test data", 64);
