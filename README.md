@@ -11,6 +11,9 @@ available specification can be downloaded [here][c].
 It doesn't support any command line switches and is supposed to run only from
 the source tree. This will be rectified in the future.
 
+It can be used as a standalone program or as a librarty (feature that I can
+implement upon request).
+
 #### Build and test (requires `ragel` and `check` packages)
 
 ```shell
