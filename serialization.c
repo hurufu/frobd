@@ -1,5 +1,6 @@
 #include "frob.h"
 #include "utils.h"
+#include "log.h"
 #include <stdio.h>
 #include <assert.h>
 #include <stdbool.h>
@@ -10,8 +11,9 @@
 #define stx 0x02
 #define etx 0x03
 
-#define XCOPY(S, P, V)\
+#define serialize_field(S, P, V)\
     _Generic(V,\
+            const unsigned int*: serialize_token,\
             enum FrobMessageType: serialize_type,\
             enum FrobDeviceType: serialize_integer,\
             enum FrobTransactionType: serialize_trx_type,\
@@ -24,20 +26,36 @@
             unsigned long: serialize_integer\
     )(S, P, sizeof V, V)
 
-#define DCOPY(S, P, V, D) do {\
-    const size_t rs = XCOPY(S, P, V);\
-    if (rs >= S)\
+// Call serializer, advance buffer pointer and adjust free space
+#define XCOPY(Serializer, S, P, V) do {\
+    const size_t rs = Serializer(S, P, V);\
+    if (rs > S)\
         goto bail;\
-    P[rs] = D;\
-    P += rs + 1;\
-    S -= rs + 1;\
+    P += rs;\
+    S -= rs;\
 } while (0)
 
+// Copy any field to buffer (separated by a byte pointed by D)
+#define DCOPY(S, P, V, D) XCOPY(serialize_field, S, P, V); BCOPY(S, P, D)
+// Copy single byte to buffer
+#define BCOPY(S, P, D) XCOPY(append_byte, S, P, D)
+// Copy any field to buffer (separated by FS byte)
 #define FCOPY(S, P, V) DCOPY(S, P, V, fs)
+// Copy any subfield to buffer (separated by US byte)
+#define UCOPY(S, P, V) DCOPY(S, P, V, us)
+
+static size_t append_byte(const size_t s, input_t p[static const s], const input_t b) {
+    if (s >= 1)
+        p[0] = b;
+    return 1;
+}
 
 static size_t serialize_type(const size_t s, input_t p[static const s], size_t _, const enum FrobMessageType t) {
-    if (s >= 2)
-        memcpy(p, frob_type_to_string(t), 2);
+    const char* const tmp = frob_type_to_string(t);
+    if (s >= 2) {
+        p[0] = tmp[0];
+        p[1] = tmp[1];
+    }
     return 2;
 }
 
@@ -52,7 +70,7 @@ static size_t serialize_string(const size_t s, input_t p[static const s], const 
 }
 
 static size_t serialize_hex(const size_t s, input_t p[static const s], const size_t l, const unsigned char a[static const l]) {
-    if (s >= l)
+    if (s >= l * 2)
         for (size_t i = 0; i < l; ++i)
             snprintfx((char*)p + i * 2, 3, "%02X", a[i]);
     return l * 2;
@@ -60,6 +78,10 @@ static size_t serialize_hex(const size_t s, input_t p[static const s], const siz
 
 static size_t serialize_integer(const size_t s, input_t p[static const s], size_t _, const int v) {
     return snprintfx((char*)p, s, "%u", v);
+}
+
+static size_t serialize_token(const size_t s, input_t p[static const s], size_t _, const unsigned int* const v) {
+    return snprintfx((char*)p, s, "%" PRIXTOKEN, *v);
 }
 
 ssize_t serialize(const size_t s, input_t buf[static const s], const struct frob_msg* const msg) {
@@ -72,19 +94,8 @@ ssize_t serialize(const size_t s, input_t buf[static const s], const struct frob
     if (!is_magic_ok)
         goto bail;
 
-    if (f < 1)
-        goto bail;
-    *p++ = stx;
-    f -= 1;
-
-    {
-        const int t = snprintfx((char*)p, f, "%" PRIXTOKEN FS, msg->header.token);
-        if (t >= (ssize_t)f)
-            goto bail;
-        p += t;
-        f -= t;
-    }
-
+    BCOPY(f, p, stx);
+    FCOPY(f, p, &msg->header.token);
     FCOPY(f, p, msg->header.type);
     switch (msg->header.type) {
         case FROB_T1:
@@ -102,12 +113,11 @@ ssize_t serialize(const size_t s, input_t buf[static const s], const struct frob
             break;
         case FROB_T4:
             for (size_t i = 0; i < elementsof(b->t4.supported_versions[0]); i++) {
-                if (b->t4.supported_versions[i][0] == '\0')
+                if (isempty(b->t4.supported_versions[i]))
                     continue;
-                DCOPY(f, p, b->t4.supported_versions[i], us);
+                UCOPY(f, p, b->t4.supported_versions[i]);
             }
-            *p++ = fs;
-            f -= 1;
+            XCOPY(append_byte, f, p, fs);
             break;
         case FROB_T5:
             FCOPY(f, p, b->t5.selected_version);
@@ -130,17 +140,16 @@ ssize_t serialize(const size_t s, input_t buf[static const s], const struct frob
             FCOPY(f, p, b->d5.printer_buffer_max_lines);
             FCOPY(f, p, b->d5.display_lc);
             FCOPY(f, p, b->d5.display_cpl);
-            DCOPY(f, p, b->d5.key_name.enter, us);
-            DCOPY(f, p, b->d5.key_name.cancel, us);
-            DCOPY(f, p, b->d5.key_name.check, us);
-            DCOPY(f, p, b->d5.key_name.backspace, us);
-            DCOPY(f, p, b->d5.key_name.delete, us);
-            DCOPY(f, p, b->d5.key_name.up, us);
-            DCOPY(f, p, b->d5.key_name.down, us);
-            DCOPY(f, p, b->d5.key_name.left, us);
-            DCOPY(f, p, b->d5.key_name.right, us);
-            *p++ = fs;
-            f -= 1;
+            UCOPY(f, p, b->d5.key_name.enter);
+            UCOPY(f, p, b->d5.key_name.cancel);
+            UCOPY(f, p, b->d5.key_name.check);
+            UCOPY(f, p, b->d5.key_name.backspace);
+            UCOPY(f, p, b->d5.key_name.delete);
+            UCOPY(f, p, b->d5.key_name.up);
+            UCOPY(f, p, b->d5.key_name.down);
+            UCOPY(f, p, b->d5.key_name.left);
+            UCOPY(f, p, b->d5.key_name.right);
+            BCOPY(f, p, fs);
             FCOPY(f, p, b->d5.device_topo);
             tmp = b->d5.nfc; FCOPY(f, p, tmp);
             tmp = b->d5.ccr; FCOPY(f, p, tmp);
@@ -207,17 +216,12 @@ ssize_t serialize(const size_t s, input_t buf[static const s], const struct frob
             goto bail;
     }
     for (size_t i = 0; i < elementsof(msg->attr); i++) {
-        if (msg->attr[i][0] == '\0')
+        if (isempty(msg->attr[i]))
             continue;
-        DCOPY(f, p, b->t4.supported_versions[i], us);
+        UCOPY(f, p, b->t4.supported_versions[i]);
     }
-
-    *p++ = etx;
-    f--;
-
-    *p = calculate_lrc(buf + 1, p);
-    p++;
-    f--;
+    BCOPY(f, p, etx);
+    BCOPY(f, p, calculate_lrc(buf + 1, p));
 
     // Free space and cursor should stay consistent
     assert(buf + s - f == p);
@@ -231,5 +235,5 @@ bail:
     // Free space and cursor should stay consistent
     assert(buf + s - f == p);
 
-    return -1;
+    return buf - p - 1;
 }

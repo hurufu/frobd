@@ -49,6 +49,7 @@
 #define lastof(Arr) ( (Arr) + elementsof(Arr) - 1 )
 
 #define min(A, B) (A < B ? A : B)
+#define isempty(S) ((S)[0] == '\0')
 
 // Used to simplify access to environment variables with computed names
 #define getenvfx(Buf, Size, Fmt, ...) ({\
