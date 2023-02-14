@@ -8,8 +8,11 @@ if_coverage = $(if $(findstring coverage,$(MAKECMDGOALS)),$(1),)
 OPTLEVEL ?= g
 # Some gcc builds (depends on the distro) set _FORTIFY_SOURCE by default,
 # so we need undefine it and then redefine it
-CPPFLAGS_gcc := -U_FORTIFY_SOURCE
+CPPFLAGS_gcc := -U_FORTIFY_SOURCE -D_GLIBCXX_ASSERTIONS
 CFLAGS_gcc   := -fanalyzer -fanalyzer-checker=taint -fsanitize=bounds -fsanitize-undefined-trap-on-error -ffat-lto-objects
+CFLAGS_gcc   += -Wformat -Werror=format-security -grecord-gcc-switches
+CFLAGS   += -fstack-protector-all
+#CFLAGS_gcc   += -fstack-clash-protection
 # Those flags don't work together with normal compilation, that's why they are disabled by default
 #CFLAGS_clang := --analyze -Xanalyzer
 CPPFLAGS += $(CPPFLAGS_$(CC)) -D_FORTIFY_SOURCE=3
@@ -17,7 +20,7 @@ CFLAGS   := -std=gnu11 -O$(OPTLEVEL) -ggdb3 -Wall -Wextra -mtune=native -march=n
 CFLAGS   += $(CFLAGS_$(CC))
 CFLAGS   += $(call if_coverage,--coverage)
 # TODO: Remove those warnings only for generated files
-#CFLAGS   += -Wno-implicit-fallthrough -Wno-unused-const-variable -Wno-sign-compare -Wno-unused-variable -Wno-unused-parameter
+CFLAGS   += -Wno-implicit-fallthrough -Wno-unused-const-variable -Wno-sign-compare -Wno-unused-variable -Wno-unused-parameter
 #CFLAGS   += -fstrict-flex-arrays
 LDFLAGS  := -flto
 LDFLAGS  += $(call if_coverage,--coverage)

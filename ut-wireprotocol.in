@@ -245,9 +245,15 @@ static const struct serialization_test_data {
                 .type = FROB_T4,
                 .token = 0x0
             },
-            .body.t4.supported_versions = { "0", "5", "171", "255" }
+            .body.t4.supported_versions = {
+                "0", "5", "171", "255", "5", "6", "7", "8", "9", "10", "11",
+                "12", "13", "14", "15", "16", "17", "18", "19", "20"
+            }
         },
-        .expected = STX "0" FS "T4" FS "0" US "5" US "171" US "255" US FS ETX "O"
+        .expected = STX "0" FS "T4" FS "0" US "5" US "171" US "255" US "5" US
+                    "6" US "7" US "8" US "9" US "10" US "11" US "12" US "13" US
+                    "14" US "15" US "16" US "17" US "18" US "19" US "20" US FS
+                    ETX "y"
     },
     [D5] = {
         .msg = {

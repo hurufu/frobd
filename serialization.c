@@ -29,11 +29,8 @@
 // Call serializer, advance buffer pointer and adjust free space
 #define XCOPY(Serializer, S, P, V) do {\
     const size_t rs = Serializer(S, P, V);\
-    if (rs > S) {\
-        if (buf - p == -52) \
-            LOGDX("HOP %zd", buf - p);\
+    if (rs > S)\
         goto bail;\
-    }\
     P += rs;\
     S -= rs;\
 } while (0)
@@ -117,8 +114,6 @@ ssize_t serialize(const size_t s, input_t buf[static const s], const struct frob
             break;
         case FROB_T4:
             for (size_t i = 0; i < elementsof(b->t4.supported_versions); i++) {
-                if (isempty(b->t4.supported_versions[i]))
-                    continue;
                 UCOPY(f, p, b->t4.supported_versions[i]);
             }
             BCOPY(f, p, fs);
@@ -219,11 +214,13 @@ ssize_t serialize(const size_t s, input_t buf[static const s], const struct frob
             assert(false);
             goto bail;
     }
+#   if 0
     for (size_t i = 0; i < elementsof(msg->attr); i++) {
         if (isempty(msg->attr[i]))
             continue;
         UCOPY(f, p, b->t4.supported_versions[i]);
     }
+#   endif
     BCOPY(f, p, etx);
     BCOPY(f, p, calculate_lrc(buf + 1, p));
 
