@@ -382,3 +382,26 @@ static const struct serialization_test_data {
             ck_assert_mem_eq(buf, q->expected, -ret);
         }
     }
+
+#suite full_parsing
+
+#test parse_full_message
+    for (size_t i = 0; i < elementsof(s_test_data); i++) {
+        struct frob_msg msg = { .magic = FROB_MAGIC };
+        const struct serialization_test_data* const q = &s_test_data[i];
+        const input_t* const start = (input_t*)q->expected + 1;
+        const input_t* const end = (input_t*)q->expected + strlen(q->expected) - 2;
+        const int ret = parse_message(start, end, &msg);
+        ck_assert_int_eq(ret, 0);
+        // TODO: Verify actual parsed message
+        //ck_assert_mem_eq(&msg, &q->msg, sizeof msg);
+    }
+
+#test handle_parse_error
+    static input_t d[1024] = "";
+    memset(d, '0', sizeof d);
+    struct frob_msg msg = { .magic = FROB_MAGIC };
+    for (size_t i = 0; i < sizeof d; ++i) {
+        const int ret = parse_message(d, d + i, &msg);
+        ck_assert_int_eq(ret, -1);
+    }

@@ -1,4 +1,5 @@
 #include "log.h"
+#include <assert.h>
 
 #ifndef NO_LOGS_ON_STDERR
 enum LogLevel g_log_level = LOG_DEBUG;
@@ -9,7 +10,10 @@ char* to_printable(const unsigned char* const p, const unsigned char* const pe,
     // TODO: Add support for regional characters, ie from 0x80 to 0xFF
     // TODO: Rewrite to_printable using libicu
     unsigned char* o = (unsigned char*)b;
-    for (const unsigned char* x = p; x != pe && o < (unsigned char*)b + s; x++) {
+    for (const unsigned char* x = p; x != pe; x++) {
+
+        assert(o < (unsigned char*)b + s);
+
         const unsigned char c = *x;
         if (c <= 0x20) {
             *o++ = 0xE2;
