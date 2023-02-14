@@ -5,7 +5,7 @@
 #ifdef CK_MAX_ASSERT_MEM_PRINT_SIZE
 #   undef CK_MAX_ASSERT_MEM_PRINT_SIZE
 #endif
-#define CK_MAX_ASSERT_MEM_PRINT_SIZE 256
+#define CK_MAX_ASSERT_MEM_PRINT_SIZE 1005
 
 #include <errno.h>
 #include <unistd.h>
@@ -223,81 +223,98 @@ static void test_eread(const size_t data_size, const char data[static const data
 
 #suite serializing
 
-static const struct frob_msg t1 = {
-    .magic = FROB_MAGIC,
-    .header = {
-        .type = FROB_T1,
-        .token = 0x12
-    }
-}, d5 = {
-    .magic = FROB_MAGIC,
-    .header = {
-        .type = FROB_D5,
-        .token = 0xAAA
-    },
-    .body.d5 = {
-        .printer_cpl = 42,
-        .printer_cpl2x = 42,
-        .printer_cpl4x = 42,
-        .printer_cpln = 42,
-        .printer_h2 = true,
-        .printer_h4 = true,
-        .printer_inv = true,
-        .printer_max_barcode_length = 42,
-        .printer_max_qrcode_length = 42,
-        .printer_max_bitmap_count = 42,
-        .printer_max_bitmap_width = 42,
-        .printer_max_bitmap_height = 42,
-        .printer_aspect_ratio = 120,
-        .printer_buffer_max_lines = 256,
-        .display_lc = 4,
-        .display_cpl = 20,
-        .key_name = {
-            .enter = "O",
-            .cancel = "X",
-            .check = "C",
-            .backspace = "",
-            .delete = "",
-            .up = "^",
-            .down = "v",
-            .left = "<",
-            .right = ">"
+enum TestMessages { T1, D5 };
+static const struct serialization_test_data {
+    struct frob_msg msg;
+    const char* expected;
+} s_test_data[] = {
+    [T1] = {
+        .msg = {
+            .magic = FROB_MAGIC,
+            .header = {
+                .type = FROB_T1,
+                .token = 0x12
+            }
         },
-        .device_topo = FROB_DEVICE_TYPE_ECR,
-        .nfc = true,
-        .ccr = true,
-        .mcr = true,
-        .bar = true
+        .expected = STX "12" FS "T1" FS ETX "e"
+    },
+    [D5] = {
+        .msg = {
+            .magic = FROB_MAGIC,
+            .header = {
+                .type = FROB_D5,
+                .token = 0xAAA
+            },
+            .body.d5 = {
+                .printer_cpl = 42,
+                .printer_cpl2x = 42,
+                .printer_cpl4x = 42,
+                .printer_cpln = 42,
+                .printer_h2 = true,
+                .printer_h4 = true,
+                .printer_inv = true,
+                .printer_max_barcode_length = 42,
+                .printer_max_qrcode_length = 42,
+                .printer_max_bitmap_count = 42,
+                .printer_max_bitmap_width = 42,
+                .printer_max_bitmap_height = 42,
+                .printer_aspect_ratio = 120,
+                .printer_buffer_max_lines = 256,
+                .display_lc = 4,
+                .display_cpl = 20,
+                .key_name = {
+                    .enter = "O",
+                    .cancel = "X",
+                    .check = "C",
+                    .backspace = "",
+                    .delete = "",
+                    .up = "^",
+                    .down = "v",
+                    .left = "<",
+                    .right = ">"
+                },
+                .device_topo = FROB_DEVICE_TYPE_ECR,
+                .nfc = true,
+                .ccr = true,
+                .mcr = true,
+                .bar = true
+            }
+        },
+        .expected = STX "AAA" FS "D5" FS "42" FS "42" FS "42" FS "42" FS "1" FS
+                    "1" FS "1" FS "42" FS "42" FS "42" FS "42" FS "42" FS "120"
+                    FS "256" FS "4" FS "20" FS "O" US "X" US "C" US "" US "" US
+                    "^" US "v" US "<" US ">" US FS "0" FS "1" FS "1" FS "1" FS
+                    "1" FS ETX "a"
     }
 };
 
-#test simple_frame_serialized_correctly
-    input_t buf[64];
-    static const input_t expected[] = STX "12" FS "T1" FS ETX "e";
-    const ssize_t ret = serialize(sizeof buf, buf, &t1);
-    ck_assert_mem_eq(buf, expected, ret);
-    ck_assert_int_eq(ret, sizeof expected - 1);
+#test frame_serialized_correctly_for_large_enough_buffer
+    for (size_t i = 0; i < elementsof(s_test_data); i++) {
+        const struct serialization_test_data* const q = &s_test_data[i];
+        const size_t len = strlen(q->expected);
+        for (size_t j = len + 1; j < len + 5; j++) {
+            input_t buf[j];
+            const ssize_t ret = serialize(sizeof buf, buf, &q->msg);
+            ck_assert_int_eq(ret, len);
+            ck_assert_mem_eq(buf, q->expected, ret);
+        }
+    }
 
 #test empty_buffer_is_handled
     input_t buf[0];
-    const ssize_t ret = serialize(0, buf, &t1);
-    ck_assert_int_eq(ret, 0);
-
-#test buffer_too_small_is_handled
-    static const input_t expected[] = STX "12" FS "T1" FS ETX "e";
-    for (int i = 1; i < sizeof expected - 1; i++) {
-        input_t buf[i];
-        const ssize_t ret = serialize(sizeof buf, buf, &t1);
-        ck_assert_int_lt(ret, 0);
-        ck_assert_mem_eq(buf, expected, -ret);
+    for (size_t i = 0; i < elementsof(s_test_data); i++) {
+        const struct serialization_test_data* const q = &s_test_data[i];
+        const ssize_t ret = serialize(0, buf, &q->msg);
+        ck_assert_int_eq(ret, 0);
     }
 
-#test complex_frame_serialized_correctly
-    input_t buf[256];
-    const ssize_t ret = serialize(sizeof buf, buf, &d5);
-    static const input_t expected[] = STX "AAA" FS "D5" FS "42" FS "42" FS "42"
-            FS "42" FS "1" FS "1" FS "1" FS "42" FS "42" FS "42" FS "42" FS "42"
-            FS "120" FS "256" FS "4" FS "20" FS "O" US "X" US "C" US "" US "" US
-            "^" US "v" US "<" US ">" US FS "0" FS "1" FS "1" FS "1" FS "1" FS ETX "a";
-    ck_assert_int_eq(ret, sizeof expected - 1);
-    ck_assert_mem_eq(buf, expected, ret);
+#test buffer_too_small_is_handled
+    for (size_t i = 0; i < elementsof(s_test_data); i++) {
+        const struct serialization_test_data* const q = &s_test_data[i];
+        for (size_t j = 1; j < strlen(q->expected); j++) {
+            input_t buf[j];
+            const ssize_t ret = serialize(sizeof buf, buf, &q->msg);
+            ck_assert_int_lt(ret, 0);
+            ck_assert_mem_eq(buf, q->expected, -ret);
+        }
+    }

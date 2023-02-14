@@ -70,15 +70,16 @@ static size_t serialize_string(const size_t s, input_t p[static const s], const 
 }
 
 static size_t serialize_integer(const size_t s, input_t p[static const s], size_t _, const int v) {
-    const int ret = snprintf((char*)p, s, "%u", v);
-    if (ret < 0)
-        EXITF("snprintf");
+    char tmp[7];
+    const unsigned ret = xsnprintf(tmp, sizeof tmp, "%u", v);
+    if (ret < sizeof tmp)
+        memcpy(p, tmp, ret);
     return ret;
 }
 
 static size_t serialize_token(const size_t s, input_t p[static const s], size_t _, const unsigned int* const v) {
     char tmp[7];
-    const unsigned ret = snprintf(tmp, sizeof tmp, "%" PRIXTOKEN, *v);
+    const unsigned ret = xsnprintf(tmp, sizeof tmp, "%" PRIXTOKEN, *v);
     if (ret < sizeof tmp)
         memcpy(p, tmp, ret);
     return ret;
