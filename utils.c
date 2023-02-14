@@ -59,7 +59,7 @@ char* trim_whitespaces(char* const s) {
     char* p = s;
     while (isspace(*p))
         p++;
-    for (char* e = p + strlen(p) - 1; e > p && isspace(*e); e--)
+    for (char* e = p + strlen(p) - 1; e != p && isspace(*e); e--)
         *e = '\0';
     return p;
 }

@@ -198,6 +198,10 @@ static void test_eread(const size_t data_size, const char data[static const data
     char buf[] = "hello";
     ck_assert_str_eq(trim_whitespaces(buf), "hello");
 
+#test space_trimming_spaces_inside_the_string
+    char buf[] = "    hello    world    ";
+    ck_assert_str_eq(trim_whitespaces(buf), "hello    world");
+
 #test hex_to_nibble_works_inside_the_range
     static const char hex[] = "0123456789abcdef";
     for (byte_t i = 0x0; i <= 0xF; i++) {
