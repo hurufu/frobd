@@ -5,7 +5,7 @@
 #ifdef CK_MAX_ASSERT_MEM_PRINT_SIZE
 #   undef CK_MAX_ASSERT_MEM_PRINT_SIZE
 #endif
-#define CK_MAX_ASSERT_MEM_PRINT_SIZE 1005
+#define CK_MAX_ASSERT_MEM_PRINT_SIZE 1000
 
 #include <errno.h>
 #include <unistd.h>
@@ -292,7 +292,7 @@ static const struct serialization_test_data {
     for (size_t i = 0; i < elementsof(s_test_data); i++) {
         const struct serialization_test_data* const q = &s_test_data[i];
         const size_t len = strlen(q->expected);
-        for (size_t j = len + 1; j < len + 5; j++) {
+        for (size_t j = len; j < len + 5; j++) {
             input_t buf[j];
             const ssize_t ret = serialize(sizeof buf, buf, &q->msg);
             ck_assert_int_eq(ret, len);

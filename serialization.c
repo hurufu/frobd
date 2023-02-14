@@ -66,11 +66,11 @@ static size_t serialize_trx_type(const size_t s, input_t p[static const s], size
 }
 
 static size_t serialize_string(const size_t s, input_t p[static const s], const size_t l, const char a[static const l]) {
-    return s < l ? l : (size_t)(stpncpy((char*)p, a, l) - (char*)p);
+    return (size_t)(stpncpy((char*)p, a, l) - (char*)p);
 }
 
 static size_t serialize_integer(const size_t s, input_t p[static const s], size_t _, const int v) {
-    char tmp[7];
+    char tmp[16];
     const unsigned ret = xsnprintf(tmp, sizeof tmp, "%u", v);
     if (ret < sizeof tmp)
         memcpy(p, tmp, ret);
@@ -149,7 +149,7 @@ ssize_t serialize(const size_t s, input_t buf[static const s], const struct frob
             UCOPY(f, p, b->d5.key_name.up);
             UCOPY(f, p, b->d5.key_name.down);
             UCOPY(f, p, b->d5.key_name.left);
-            UCOPY(f, p, b->d5.key_name.right);
+            UCOPY(f, p, b->d5.key_name.right); // WUT?
             BCOPY(f, p, fs);
             FCOPY(f, p, b->d5.device_topo);
             tmp = b->d5.nfc; FCOPY(f, p, tmp);
