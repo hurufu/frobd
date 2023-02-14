@@ -223,7 +223,7 @@ static void test_eread(const size_t data_size, const char data[static const data
 
 #suite serializing
 
-enum TestMessages { T1, D5 };
+enum TestMessages { T1, D5, S1 };
 static const struct serialization_test_data {
     struct frob_msg msg;
     const char* expected;
@@ -285,6 +285,28 @@ static const struct serialization_test_data {
                     FS "256" FS "4" FS "20" FS "O" US "X" US "C" US "" US "" US
                     "^" US "v" US "<" US ">" US FS "0" FS "1" FS "1" FS "1" FS
                     "1" FS ETX "a"
+    },
+    [S1] = {
+        .msg = {
+            .magic = FROB_MAGIC,
+            .header = {
+                .type = FROB_S1,
+                .token = 0x123456
+            },
+            .body.s1 = {
+                .transaction_type = FROB_TRANSACTION_TYPE_PAYMENT,
+                .ecr_id = "ECR123",
+                .payment_id = "PAY123",
+                .amount_gross = "5001",
+                .amount_net = "4001",
+                .vat = "1000",
+                .cashback = "0",
+                .max_cashback = "0",
+                .currency = "EUR"
+            }
+        },
+        .expected = STX "123456" FS "S1" FS "S" FS "ECR123" FS "PAY123" FS
+                    "5001" FS "4001" FS "1000" FS "EUR" FS "0" FS "0" FS ETX "w"
     }
 };
 

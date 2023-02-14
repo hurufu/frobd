@@ -29,8 +29,11 @@
 // Call serializer, advance buffer pointer and adjust free space
 #define XCOPY(Serializer, S, P, V) do {\
     const size_t rs = Serializer(S, P, V);\
-    if (rs > S)\
+    if (rs > S) {\
+        if (buf - p == -52) \
+            LOGDX("HOP %zd", buf - p);\
         goto bail;\
+    }\
     P += rs;\
     S -= rs;\
 } while (0)
@@ -149,7 +152,7 @@ ssize_t serialize(const size_t s, input_t buf[static const s], const struct frob
             UCOPY(f, p, b->d5.key_name.up);
             UCOPY(f, p, b->d5.key_name.down);
             UCOPY(f, p, b->d5.key_name.left);
-            UCOPY(f, p, b->d5.key_name.right); // WUT?
+            UCOPY(f, p, b->d5.key_name.right);
             BCOPY(f, p, fs);
             FCOPY(f, p, b->d5.device_topo);
             tmp = b->d5.nfc; FCOPY(f, p, tmp);
@@ -164,9 +167,9 @@ ssize_t serialize(const size_t s, input_t buf[static const s], const struct frob
             FCOPY(f, p, b->s1.amount_gross);
             FCOPY(f, p, b->s1.amount_net);
             FCOPY(f, p, b->s1.vat);
+            FCOPY(f, p, b->s1.currency);
             FCOPY(f, p, b->s1.cashback);
             FCOPY(f, p, b->s1.max_cashback);
-            FCOPY(f, p, b->s1.currency);
             break;
         case FROB_S2:
             FCOPY(f, p, b->s2.error);
