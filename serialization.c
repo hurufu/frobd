@@ -83,7 +83,7 @@ static size_t serialize_integer(const size_t s, input_t p[static const s], size_
 static size_t serialize_token(const size_t s, input_t p[static const s], size_t _, const unsigned int* const v) {
     char tmp[7];
     const unsigned ret = xsnprintf(tmp, sizeof tmp, "%" PRIXTOKEN, *v);
-    if (ret < sizeof tmp)
+    if (ret <= s)
         memcpy(p, tmp, ret);
     return ret;
 }
