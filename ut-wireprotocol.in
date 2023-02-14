@@ -281,19 +281,15 @@ static const struct frob_msg t1 = {
 #test empty_buffer_is_handled
     input_t buf[0];
     const ssize_t ret = serialize(0, buf, &t1);
-    ck_assert_int_eq(ret, -1);
+    ck_assert_int_eq(ret, 0);
 
-#test-exit(1) buffer_too_small_is_handled
-    input_t buf[3];
-    serialize(sizeof buf, buf, &t1);
-
-#test buffer_too_small_is_handled_2
+#test buffer_too_small_is_handled
     static const input_t expected[] = STX "12" FS "T1" FS ETX "e";
-    for (int i = 5; i < 9; i++) {
+    for (int i = 1; i < sizeof expected - 1; i++) {
         input_t buf[i];
         const ssize_t ret = serialize(sizeof buf, buf, &t1);
         ck_assert_int_lt(ret, 0);
-        ck_assert_mem_eq(buf, expected, -ret-1);
+        ck_assert_mem_eq(buf, expected, -ret);
     }
 
 #test complex_frame_serialized_correctly

@@ -68,6 +68,7 @@ byte_t unhex(const char h[static 2]);
 
 // Same as snprintf, but returns buf and aborts on error
 unsigned snprintfx(char* buf, size_t s, const char* fmt, ...);
+unsigned xsnprintf(char* buf, size_t s, const char* fmt, ...);
 
 // Removes leading and trailing whitespaces in-place. Returns pointer to the first non-whitespace character
 char* trim_whitespaces(char* s);

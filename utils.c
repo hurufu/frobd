@@ -31,6 +31,16 @@ byte_t unhex(const char h[static const 2]) {
     return (hex2nibble(h[0]) << 4) | hex2nibble(h[1]);
 }
 
+unsigned xsnprintf(char* const buf, const size_t s, const char* const fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    const int r = vsnprintf(buf, s, fmt, ap);
+    va_end(ap);
+    if (r < 0)
+        EXITF("vsnprintf");
+    return r;
+}
+
 unsigned snprintfx(char* const buf, const size_t s, const char* const fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
@@ -42,7 +52,7 @@ unsigned snprintfx(char* const buf, const size_t s, const char* const fmt, ...) 
         else
             errno = ENOBUFS;
     }
-    EXITF("vsnprintf failed");
+    EXITF("vsnprintf");
 }
 
 char* trim_whitespaces(char* const s) {
