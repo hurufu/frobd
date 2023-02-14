@@ -401,7 +401,19 @@ static const struct serialization_test_data {
     static input_t d[1024] = "";
     memset(d, '0', sizeof d);
     struct frob_msg msg = { .magic = FROB_MAGIC };
+    close(2); // Close stderr to avoid swathes of error messages
     for (size_t i = 0; i < sizeof d; ++i) {
         const int ret = parse_message(d, d + i, &msg);
         ck_assert_int_eq(ret, -1);
     }
+
+#suite file_operations
+
+#test slurping_whole_file_works
+    // We need to close all standard file descriptors, to excercise code that
+    // checks if fd < 0
+    for (int i = 0; i <= 2; i++)
+        close(i);
+    input_t buf[256];
+    const ssize_t ret = slurp("d5.txt", sizeof buf, buf);
+    ck_assert_int_gt(ret, 0);
