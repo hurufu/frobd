@@ -223,7 +223,7 @@ static void test_eread(const size_t data_size, const char data[static const data
 
 #suite serializing
 
-enum TestMessages { T1, D5, S1 };
+enum TestMessages { T1, T4, D5, S1 };
 static const struct serialization_test_data {
     struct frob_msg msg;
     const char* expected;
@@ -237,6 +237,17 @@ static const struct serialization_test_data {
             }
         },
         .expected = STX "12" FS "T1" FS ETX "e"
+    },
+    [T4] = {
+        .msg = {
+            .magic = FROB_MAGIC,
+            .header = {
+                .type = FROB_T4,
+                .token = 0x0
+            },
+            .body.t4.supported_versions = { "0", "5", "171", "255" }
+        },
+        .expected = STX "0" FS "T4" FS "0" US "5" US "171" US "255" US FS ETX "O"
     },
     [D5] = {
         .msg = {

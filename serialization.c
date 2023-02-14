@@ -116,12 +116,12 @@ ssize_t serialize(const size_t s, input_t buf[static const s], const struct frob
             FCOPY(f, p, b->t2.info.device_id);
             break;
         case FROB_T4:
-            for (size_t i = 0; i < elementsof(b->t4.supported_versions[0]); i++) {
+            for (size_t i = 0; i < elementsof(b->t4.supported_versions); i++) {
                 if (isempty(b->t4.supported_versions[i]))
                     continue;
                 UCOPY(f, p, b->t4.supported_versions[i]);
             }
-            XCOPY(append_byte, f, p, fs);
+            BCOPY(f, p, fs);
             break;
         case FROB_T5:
             FCOPY(f, p, b->t5.selected_version);

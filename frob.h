@@ -19,7 +19,7 @@ typedef uint64_t error_t; // FIXME: Type is too big, it should be uint_least32_t
 typedef char bcd_t; // FIXME: Use a real BCD type
 typedef bcd_t amount_t[12];
 // TODO: Consider changing type to uint_least8_t, because in practice I doubt that version will go beyond 255
-typedef uint8_t version_t[4];
+typedef char version_t[4];
 // Important: Use appropriate macro to print token_t
 typedef uint_least32_t token_t;
 #define PRIXTOKEN PRIXLEAST32
