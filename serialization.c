@@ -75,7 +75,7 @@ static size_t serialize_string(const size_t s, input_t p[static const s], const 
 static size_t serialize_integer(const size_t s, input_t p[static const s], size_t _, const int v) {
     char tmp[16];
     const unsigned ret = xsnprintf(tmp, sizeof tmp, "%u", v);
-    if (ret < sizeof tmp)
+    if (ret <= s)
         memcpy(p, tmp, ret);
     return ret;
 }
