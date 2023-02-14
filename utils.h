@@ -107,3 +107,9 @@ ssize_t slurp(const char* name, size_t s, input_t buf[static s]);
 // Same as slurp, but exits on error
 // TODO: Rename to xslurp
 size_t slurpx(const char* name, size_t s, input_t buf[static s]);
+
+// Writes binary data into buf as hex string. Return value same as snprintf,
+// ie number of bytes needed to serialize the data or -1 on error
+int snprint_hex(size_t sbuf, input_t buf[static sbuf], size_t sbin, const byte_t bin[static sbin]);
+// Same as snprint_hex, but exits on error
+int xsnprint_hex(size_t sbuf, input_t buf[static sbuf], size_t sbin, const byte_t bin[static sbin]);

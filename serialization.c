@@ -19,7 +19,7 @@
             enum FrobTransactionType: serialize_trx_type,\
             enum FrobTransactionStatus: serialize_integer,\
             const char*: serialize_string,\
-            const unsigned char*: serialize_hex,\
+            const unsigned char*: xsnprint_hex,\
             bool: serialize_integer,\
             unsigned char: serialize_integer,\
             unsigned short: serialize_integer,\
@@ -67,13 +67,6 @@ static size_t serialize_trx_type(const size_t s, input_t p[static const s], size
 
 static size_t serialize_string(const size_t s, input_t p[static const s], const size_t l, const char a[static const l]) {
     return s < l ? l : (size_t)(stpncpy((char*)p, a, l) - (char*)p);
-}
-
-static size_t serialize_hex(const size_t s, input_t p[static const s], const size_t l, const unsigned char a[static const l]) {
-    if (s >= l * 2)
-        for (size_t i = 0; i < l; ++i)
-            snprintfx((char*)p + i * 2, 3, "%02X", a[i]);
-    return l * 2;
 }
 
 static size_t serialize_integer(const size_t s, input_t p[static const s], size_t _, const int v) {

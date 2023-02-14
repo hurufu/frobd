@@ -157,9 +157,25 @@ ssize_t slurp(const char* const name, const size_t s, input_t buf[static const s
     return close(fd) < 0 ? -1 : ret;
 }
 
+int snprint_hex(const size_t sbuf, input_t buf[static const sbuf], const size_t sbin, const byte_t bin[static const sbin]) {
+    if (sbuf >= sbin * 2) {
+        for (size_t i = 0; i < sbin; i++)
+            if (snprintf((char*)buf + i * 2, 3, "%02X", bin[i]) < 0)
+                return -1;
+    }
+    return sbin * 2;
+}
+
 size_t slurpx(const char* const name, const size_t s, input_t buf[static const s]) {
     const ssize_t ret = slurp(name, s, buf);
     if (ret < 0)
         EXITF("slurp %s", name);
+    return ret;
+}
+
+int xsnprint_hex(const size_t sbuf, input_t buf[static const sbuf], const size_t sbin, const byte_t bin[static const sbin]) {
+    const int ret = snprint_hex(sbuf, buf, sbin, bin);
+    if (ret < 0)
+        EXITF("snprint_hex");
     return ret;
 }
