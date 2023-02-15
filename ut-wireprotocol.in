@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <limits.h>
+#include <fcntl.h>
 
 // We aren't testing actual I/O here, those functions are used only in the test
 // fixtures and support code, so we can just abort on error.
@@ -23,6 +24,8 @@
 #define xpipe(...) XSYSCALL(int, pipe, ##__VA_ARGS__)
 #define xclose(...) XSYSCALL(int, close, ##__VA_ARGS__)
 #define xwrite(...) XSYSCALL(ssize_t, write, ##__VA_ARGS__)
+#define xopen(...) XSYSCALL(int, open, ##__VA_ARGS__)
+#define xunlink(...) XSYSCALL(int, unlink, ##__VA_ARGS__)
 
 // TODO: Can this be done during compilation time?
 #define FILL_DUMMY_DATA(Buf) do {\
@@ -455,3 +458,25 @@ static const struct serialization_test_data {
     input_t buf[256];
     const ssize_t ret = slurp("d5.txt", sizeof buf, buf);
     ck_assert_int_gt(ret, 0);
+
+#test slurp_handles_non_existent_files
+    input_t buf[256];
+    const ssize_t ret = slurp("does_not_exist.txt", sizeof buf, buf);
+    ck_assert_int_eq(ret, -1);
+    ck_assert_int_eq(errno, ENOENT);
+
+#test slurp_handles_empty_buffer
+    input_t buf[0];
+    const ssize_t ret = slurp("empty", sizeof buf, buf);
+    ck_assert_int_eq(ret, -1);
+    ck_assert_int_eq(errno, EFBIG);
+
+#test slurpx_handles_empty_files
+    input_t buf[1];
+    const ssize_t ret = slurpx("empty", sizeof buf, buf);
+    ck_assert_int_eq(ret, 0);
+
+#main-pre
+    // Create temporary empty file for testing
+    const int fd = xopen("empty", O_CREAT | O_TRUNC | O_WRONLY, 0400);
+    xclose(fd);
