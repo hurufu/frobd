@@ -478,5 +478,5 @@ static const struct serialization_test_data {
 
 #main-pre
     // Create temporary empty file for testing
-    const int fd = xopen("empty", O_CREAT | O_TRUNC | O_WRONLY, 0400);
+    const int fd = xopen("empty", O_CREAT | O_TRUNC | O_WRONLY, 0600);
     xclose(fd);
