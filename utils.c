@@ -137,7 +137,7 @@ static ssize_t rread(const int fd, const size_t s, input_t buf[static const s]) 
         while ((l = read(fd, buf + r, s - r)) < 0 && errno == EINTR)
             continue;
         if (l < 0)
-            return l;
+            return -1;
         r += l;
     } while (l != 0);
     return r;
@@ -162,7 +162,7 @@ ssize_t slurp(const char* const name, const size_t s, input_t buf[static const s
         if (close(fd) < 0)
             LOGW("close %s", name);
         errno = e;
-        return ret;
+        return -1;
     }
     return close(fd) < 0 ? -1 : ret;
 }
