@@ -86,6 +86,7 @@ Possible topics to have a look at:
   * https://www.fuzzingbook.org/
   * https://tratt.net/laurie/src/supuner/
   * https://www.gnu.org/software/coreutils/timeout
+  * https://justine.lol/ape.html
 
 [1]: https://en.wikipedia.org/wiki/Situation_calculus
 [2]: https://en.wikipedia.org/wiki/Event_calculus
