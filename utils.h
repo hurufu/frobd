@@ -38,7 +38,7 @@
 } while (0)
 
 #define APPLY_TO_ARRAY(X, Macro) ({\
-    _Static_assert(sizeof (X) != 0, "Empty array?");\
+    assert(sizeof (X) != 0);\
     typeof(X[0]) __attribute__((__unused__)) (*should_be_an_array)[NAIVE_ELEMENTSOF(X)] = &X;\
     Macro;\
 })

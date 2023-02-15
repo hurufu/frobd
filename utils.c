@@ -119,8 +119,7 @@ int parse_message(const input_t* const p, const input_t* const pe, struct frob_m
     return 0;
 bail:
     LOGEX("%s parsing failed: %s", err, strerror(e));
-    char tmp[4 * (pe - p)];
-    LOGDX("\t%s", PRETTV(p, pe, tmp));
+    LOGDX("\t%s", PRETTY(VLA(p, pe)));
     LOGDX("\t%*s", (int)(cur - p), "^");
     return -1;
 }
@@ -158,10 +157,8 @@ ssize_t slurp(const char* const name, const size_t s, input_t buf[static const s
         return fd;
     const ssize_t ret = eread(fd, s, buf);
     if (ret < 0) {
-        const int e = errno;
         if (close(fd) < 0)
-            LOGW("close %s", name);
-        errno = e;
+            ABORTF("close %s", name);
         return -1;
     }
     return close(fd) < 0 ? -1 : ret;
@@ -179,7 +176,7 @@ int snprint_hex(const size_t sbuf, input_t buf[static const sbuf], const size_t 
 size_t xslurp(const char* const name, const size_t s, input_t buf[static const s]) {
     const ssize_t ret = slurp(name, s, buf);
     if (ret < 0)
-        EXITF("xslurp %s", name);
+        EXITF("slurp %s", name);
     return ret;
 }
 

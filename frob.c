@@ -576,8 +576,7 @@ static void perform_pending_write(const enum channel i, struct state* const st) 
                 alarm_set(st->timer_ping, 10);
         }
         if (i != CHANNEL_CO_MASTER) {
-            char tmp[3*s];
-            LOGDX("← %c %zu\t%s", channel_to_code(i), s, PRETTV(ch->buf, ch->cur, tmp));
+            LOGDX("← %c %zu\t%s", channel_to_code(i), s, PRETTY(VLA(ch->buf, ch->cur)));
         }
         ch->cur = ch->buf;
     }
@@ -625,8 +624,7 @@ static void perform_pending_read(const enum channel i, struct state* const s) {
             }
         }
         if (i != CHANNEL_CI_MASTER) {
-            char tmp[3*r];
-            LOGDX("→ %c %zu\t%s", channel_to_code(i), r, PRETTV(ch->cur, ch->cur + r, tmp));
+            LOGDX("→ %c %zu\t%s", channel_to_code(i), r, PRETTY(VLA(ch->cur, ch->cur + r)));
         }
     }
     ch->cur += r;
@@ -822,6 +820,8 @@ static void adjust_rlimit(void) {
 }
 
 int main(const int ac, const char* av[static const ac]) {
+    if (init_log() != 0)
+        return perror("init_log"), EXIT_FAILURE;
     static struct state s;
     initialize(&s, ac, av);
     adjust_rlimit();

@@ -25,7 +25,6 @@
 #define xclose(...) XSYSCALL(int, close, ##__VA_ARGS__)
 #define xwrite(...) XSYSCALL(ssize_t, write, ##__VA_ARGS__)
 #define xopen(...) XSYSCALL(int, open, ##__VA_ARGS__)
-#define xunlink(...) XSYSCALL(int, unlink, ##__VA_ARGS__)
 
 // TODO: Can this be done during compilation time?
 #define FILL_DUMMY_DATA(Buf) do {\
@@ -248,6 +247,28 @@ static void test_eread(const size_t data_size, const char data[static const data
 
 #test eread_file_works_with_small_buffer
     TEST_EREAD("Hello, this is some test data", 1, -1);
+
+#test eread_handles_bad_fd
+    input_t out[0];
+    const ssize_t r = eread(-1, sizeof out, out);
+    ck_assert_int_eq(r, -1);
+    ck_assert_int_eq(errno, EBADF);
+
+#test eread_handles_being_interrupted_by_signal
+    /* This test case exists to kill specific mutant that was found by Mull.
+     * eread retries underlying read system call if it was interrupted by a
+     * signal, but that code path is hard to test, so here we fake it by setting
+     * errno to EINTR and then checking that it is not overwritten by eread.
+     * NOTE: Written data should be 0, because of how mutant are created, Mull
+     *       just replaces `read(...) < 0` with `read(...) <= 0`.
+     */
+    const int fd = write_data_to_pipe(0, "");
+    input_t out[5];
+    errno = EINTR;
+    const ssize_t r = eread(fd, sizeof out, out);
+    ck_assert_int_eq(r, 0);
+    ck_assert_int_eq(errno, EINTR);
+    xclose(fd);
 
 #test snprint_hex_works_for_large_enough_buffer
     static const byte_t data[] = "Hello, this is some test data";
@@ -487,3 +508,4 @@ static const struct serialization_test_data {
     #ifndef NO_LOGS_ON_STDERR
     g_log_level = LOG_NONE;
     #endif
+    init_log();

@@ -1,9 +1,18 @@
 #include "log.h"
 #include <assert.h>
+#include <stdio.h>
 
 #ifndef NO_LOGS_ON_STDERR
 enum LogLevel g_log_level = LOG_DEBUG;
 #endif
+
+int init_log(void) {
+#ifndef NO_LOGS_ON_STDERR
+    return 0;
+#else
+    return fclose(stderr);
+#endif
+}
 
 char* to_printable(const unsigned char* const p, const unsigned char* const pe,
                                   const size_t s, char b[static const s]) {

@@ -6,6 +6,6 @@ expect {
         pass "Correctly responds to T4"
     }
     default {
-        fail "Didn't respond to T5 $expect_out(buffer)"
+        fail "Didn't respond to T5"
     }
 }
