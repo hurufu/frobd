@@ -442,7 +442,6 @@ static const struct serialization_test_data {
     static input_t d[1024] = "";
     memset(d, '0', sizeof d);
     struct frob_msg msg = { .magic = FROB_MAGIC };
-    close(2); // Close stderr to avoid swathes of error messages
     for (size_t i = 0; i < sizeof d; ++i) {
         const int ret = parse_message(d, d + i, &msg);
         ck_assert_int_eq(ret, -1);
@@ -480,3 +479,7 @@ static const struct serialization_test_data {
     // Create temporary empty file for testing
     const int fd = xopen("empty", O_CREAT | O_TRUNC | O_WRONLY, 0600);
     xclose(fd);
+
+    #ifndef NO_LOGS_ON_STDERR
+    g_log_level = LOG_NONE;
+    #endif
