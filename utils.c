@@ -168,7 +168,7 @@ ssize_t slurp(const char* const name, const size_t s, input_t buf[static const s
 }
 
 int snprint_hex(const size_t sbuf, input_t buf[static const sbuf], const size_t sbin, const byte_t bin[static const sbin]) {
-    if (sbuf >= sbin * 2) {
+    if (sbuf >= sbin * 2 + 1) {
         for (size_t i = 0; i < sbin; i++)
             if (snprintf((char*)buf + i * 2, 3, "%02X", bin[i]) < 0)
                 return -1;

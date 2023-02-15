@@ -246,6 +246,44 @@ static void test_eread(const size_t data_size, const char data[static const data
 #test eread_file_works_with_small_buffer
     TEST_EREAD("Hello, this is some test data", 1, -1);
 
+#test snprint_hex_works_for_large_enough_buffer
+    static const byte_t data[] = "Hello, this is some test data";
+    static const char hex[] = "48656C6C6F2C207468697320697320736F6D652074657374206461746100";
+    for (size_t i = sizeof data * 2 + 1; i < sizeof data * 2 + 10; i++) {
+        input_t buf[i];
+        const int ret = snprint_hex(sizeof buf, buf, sizeof data, data);
+        ck_assert_int_eq(ret, sizeof data * 2);
+        ck_assert_str_eq((char*)buf, hex);
+    }
+
+#test snprint_hex_handles_small_buffer
+    static const byte_t data[] = "Hello, this is some test data";
+    static const input_t empty[sizeof data * 2 + 1] = "";
+    for (size_t i = 0; i < sizeof data * 2 + 1; i++) {
+        input_t buf[i];
+        memset(buf, 0, sizeof buf);
+        const int ret = snprint_hex(sizeof buf, buf, sizeof data, data);
+        ck_assert_int_eq(ret, sizeof data * 2);
+        ck_assert_int_ge(ret, i);
+        ck_assert_mem_eq(buf, empty, sizeof buf);
+    }
+
+#test snprint_hex_works_with_empty_data
+    static byte_t data[0];
+    for (size_t i = 0; i < 5; i++) {
+        input_t buf[i];
+        const int ret = snprint_hex(sizeof buf, buf, 0, data);
+        ck_assert_int_eq(ret, 0);
+    }
+
+#test xsnprintf_hex_works_with_empty_data
+    static byte_t data[0];
+    for (size_t i = 0; i < 5; i++) {
+        input_t buf[i];
+        const int ret = xsnprint_hex(sizeof buf, buf, 0, data);
+        ck_assert_int_eq(ret, 0);
+    }
+
 #suite serializing
 
 enum TestMessages { T1, T4, D5, S1 };
