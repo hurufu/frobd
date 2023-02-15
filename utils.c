@@ -176,10 +176,10 @@ int snprint_hex(const size_t sbuf, input_t buf[static const sbuf], const size_t 
     return sbin * 2;
 }
 
-size_t slurpx(const char* const name, const size_t s, input_t buf[static const s]) {
+size_t xslurp(const char* const name, const size_t s, input_t buf[static const s]) {
     const ssize_t ret = slurp(name, s, buf);
     if (ret < 0)
-        EXITF("slurp %s", name);
+        EXITF("xslurp %s", name);
     return ret;
 }
 

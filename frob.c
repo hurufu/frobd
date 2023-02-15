@@ -740,7 +740,7 @@ static const char* ucspi_adjust(const char* const proto, struct fstate* const f)
 static struct frob_d5 load_d5_from_file(const char* const name) {
     input_t buf[256];
     struct frob_msg msg = { .magic = FROB_MAGIC, .header.type = FROB_D5 };
-    if (parse_message(buf, buf + slurpx(name, sizeof buf, buf), &msg) != 0)
+    if (parse_message(buf, buf + xslurp(name, sizeof buf, buf), &msg) != 0)
         EXITFX("parse %s", name);
     return msg.body.d5;
 }

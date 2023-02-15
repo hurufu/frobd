@@ -470,10 +470,14 @@ static const struct serialization_test_data {
     ck_assert_int_eq(ret, -1);
     ck_assert_int_eq(errno, EFBIG);
 
-#test slurpx_handles_empty_files
+#test xslurp_handles_empty_files
     input_t buf[1];
-    const ssize_t ret = slurpx("empty", sizeof buf, buf);
+    const ssize_t ret = xslurp("empty", sizeof buf, buf);
     ck_assert_int_eq(ret, 0);
+
+#test-exit(1) xslurp_exits_on_non_existent_files
+    input_t buf[1];
+    xslurp("does_not_exist.txt", sizeof buf, buf);
 
 #main-pre
     // Create temporary empty file for testing
