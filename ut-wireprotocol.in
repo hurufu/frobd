@@ -506,6 +506,6 @@ static const struct serialization_test_data {
     xclose(fd);
 
     #ifndef NO_LOGS_ON_STDERR
-    g_log_level = LOG_NONE;
+    g_log_level = -1;
     #endif
     init_log();

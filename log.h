@@ -3,34 +3,36 @@
 #include <err.h>
 #include <stddef.h>
 #include <stdlib.h>
-#include <syslog.h> // for LOG_* constants
+#include <syslog.h>
 
-// Serialize bytes between P and Pe into Buffer in a human-readable form
+/** Serializes bytes between P and Pe into Buffer in a human-readable form.
+ */
 #define PRETTY(P, Pe, Buffer) to_printable(P, Pe, elementsof(Buffer), Buffer)
 
 /** Façade for warn/warnx/err/errx functions.
  *
- * The message is printed only if the current log level is greater or equal to
- * the Level. The Level is one of the LOG_* constants defined in syslog.h
- * Prefix is prepended to each message. Prologue, is executed before the message
- * is printed, and Epilogue is executed after the message is printed. They both
- * are executed only if the message is printed. Arguments are passed to the
- * Method. PostScriptum is executed unconditionally after the message is printed.
+ * Level is one of the LOG_* constants defined in syslog.h Message is passed to
+ * Method and is printed only if the current log level is greater or equal to
+ * the Level. Prefix is prepended to each message. Prologue and Epilogue are
+ * executed only if the message is printed before and after the message
+ * respectively. They are useful for example to allocate and free pointers that
+ * are used in the message. PostScriptum is executed unconditionally after the
+ * message is printed.
  *
- *                         PostScriptum,Prefix,Level  ,Method,Prologue,Epilogue,Arguments   */
-#define LOGDXP(P, ...) LOG(            ,"D"   ,DEBUG  ,warnx ,P       ,        ,##__VA_ARGS__)
-#define LOGDX(...)     LOG(            ,"D"   ,DEBUG  ,warnx ,        ,        ,##__VA_ARGS__)
-#define LOGD(...)      LOG(            ,"D"   ,DEBUG  ,warn  ,        ,        ,##__VA_ARGS__)
-#define LOGIX(...)     LOG(            ,"I"   ,INFO   ,warnx ,        ,        ,##__VA_ARGS__)
-#define LOGI(...)      LOG(            ,"I"   ,INFO   ,warn  ,        ,        ,##__VA_ARGS__)
-#define LOGWX(...)     LOG(            ,"W"   ,WARNING,warnx ,        ,        ,##__VA_ARGS__)
-#define LOGW(...)      LOG(            ,"W"   ,WARNING,warn  ,        ,        ,##__VA_ARGS__)
-#define LOGEX(...)     LOG(            ,"E"   ,ERR    ,warnx ,        ,        ,##__VA_ARGS__)
-#define LOGE(...)      LOG(            ,"E"   ,ERR    ,warn  ,        ,        ,##__VA_ARGS__)
-#define EXITFX(...)    LOG(exit(1)     ,"A"   ,ALERT  ,ERRX  ,        ,        ,##__VA_ARGS__)
-#define EXITF(...)     LOG(exit(1)     ,"A"   ,ALERT  ,ERR   ,        ,        ,##__VA_ARGS__)
-#define ABORTFX(...)   LOG(abort()     ,"F"   ,EMERG  ,warnx ,        ,        ,##__VA_ARGS__)
-#define ABORTF(...)    LOG(abort()     ,"F"   ,EMERG  ,warn  ,        ,        ,##__VA_ARGS__)
+ *                         PostScriptum      ,Prefix,Level  ,Method,Prologue,Epilogue,Message     */
+#define LOGDXP(P, ...) LOG(                  ,"D"   ,DEBUG  ,warnx ,P       ,        ,##__VA_ARGS__)
+#define LOGDX(...)     LOG(                  ,"D"   ,DEBUG  ,warnx ,        ,        ,##__VA_ARGS__)
+#define LOGD(...)      LOG(                  ,"D"   ,DEBUG  ,warn  ,        ,        ,##__VA_ARGS__)
+#define LOGIX(...)     LOG(                  ,"I"   ,INFO   ,warnx ,        ,        ,##__VA_ARGS__)
+#define LOGI(...)      LOG(                  ,"I"   ,INFO   ,warn  ,        ,        ,##__VA_ARGS__)
+#define LOGWX(...)     LOG(                  ,"W"   ,WARNING,warnx ,        ,        ,##__VA_ARGS__)
+#define LOGW(...)      LOG(                  ,"W"   ,WARNING,warn  ,        ,        ,##__VA_ARGS__)
+#define LOGEX(...)     LOG(                  ,"E"   ,ERR    ,warnx ,        ,        ,##__VA_ARGS__)
+#define LOGE(...)      LOG(                  ,"E"   ,ERR    ,warn  ,        ,        ,##__VA_ARGS__)
+#define EXITFX(...)    LOG(exit(EXIT_FAILURE),"A"   ,ALERT  ,ERRX  ,        ,        ,##__VA_ARGS__)
+#define EXITF(...)     LOG(exit(EXIT_FAILURE),"A"   ,ALERT  ,ERR   ,        ,        ,##__VA_ARGS__)
+#define ABORTFX(...)   LOG(abort()           ,"F"   ,EMERG  ,warnx ,        ,        ,##__VA_ARGS__)
+#define ABORTF(...)    LOG(abort()           ,"F"   ,EMERG  ,warn  ,        ,        ,##__VA_ARGS__)
 
 #define ERRX(...) errx(EXIT_FAILURE, __VA_ARGS__)
 #define ERR(...)  err(EXIT_FAILURE, __VA_ARGS__)
