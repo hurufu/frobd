@@ -3,50 +3,54 @@
 #include <err.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <syslog.h> // for LOG_* constants
 
-#define LOGDX(Fmt, ...) LOG_X(LOG_DEBUG, "D", Fmt, ##__VA_ARGS__)
-#define LOGIX(Fmt, ...) LOG_X(LOG_INFO, "I", Fmt, ##__VA_ARGS__)
-#define LOGWX(Fmt, ...) LOG_X(LOG_WARNING, "W", Fmt, ##__VA_ARGS__)
-#define LOGEX(Fmt, ...) LOG_X(LOG_ERROR, "E", Fmt, ##__VA_ARGS__)
-#define EXITFX(Fmt, ...) LOGF_(errx, Fmt, ##__VA_ARGS__)
-#define EXITF(Fmt, ...) LOGF_(err, Fmt, ##__VA_ARGS__)
+// Serialize bytes between P and Pe into Buffer in a human-readable form
+#define PRETTY(P, Pe, Buffer) to_printable(P, Pe, elementsof(Buffer), Buffer)
 
-#define PRETTY(Arr) ({\
-    char buffer[4*sizeof(Arr)];\
-    to_printable(Arr, endof(Arr), sizeof buffer, buffer);\
+/** Façade for warn/warnx/err/errx functions.
+ *
+ * The message is printed only if the current log level is greater or equal to
+ * the Level. The Level is one of the LOG_* constants defined in syslog.h
+ * Prefix is prepended to each message. Prologue, is executed before the message
+ * is printed, and Epilogue is executed after the message is printed. They both
+ * are executed only if the message is printed. Arguments are passed to the
+ * Method. PostScriptum is executed unconditionally after the message is printed.
+ *
+ *                         PostScriptum,Prefix,Level  ,Method,Prologue,Epilogue,Arguments   */
+#define LOGDXP(P, ...) LOG(            ,"D"   ,DEBUG  ,warnx ,P       ,        ,##__VA_ARGS__)
+#define LOGDX(...)     LOG(            ,"D"   ,DEBUG  ,warnx ,        ,        ,##__VA_ARGS__)
+#define LOGD(...)      LOG(            ,"D"   ,DEBUG  ,warn  ,        ,        ,##__VA_ARGS__)
+#define LOGIX(...)     LOG(            ,"I"   ,INFO   ,warnx ,        ,        ,##__VA_ARGS__)
+#define LOGI(...)      LOG(            ,"I"   ,INFO   ,warn  ,        ,        ,##__VA_ARGS__)
+#define LOGWX(...)     LOG(            ,"W"   ,WARNING,warnx ,        ,        ,##__VA_ARGS__)
+#define LOGW(...)      LOG(            ,"W"   ,WARNING,warn  ,        ,        ,##__VA_ARGS__)
+#define LOGEX(...)     LOG(            ,"E"   ,ERR    ,warnx ,        ,        ,##__VA_ARGS__)
+#define LOGE(...)      LOG(            ,"E"   ,ERR    ,warn  ,        ,        ,##__VA_ARGS__)
+#define EXITFX(...)    LOG(exit(1)     ,"A"   ,ALERT  ,ERRX  ,        ,        ,##__VA_ARGS__)
+#define EXITF(...)     LOG(exit(1)     ,"A"   ,ALERT  ,ERR   ,        ,        ,##__VA_ARGS__)
+#define ABORTFX(...)   LOG(abort()     ,"F"   ,EMERG  ,warnx ,        ,        ,##__VA_ARGS__)
+#define ABORTF(...)    LOG(abort()     ,"F"   ,EMERG  ,warn  ,        ,        ,##__VA_ARGS__)
+
+#define ERRX(...) errx(EXIT_FAILURE, __VA_ARGS__)
+#define ERR(...)  err(EXIT_FAILURE, __VA_ARGS__)
+
+#define LOG(PostScriptum, ...) ({\
+    LOG_STORY(__VA_ARGS__)\
+    PostScriptum;\
 })
-#define VLA(P, Pe) ( *((input_t(*)[(Pe) - (P)])&(P)) )
 
-// TODO: Make log levels inline with syslog
-enum LogLevel {
-    LOG_NONE,
-    LOG_FATAL,
-    LOG_ERROR,
-    LOG_WARNING,
-    LOG_INFO,
-    LOG_DEBUG
-};
+#ifdef NO_LOGS_ON_STDERR
+#   define LOG_STORY(...)
+#else
+#   define LOG_STORY(Prefix, Level, Method, Prologue, Epilogue, Fmt, ...) \
+        if (LOG_##Level <= g_log_level) {\
+            Prologue;\
+            Method(Prefix " %s:%d\t" Fmt, __FILE__, __LINE__, ##__VA_ARGS__);\
+            Epilogue;\
+        }
+    extern int g_log_level;
+#endif
 
 int init_log(void);
 char* to_printable(const unsigned char* p, const unsigned char* pe, size_t s, char b[static s]);
-
-#ifndef NO_LOGS_ON_STDERR
-extern enum LogLevel g_log_level;
-#   define LOGW(Fmt, ...) (LOG_WARNING > g_log_level ? NOOP : warn("W %s:%d\t" Fmt, __FILE__, __LINE__, ##__VA_ARGS__))
-#   define LOGE(Fmt, ...) (LOG_ERROR   > g_log_level ? NOOP : warn("E %s:%d\t" Fmt, __FILE__, __LINE__, ##__VA_ARGS__))
-#   define LOGI(Fmt, ...) (LOG_INFO    > g_log_level ? NOOP : warn("I %s:%d\t" Fmt, __FILE__, __LINE__, ##__VA_ARGS__))
-#   define LOG_X(Level, Prefix, Fmt, ...) (Level > g_log_level ? NOOP : warnx(Prefix " %s:%d\t" Fmt, __FILE__, __LINE__, ##__VA_ARGS__))
-#   define LOGF_(ErrFunction, Fmt, ...) (LOG_FATAL > g_log_level ? exit(EXIT_FAILURE) : ErrFunction (EXIT_FAILURE, "F %s:%d\t" Fmt, __FILE__, __LINE__, ##__VA_ARGS__))
-#   define ABORTF(Fmt, ...) ((LOG_FATAL > g_log_level ? warn("F %s:%d\t" Fmt, __FILE__, __LINE__, ##__VA_ARGS__) : NOOP), abort())
-#   define ABORTFX(Fmt, ...) ((LOG_FATAL > g_log_level ? warnx("F %s:%d\t" Fmt, __FILE__, __LINE__, ##__VA_ARGS__) : NOOP), abort())
-#else
-#   define LOGW(Fmt, ...) NOOP
-#   define LOGE(Fmt, ...) NOOP
-#   define LOGI(Fmt, ...) NOOP
-#   define LOG_X(Level, Prefix, Fmt, ...) NOOP
-#   define LOGF_(ErrFunction, Fmt, ...) exit(EXIT_FAILURE)
-#   define ABORTF(Fmt, ...) abort()
-#   define ABORTFX(Fmt, ...) abort()
-#endif
-
-#define NOOP (void)0

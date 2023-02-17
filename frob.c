@@ -576,7 +576,7 @@ static void perform_pending_write(const enum channel i, struct state* const st) 
                 alarm_set(st->timer_ping, 10);
         }
         if (i != CHANNEL_CO_MASTER) {
-            LOGDX("← %c %zu\t%s", channel_to_code(i), s, PRETTY(VLA(ch->buf, ch->cur)));
+            LOGDXP(char buf[4*(ch->cur - ch->buf)], "← %c %04zu %s", channel_to_code(i), s, PRETTY(ch->buf, ch->cur, buf));
         }
         ch->cur = ch->buf;
     }
@@ -624,7 +624,7 @@ static void perform_pending_read(const enum channel i, struct state* const s) {
             }
         }
         if (i != CHANNEL_CI_MASTER) {
-            LOGDX("→ %c %zu\t%s", channel_to_code(i), r, PRETTY(VLA(ch->cur, ch->cur + r)));
+            LOGDXP(char buf[4*r], "→ %c %04zu %s", channel_to_code(i), r, PRETTY(ch->cur, ch->cur + r, buf));
         }
     }
     ch->cur += r;

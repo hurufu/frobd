@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 #ifndef NO_LOGS_ON_STDERR
-enum LogLevel g_log_level = LOG_DEBUG;
+int g_log_level = LOG_DEBUG;
 #endif
 
 int init_log(void) {

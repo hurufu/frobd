@@ -119,7 +119,7 @@ int parse_message(const input_t* const p, const input_t* const pe, struct frob_m
     return 0;
 bail:
     LOGEX("%s parsing failed: %s", err, strerror(e));
-    LOGDX("\t%s", PRETTY(VLA(p, pe)));
+    LOGDXP(char tmp[4*(pe-p)],"\t%s", PRETTY(p, pe, tmp));
     LOGDX("\t%*s", (int)(cur - p), "^");
     return -1;
 }
