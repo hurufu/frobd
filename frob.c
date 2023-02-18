@@ -58,6 +58,7 @@ struct config {
     struct frob_device_info info;
     struct frob_d5 parameters;
     char fallback_s2[64];
+    char busy_s2[64];
 };
 
 struct state {
@@ -303,7 +304,7 @@ static int commission_hardcoded_message_on_main(struct state* const s, const tok
 }
 
 static int commission_response(struct state* const s, const struct frob_msg* const received_msg) {
-    enum channel dst = choose_destination(&s->fs, received_msg);
+    enum channel dst = s->busy ? CHANNEL_FO_MAIN : choose_destination(&s->fs, received_msg);
     if (dst == CHANNEL_FO_MAIN) {
         if (received_msg->header.type == FROB_T2)
             s->pings_on_inactivity_left++;
@@ -312,7 +313,7 @@ static int commission_response(struct state* const s, const struct frob_msg* con
             case FROB_NONE:
                 return 0;
             case FROB_S2:
-                return commission_frame_on_main(s, received_msg->header.token, s->cfg.fallback_s2);
+                return commission_frame_on_main(s, received_msg->header.token, s->busy ? s->cfg.busy_s2 : s->cfg.fallback_s2);
             default:
                 break;
         }
@@ -775,9 +776,11 @@ static void test_all_channels(struct fstate* const f) {
 }
 
 static void initialize(struct state* const s, const int ac, const char* av[static const ac]) {
+    // TODO: Implement a proper command line parser
     *s = (struct state){
         .cfg = {
             .fallback_s2 = "S2" FS "993" FS FS "M000" FS "T000" FS "N/A" FS FS FS "NONE" FS "Payment endpoint not available" FS,
+            .busy_s2 = "S2" FS "993" FS FS "M000" FS "T000" FS "N/A" FS FS FS "NONE" FS "Payment endpoint is busy" FS,
             .supported_versions = { "160", "170" },
             .info = {
                 .version = "170",
@@ -789,7 +792,7 @@ static void initialize(struct state* const s, const int ac, const char* av[stati
         },
         .pings_on_inactivity_left = 2,
         .select_params = {
-            .timeout_sec = ac == 2 ? atoi(av[1]) : 0
+            .timeout_sec = ac >= 2 ? atoi(av[1]) : 0
         }
     };
     for (enum channel i = CHANNEL_FIRST; i <= CHANNEL_LAST; i++) {
@@ -798,7 +801,7 @@ static void initialize(struct state* const s, const int ac, const char* av[stati
     }
     s->fs.ch[CHANNEL_FO_MAIN].fd = STDOUT_FILENO;
     s->fs.ch[CHANNEL_FI_MAIN].fd = STDIN_FILENO;
-    if ((s->fs.ch[CHANNEL_NO_PAYMENT].fd = open("./payment", O_WRONLY | O_CLOEXEC)) == -1)
+    if (ac >= 3 && (s->fs.ch[CHANNEL_NO_PAYMENT].fd = open(av[2], O_WRONLY | O_CLOEXEC)) == -1)
         LOGI("%s channel not available at %s", channel_to_string(CHANNEL_NO_PAYMENT), "./payment");
     const char* const proto = getenv("PROTO");
     if (proto)
