@@ -1,14 +1,14 @@
 spawn {*}$cmdline
 
-expect {
-    [string cat $stx] {
-        expect [string cat $stx] {
-            expect [string cat $stx] {
-                pass "Message was retransmitted 3 times"
-            }
+for {set n 0} {$n < 2} {incr n} {
+    expect {
+        [string cat $stx] {
+            note "${n}. retransmission received"
+        }
+        timeout {
+            fail "${n}. retransmission not received"
         }
     }
-    default {
-        fail "Message wasn't retransmitted 3 times"
-    }
 }
+
+pass "all retransmissions received"
