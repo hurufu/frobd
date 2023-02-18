@@ -1,0 +1,12 @@
+spawn {*}$cmdline
+
+expect {
+    [string cat $stx] {
+        expect [string cat $fs T1 $fs $etx] {
+            pass "Ping received $expect_out(buffer)"
+        }
+    }
+    timeout {
+        fail "Ping was not received"
+    }
+}
