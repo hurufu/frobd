@@ -1,0 +1,14 @@
+spawn {*}$cmdline
+
+expect {
+    [string cat $stx] {
+        expect [string cat $stx] {
+            expect [string cat $stx] {
+                pass "Message was retransmitted 3 times"
+            }
+        }
+    }
+    default {
+        fail "Message wasn't retransmitted 3 times"
+    }
+}
