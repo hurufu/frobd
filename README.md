@@ -39,14 +39,15 @@ make graph-fdp
 ## What is it?
 
 __frobd__ is a program that listens for ECR-EFT messages on stdin and responds
-to them on stdout while forwarding some messages through other channels. It is
-expected to be a part of a larger system integrated with embedded PoS or ECR
-software (the client). It is planned to handle as much as possible messages by
-itself (`T1`-`T5`, `D0`-`DA`, `B1`-`B4`, `L1`) and support unlimited number of
-connections, while forwarding only essential messages to the client, taking care
-that it will receive only messages relevant to an actual transaction and only
-from a single connected device at a time per transaction, so it has to deal
-only with a small number of messages using a simple interface.
+to them on stdout (or different file descriptors) while forwarding some messages
+through other channels. It is expected to be a part of a larger system
+integrated with embedded PoS or ECR software (the client). It is planned to
+handle as much as possible messages by itself (`T1`-`T5`, `D0`-`DA`, `B1`-`B4`,
+`L1`) and support unlimited number of connections, while forwarding only
+essential messages to the client, taking care that it will receive only messages
+relevant to an actual transaction and only from a single connected device at a
+time per transaction, so it has to deal only with a small number of messages
+using a simple interface.
 
 For example a payment software can stop worrying about one ECR asking for a
 previous transaction status while other ECR is requesting a new transaction ;).

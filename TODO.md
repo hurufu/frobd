@@ -23,16 +23,16 @@ specify how frobd should react to different messages and conditions.
 
 What shall be considered:
 
-  * Enabled protocols versions and attached devices parameters to respond to
-    `Tx` and `D4`.
-  * Timeouts and re-transmission policy, eg don't re-transmit non-idempotent
-    messages like `S1`.
-  * Periodic ping using `T1` message.
-  * Chat scenarios
-  * Configurable number of channels and instructions on where each message type
-    should go. This can be achieved eg by embeding a scripting language like
-    GNU Guile or Lua or something less common; or alternatively by executing
-    external shell script.
+  * [ ] Enabled protocols versions and attached devices parameters to respond to
+        `Tx` and `D4`.
+  * [-] Timeouts and re-transmission policy, eg don't re-transmit non-idempotent
+        messages like `S1`.
+  * [x] Periodic ping using `T1` message.
+  * [ ] Chat scenarios
+  * [ ] Configurable number of channels and instructions on where each message
+        type should go. This can be achieved eg by embeding a scripting language
+        like GNU Guile or Lua or something less common; or alternatively by
+        executing external shell script.
 
 ### Additional programs
 
