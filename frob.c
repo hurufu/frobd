@@ -451,6 +451,8 @@ static void process_signal(struct state* const s) {
                 start_master_channel(s);
                 break;
             case SIGALRM:
+                // This is needed to protect from rogue alarm() calls
+                assert((*inf)[i].ssi_code == SI_TIMER);
                 if (s->fs.ch[CHANNEL_FO_MAIN].fd == -1)
                     break;
                 if ((*inf)[i].ssi_tid == (uintmax_t)s->timer_ack) {
@@ -458,6 +460,9 @@ static void process_signal(struct state* const s) {
                 } else if ((*inf)[i].ssi_tid == (uintmax_t)s->timer_ping) {
                     LOGWX("Response to ping timed out. Assuming connection is broken");
                     close_main_channel(s);
+                } else {
+                    // Unexpected timer
+                    assert(false);
                 }
                 break;
             case SIGPWR:
@@ -465,6 +470,10 @@ static void process_signal(struct state* const s) {
                 break;
             case SIGUSR2:
                 s->busy = !s->busy;
+                break;
+            default:
+                // Unexpected signal
+                assert(false);
                 break;
         }
     }
@@ -575,9 +584,8 @@ static void perform_pending_write(const enum channel i, struct state* const st) 
             if (st->ping)
                 alarm_set(st->timer_ping, 10);
         }
-        if (i != CHANNEL_CO_MASTER) {
+        if (i != CHANNEL_CO_MASTER)
             LOGDXP(char buf[4*(ch->cur - ch->buf)], "← %c %04zu %s", channel_to_code(i), s, PRETTY(ch->buf, ch->cur, buf));
-        }
         ch->cur = ch->buf;
     }
 }
@@ -623,9 +631,8 @@ static void perform_pending_read(const enum channel i, struct state* const s) {
                     break;
             }
         }
-        if (i != CHANNEL_CI_MASTER) {
+        if (i != CHANNEL_CI_MASTER)
             LOGDXP(char buf[4*r], "→ %c %04zu %s", channel_to_code(i), r, PRETTY(ch->cur, ch->cur + r, buf));
-        }
     }
     ch->cur += r;
 }
