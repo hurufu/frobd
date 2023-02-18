@@ -84,9 +84,9 @@ clean: F += $(wildcard frob.log frob.sum frob.debug mut)
 clean:
 	$(if $(strip $F),$(RM) -- $F)
 
-tcp-server: frob
-	s6-tcpserver4 -v2 0.0.0.0 5002 ./$< 1000
-tcp-client: frob
-	s6-tcpclient -rv localhost 5002 rlwrap ./$< 1000
+tcp-server: frob | payment/0
+	s6-tcpserver4 -v2 0.0.0.0 5002 sh -c './$< 1000 "payment/$$TCPCONNNUM"'
+tcp-client: frob | payment/0
+	s6-tcpclient -rv localhost 5002 rlwrap ./$< 1000 $|
 scan:
 	scan-build $(MAKE) clean frob
