@@ -673,7 +673,7 @@ static int wait_for_io(struct state* const s) {
             if (s->pings_on_inactivity_left--)
                 return commission_ping_on_main(s);
         }
-        EXITF("select");
+        ABORTF("select");
     }
     return l;
 }
@@ -810,9 +810,9 @@ static void initialize(struct state* const s, const int ac, const char* av[stati
     FD_ZERO(&s->fs.wset);
     FD_ZERO(&s->fs.eset);
     if (timer_create(CLOCK_MONOTONIC, NULL, &s->timer_ack) != 0)
-        EXITF("timer_create");
+        ABORTF("timer_create");
     if (timer_create(CLOCK_MONOTONIC, NULL, &s->timer_ping) != 0)
-        EXITF("timer_create");
+        ABORTF("timer_create");
 }
 
 static void adjust_rlimit(void) {
@@ -820,10 +820,10 @@ static void adjust_rlimit(void) {
     // doesn't fit into fd_set, so we don't have to check for that in the code.
     struct rlimit rl;
     if (getrlimit(RLIMIT_NOFILE, &rl) != 0)
-        EXITF("getrlimit");
+        ABORTF("getrlimit");
     if (rl.rlim_cur > FD_SETSIZE)
         if (setrlimit(RLIMIT_NOFILE, &(struct rlimit){ .rlim_cur = FD_SETSIZE, .rlim_max = rl.rlim_max }) != 0)
-            EXITF("setrlimit");
+            ABORTF("setrlimit");
 }
 
 int main(const int ac, const char* av[static const ac]) {
