@@ -126,7 +126,7 @@ bail:
 
 // Has similar semantics to read(2) except that it restarts itself if
 // it was interrupted by a signal or until file is fully read
-// If whole file was read returns positive interger less than s - bytes read.
+// If whole file was read returns positive integer less than s - bytes read.
 // if only part of file was read returns s.
 // if error occurs returns -1 and sets errno accordingly
 static ssize_t rread(const int fd, const size_t s, input_t buf[static const s]) {

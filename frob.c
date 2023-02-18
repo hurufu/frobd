@@ -237,7 +237,7 @@ static union frob_body construct_hardcoded_message_body(const struct config* con
     return ret;
 }
 
-// FIXME: Rewrite this function, so it wouldn't use condtion on device type
+// FIXME: Rewrite this function, so it wouldn't use condition on device type
 static token_t compute_next_token(const enum FrobDeviceType r) {
     static token_t token = 0;
     // Specification doesn't define what to do in case of token overflow
@@ -385,7 +385,7 @@ static void start_master_channel(struct state* const s) {
     sigemptyset(&tmp);
     sigaddset(&tmp, SIGINT);
     if (sigprocmask(SIG_UNBLOCK, &tmp, NULL) != 0)
-        EXITF("Can't unblock received singal");
+        EXITF("Can't unblock received signal");
 
     MCOPY(s->fs.ch[CHANNEL_CO_MASTER].cur, "Press ^C again to exit the program or ^D end interactive session...\n");
     commission_prompt_on_master(s);
@@ -412,7 +412,7 @@ static void alarm_set(timer_t timer, const int sec) {
     if (timer_settime(timer, 0, &new, &old) != 0)
         EXITF("Can't set timer");
 
-    // We shouldn't set duplicated alrams
+    // We shouldn't set duplicated alarms
     assert(sec ? old.it_value.tv_sec == 0 && old.it_value.tv_nsec == 0 : 1);
 }
 
@@ -763,7 +763,7 @@ static ssize_t test_channel(const enum channel c, const int fd) {
 
 // We rely on the UCSPI environment (if detected) to provide us usable file
 // descriptors. But some programs (e.g. mull-runner) keep environment variables,
-// but because they fork() we lose the file descriptors. So we need to test
+// but because they fork() we loose the file descriptors. So we need to test
 // them. Important: we need to test all channels before we set signalfd, because
 // read of zero bytes from it will always result in EINVAL.
 static void test_all_channels(struct fstate* const f) {
@@ -777,7 +777,7 @@ static void test_all_channels(struct fstate* const f) {
 static void initialize(struct state* const s, const int ac, const char* av[static const ac]) {
     *s = (struct state){
         .cfg = {
-            .fallback_s2 = "S2" FS "993" FS FS "M000" FS "T000" FS "N/A" FS FS FS "NONE" FS "Payment endopoint not available" FS,
+            .fallback_s2 = "S2" FS "993" FS FS "M000" FS "T000" FS "N/A" FS FS FS "NONE" FS "Payment endpoint not available" FS,
             .supported_versions = { "160", "170" },
             .info = {
                 .version = "170",
