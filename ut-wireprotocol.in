@@ -435,11 +435,11 @@ static const struct serialization_test_data {
     }
 
 #test buffer_too_small_is_handled
+    input_t buf[4096];
     for (size_t i = 0; i < elementsof(s_test_data); i++) {
         const struct serialization_test_data* const q = &s_test_data[i];
         for (size_t j = 1; j < strlen(q->expected); j++) {
-            input_t buf[j];
-            const ssize_t ret = serialize(sizeof buf, buf, &q->msg);
+            const ssize_t ret = serialize(j, buf, &q->msg);
             ck_assert_int_lt(ret, 0);
             ck_assert_int_ge(ret, -j);
             ck_assert_mem_eq(buf, q->expected, -ret);
