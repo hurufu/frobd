@@ -58,7 +58,6 @@ struct config {
     struct frob_device_info info;
     struct frob_d5 parameters;
     char fallback_s2[64];
-    char busy_s2[64];
 };
 
 struct state {
@@ -76,7 +75,6 @@ struct state {
 
     bool ack;
     bool ping;
-    bool busy;
 
     unsigned short pings_on_inactivity_left;
 
@@ -160,12 +158,18 @@ static enum channel choose_destination_from_message(const struct frob_msg* const
 }
 
 static enum channel choose_destination(const struct fstate* const f, const struct frob_msg* const msg) {
-    enum channel dst = choose_destination_from_message(msg);
-    if (dst == CHANNEL_NONE)
-        return LOGEX("No destination for message %s: %s", frob_type_to_string(msg->header.type), strerror(ECHRNG)), -1;
-    if (f->ch[dst].fd == -1) {
-        LOGWX("Channel %s is not connected: %s", channel_to_string(dst), strerror(EUNATCH));
-        dst = CHANNEL_FO_MAIN;
+    const enum channel dst = choose_destination_from_message(msg);
+    if (dst != CHANNEL_FO_MAIN) {
+        if (lockf(f->ch[dst].fd, F_TLOCK, 0) == -1) {
+            switch (errno) {
+                case EACCES:
+                case EAGAIN:
+                    LOGIX("Destination channel %s is busy, appropriate notification will be sent to MAIN", channel_to_string(dst));
+                    return CHANNEL_FO_MAIN;
+                default:
+                    ABORTF("Can't lock channel %s (%d)", channel_to_string(dst), f->ch[dst].fd);
+            }
+        }
     }
     return dst;
 }
@@ -248,6 +252,8 @@ static token_t compute_next_token(const enum FrobDeviceType r) {
 static int commission_native_message(struct fstate* const f, const enum channel dst, const struct frob_msg* const msg) {
     // Magic string should match
     assert(strcmp(msg->magic, FROB_MAGIC) == 0);
+    // Channel should be valid
+    assert(dst >= CHANNEL_FIRST && dst <= CHANNEL_LAST);
 
     struct chstate* const ch = &f->ch[dst];
     if (sizeof *msg >= free_space(ch))
@@ -304,7 +310,7 @@ static int commission_hardcoded_message_on_main(struct state* const s, const tok
 }
 
 static int commission_response(struct state* const s, const struct frob_msg* const received_msg) {
-    enum channel dst = s->busy ? CHANNEL_FO_MAIN : choose_destination(&s->fs, received_msg);
+    const enum channel dst = choose_destination(&s->fs, received_msg);
     if (dst == CHANNEL_FO_MAIN) {
         if (received_msg->header.type == FROB_T2)
             s->pings_on_inactivity_left++;
@@ -313,7 +319,7 @@ static int commission_response(struct state* const s, const struct frob_msg* con
             case FROB_NONE:
                 return 0;
             case FROB_S2:
-                return commission_frame_on_main(s, received_msg->header.token, s->busy ? s->cfg.busy_s2 : s->cfg.fallback_s2);
+                return commission_frame_on_main(s, received_msg->header.token, s->cfg.fallback_s2);
             default:
                 break;
         }
@@ -469,9 +475,6 @@ static void process_signal(struct state* const s) {
             case SIGPWR:
                 print_stats(&s->stats);
                 break;
-            case SIGUSR2:
-                s->busy = !s->busy;
-                break;
             default:
                 // Unexpected signal
                 assert(false);
@@ -544,7 +547,9 @@ static void process_device(struct state* const s) {
     const size_t n = used_space(dev) / sizeof (struct frob_msg);
     const struct frob_msg (* const msgs)[n] = (struct frob_msg(*)[])&dev->buf;
     for (size_t i = 0; i < n; i++) {
-        if (serialize(free_space(main), main->cur, msgs[i]) < 0) {
+        if ((*msgs)[i].header.type == FROB_S2 && lockf(main->fd, F_ULOCK, 0) != 0)
+            ABORTF("Can't unlock main channel");
+        if (serialize(free_space(main), main->cur, &(*msgs)[i]) < 0) {
             LOGEX("Message skipped");
         }
     }
@@ -693,7 +698,6 @@ static sigset_t adjust_signal_delivery(int* const ch) {
     static const int blocked_signals[] = {
         SIGALRM,
         SIGPWR,
-        SIGUSR2,
         SIGINT
     };
     sigset_t s;
@@ -779,8 +783,7 @@ static void initialize(struct state* const s, const int ac, const char* av[stati
     // TODO: Implement a proper command line parser
     *s = (struct state){
         .cfg = {
-            .fallback_s2 = "S2" FS "993" FS FS "M000" FS "T000" FS "N/A" FS FS FS "NONE" FS "Payment endpoint not available" FS,
-            .busy_s2 = "S2" FS "993" FS FS "M000" FS "T000" FS "N/A" FS FS FS "NONE" FS "Payment endpoint is busy" FS,
+            .fallback_s2 = "S2" FS "993" FS FS "M000" FS "T000" FS "N/A" FS FS FS "NONE" FS "Payment endpoint busy" FS,
             .supported_versions = { "160", "170" },
             .info = {
                 .version = "170",
@@ -802,7 +805,7 @@ static void initialize(struct state* const s, const int ac, const char* av[stati
     s->fs.ch[CHANNEL_FO_MAIN].fd = STDOUT_FILENO;
     s->fs.ch[CHANNEL_FI_MAIN].fd = STDIN_FILENO;
     if (ac >= 3 && (s->fs.ch[CHANNEL_NO_PAYMENT].fd = open(av[2], O_WRONLY | O_CLOEXEC)) == -1)
-        LOGI("%s channel not available at %s", channel_to_string(CHANNEL_NO_PAYMENT), "./payment");
+        EXITF("Can't attach %s channel to file at \"%s\"", channel_to_string(CHANNEL_NO_PAYMENT), av[2]);
     const char* const proto = getenv("PROTO");
     if (proto)
         ucspi_log(proto, ucspi_adjust(proto, &s->fs));
