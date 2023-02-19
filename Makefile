@@ -1,4 +1,4 @@
-.PHONY: index clean graph-% test tcp scan coverage all test-unit test-functional test-random test-mutation mutated
+.PHONY: index clean graph-% test tcp scan coverage all test-unit test-functional test-random test-mutation mutated clang-analyze
 
 OPTLEVEL := g
 
@@ -9,8 +9,6 @@ CPPFLAGS_clang := -D_FORTIFY_SOURCE=3
 # Some gcc builds (depends on the distro) set _FORTIFY_SOURCE by default,
 # so we need undefine it and then redefine it
 CPPFLAGS_gcc   := -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS
-# Those flags don't work together with normal compilation, that's why they are disabled by default
-#CFLAGS_clang := --analyze -Xanalyzer
 CPPFLAGS       ?= $(CPPFLAGS_$(CC))
 #CPPFLAGS       += -DNDEBUG
 # Disable all logs
@@ -40,6 +38,8 @@ UT_C      := $(UT_T:.in=.c) utils.c serialization.c log.c
 UT_O      := $(UT_C:.c=.o)
 MUTATED_O := utils.o serialization.o
 NORMAL_O  := $(RL_O) $(UT_T:.in=.c) log.o
+ALL_C     := $(CFILES) $(UT_C)
+ALL_PLIST := $(ALL_C:.c=.plist)
 
 # Public targets ###############################################################
 all: frob ut
@@ -49,6 +49,7 @@ clean:
 	$(if $(strip $F),$(RM) -- $F)
 coverage: test | $(CFILES) $(UT_C)
 	gcov -o . $|
+clang-analyze: $(ALL_PLIST)
 tcp-server: frob
 	s6-tcpserver4 -v2 0.0.0.0 5002 ./$< 1000 payment
 tcp-client: frob | payment
@@ -93,6 +94,9 @@ frob: $(OFILES)
 	$(CC) -S -o $@ -fverbose-asm -fno-asynchronous-unwind-tables $(CFLAGS) $<
 %.c: %.in
 	checkmk $< >$@
+%.plist: %.c
+	clang --analyze -o $@ $<
 clean: F += $(wildcard $(RL_C) $(RL_C:.c=.s) $(UT_O) $(UT_T:.in=.c) $(UT_T:.in=.s) $(OFILES) frob frob.s log.s tags cscope.out ut)
 clean: F += $(wildcard *.gcda *.gcno *.gcov)
 clean: F += $(wildcard frob.log frob.sum frob.debug mut)
+clean: F += $(wildcard $(ALL_PLIST))
