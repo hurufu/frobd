@@ -4,7 +4,8 @@
 > This project is in a PoC state and __a lot__ of essentials features are missing.
 
 More information for the protocol on the [official website][b]. Publicly
-available specification can be downloaded [here][c].
+available specification can be downloaded [here][c]. I know that frobd is a bad
+name for such program, but I couldn't come up with anything better.
 
 ## Usage
 
