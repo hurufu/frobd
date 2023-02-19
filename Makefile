@@ -2,6 +2,8 @@
 
 if_coverage = $(if $(findstring coverage,$(MAKECMDGOALS)),$(1),)
 
+CC := gcc
+
 #CPPFLAGS += -DNDEBUG
 # Disable all logs
 #CPPFLAGS := -DNO_LOGS_ON_STDERR
