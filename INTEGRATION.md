@@ -44,8 +44,8 @@ application.
                  |Physical boundary
 
 
-    
-
+Frob has 4 distinct I/O channels, which can be assigned different file
+descriptors and connect to different processes.
 
 ## Integration with [nexo][b] payment application using microservice architecture
 
@@ -63,6 +63,24 @@ application.
                  |                                [3]--->| HAP | | TMAP |
                  |Physical boundary                      +-----+ +------+
 
+Nexo specifies 3 distinct modules that are responsible for different parts of
+the payment process. Frob channels are neatly modeled by these modules. Read
+more about Nexo in [Nexo standards][b].
+
+## Integration with a proxy
+
+                 |
+    +-------+ TCP|socket      TCP socket +------+
+    | ECR 1 | <--|-----> frob <--------> |      |     +-------------+
+    +-------+    |                       | Proxy|<--->| Payment     |
+    +-------+ TCP|socket      TCP socket |      |     | application |
+    | ECR 2 | <--|-----> frob <--------> |      |     +-------------+
+    +-------+    |                       +------+
+                 |
+                 |Physical boundary
+
+Conversely you can convert all communication via a proxy to another ECR
+protocol, eg Nexo retaler protocol.
 
 [a]: http://skarnet.org/software/s6/
 [b]: http://www.nexo-standards.org/
