@@ -1,14 +1,14 @@
 # Integration scenarios of frob program
 
 By design one should spawn a separate frob instance for each connection.
-Performance isn't an issue, because normally only few ECR are connected to the
+Performance isn't an issue, because normally only few ECRs are connected to the
 POS terminal at the same time (usually 1 or 2). The most convenient way to do
 this is to use superserver like `s6-tcpserver` from [s6][a]. If you need to
 reverse the connection, you can use `s6-tcpclient`. If you need to use serial
 port, you can just redirect `/dev/ttyS0` to frob's stdin/stdout.
 
-Because of very flexible I/O mechanism (file descriptors) frob program can be
-integrated into a larger system in many different ways.
+Because of very flexible I/O mechanism (file descriptors) employed by frob it
+can be integrated into a larger system in many different ways.
 
 ## Integration with big monolithic payment application
 
