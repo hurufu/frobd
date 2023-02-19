@@ -49,23 +49,25 @@ descriptors and connect to different processes.
 
 ## Integration with [nexo][b] payment application using microservice architecture
 
-                                Named pipes
+                            Named pipes or sockets
     +-------+ TCP|socket      |--ui-------->[1]          +-------+
     | ECR 1 | <--|-----> frob |--payment--->[2]   [1]--->| SCAP  |
     +-------+    |            |--storage--->[3]          +-------+
-                 |            |<--device----[4]              ↕
+                 |            |<--device----[2]              ↕
                  |                                       +--------------+
-                                                  [4]<---|     FAST     |
-    +-------+ TCP|socket      |--ui-------->[1]   [2]--->|              |
-    | ECR 2 | <--|-----> frob |--payment--->[2]          +--------------+
-    +-------+    |            |--storage--->[3]             ↕       ↕
-                 |            |<--device----[4]          +-----+ +------+
-                 |                                [3]--->| HAP | | TMAP |
-                 |Physical boundary                      +-----+ +------+
+                                                  [2]<-->|     FAST     |
+    +-------+ TCP|socket      |--ui-------->[1]          +--------------+
+    | ECR 2 | <--|-----> frob |--payment--->[2]             ↕       ↕
+    +-------+    |            |--storage--->[3]          +-----+ +------+
+                 |            |<--device----[2]   [3]--->| HAP | | TMAP |
+                 |                                       +-----+ +------+
+                 |Physical boundary
 
 Nexo specifies 3 distinct modules that are responsible for different parts of
 the payment process. Frob channels are neatly modeled by these modules. Read
-more about Nexo in [Nexo standards][b].
+more about Nexo in [Nexo standards][b]. Synchronisation is done by frob,
+applications don't need to worry about it.
+
 
 ## Integration with a proxy
 
