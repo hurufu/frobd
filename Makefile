@@ -46,7 +46,7 @@ tags:
 test-random: frob
 	pv -Ss100M /dev/urandom | ./$< 1 2>/dev/null 1>/dev/null
 test-unit: ut | debug.gdb
-	env CK_FORK=no CK_VERBOSITY=verbose gdb --batch -x $| ./$<
+	env gdb --batch -x $| ./$<
 test-functional: frob.log frob.sum
 # mull-runner leaves running mutant processes 🤦
 test-mutation: mut
