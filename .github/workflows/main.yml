@@ -2,7 +2,7 @@ name: Makefile CI
 
 on:
   push:
-    branches: [ "master" ]
+    branches: "**"
   pull_request:
     branches: [ "master" ]
 
@@ -12,7 +12,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Instal dependencies
-      run: sudo apt-get install ragel check dejagnu tcllib pv
+      run: sudo apt-get install ragel check dejagnu tcllib pv gdb
     - name: Build frobd
       run: make frob
     - name: Run unit tests
