@@ -37,7 +37,7 @@ UT_T      := $(wildcard *.in)
 UT_C      := $(UT_T:.in=.c) utils.c serialization.c log.c
 UT_O      := $(UT_C:.c=.o)
 MUTATED_O := utils.o serialization.o
-NORMAL_O  := $(RL_O) $(UT_T:.in=.c) log.o
+NORMAL_O  := $(RL_O) $(UT_T:.in=.o) log.o
 ALL_C     := $(CFILES) $(UT_C)
 ALL_PLIST := $(ALL_C:.c=.plist)
 
