@@ -501,6 +501,32 @@ static const struct serialization_test_data {
     input_t buf[1];
     xslurp("does_not_exist.txt", sizeof buf, buf);
 
+#suite logging
+
+#test log_is_written_to_file_descriptor
+    int pfd[2];
+    xpipe(pfd);
+    static const char logged[] = "1234567";
+    ck_assert_int_lt(strlen(logged), LOG_BUFFER_SIZE);
+    write_log(pfd[1], "%s", logged);
+    xclose(pfd[1]);
+    char buf[256] = "";
+    const ssize_t ret = read(pfd[0], buf, sizeof buf);
+    ck_assert_int_eq(ret, 7);
+    ck_assert_str_eq(buf, "1234567");
+
+#test log_is_truncated_if_buffer_is_too_small
+    int pfd[2];
+    xpipe(pfd);
+    static const char logged[] = "123456789";
+    ck_assert_int_gt(sizeof logged, LOG_BUFFER_SIZE);
+    write_log(pfd[1], "%s", logged);
+    xclose(pfd[1]);
+    char buf[256] = "";
+    const ssize_t ret = read(pfd[0], buf, sizeof buf);
+    ck_assert_int_eq(ret, LOG_BUFFER_SIZE);
+    ck_assert_str_eq(buf, "1234567\n");
+
 #main-pre
     // Create temporary empty file for testing
     const int fd = xopen("empty", O_CREAT | O_TRUNC | O_WRONLY, 0600);

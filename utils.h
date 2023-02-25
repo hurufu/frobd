@@ -9,6 +9,10 @@
 #include <sys/types.h>
 #include <errno.h>
 
+#ifndef IO_BUF_SIZE
+#   define IO_BUF_SIZE (4 * 1024)
+#endif
+
 #define STX "\x02"
 #define ETX "\x03"
 #define FS "\x1C"

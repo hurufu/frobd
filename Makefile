@@ -36,8 +36,8 @@ OFILES    := $(CFILES:.c=.o)
 UT_T      := $(wildcard *.in)
 UT_C      := $(UT_T:.in=.c) utils.c serialization.c log.c
 UT_O      := $(UT_C:.c=.o)
-MUTATED_O := utils.o serialization.o
-NORMAL_O  := $(RL_O) $(UT_T:.in=.c) log.o
+MUTATED_O := utils.o serialization.o log.o
+NORMAL_O  := $(RL_O) $(UT_T:.in=.o)
 ALL_C     := $(CFILES) $(UT_C)
 ALL_PLIST := $(ALL_C:.c=.plist)
 
@@ -51,7 +51,7 @@ coverage: test | $(CFILES) $(UT_C)
 	gcov -o . $|
 clang-analyze: $(ALL_PLIST)
 tcp-server: frob
-	s6-tcpserver4 -v2 0.0.0.0 5002 ./$< 1000 payment
+	env LC_ALL=C s6-tcpserver4 -v2 0.0.0.0 5002 strace -fTC -o frob.strace ./$< 1000 payment
 tcp-client: frob | payment
 	s6-tcpclient -rv localhost 5002 rlwrap ./$< 1000 $|
 scan:
@@ -64,6 +64,7 @@ tags:
 	ctags --kinds-C=+p -R .
 test-random: frob
 	pv -Ss100M /dev/urandom | ./$< 1 2>/dev/null 1>/dev/null
+test-unit: CPPFLAGS += -DUNIT_TEST
 test-unit: ut
 	./$<
 test-functional: frob.log frob.sum
@@ -77,8 +78,9 @@ cscope.out:
 ut: LDLIBS   := -lcheck -lsubunit -lm
 ut: $(UT_O) $(RL_O)
 	$(LINK.o) -o $@ $^ $(LDLIBS)
-mut: LDLIBS := -lcheck -lsubunit -lm
-mut: CC     := clang
+mut: LDLIBS   := -lcheck -lsubunit -lm
+mut: CC       := clang
+mut: CPPFLAGS += -DUNIT_TEST
 mut: $(NORMAL_O) mutated
 	$(LINK.o) -o $@ $(NORMAL_O) $(MUTATED_O) $(LDLIBS)
 mutated: CFLAGS += -fexperimental-new-pass-manager -fpass-plugin=/usr/local/lib/mull-ir-frontend-15 -grecord-command-line

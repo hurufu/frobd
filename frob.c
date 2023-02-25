@@ -17,9 +17,6 @@
 #include <limits.h>
 #include <time.h>
 
-#ifndef IO_BUF_SIZE
-#   define IO_BUF_SIZE (4 * 1024)
-#endif
 
 // Don't reorder!
 enum channel {
