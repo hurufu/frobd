@@ -50,10 +50,10 @@ clean:
 coverage: test | $(CFILES) $(UT_C)
 	gcov -o . $|
 clang-analyze: $(ALL_PLIST)
-tcp-server: frob
-	s6-tcpserver4 -v2 0.0.0.0 5002 ./$< 1000 payment
-tcp-client: frob | payment
-	s6-tcpclient -rv localhost 5002 rlwrap ./$< 1000 $|
+tcp-server: frob | d5.txt
+	s6-tcpserver -v 0.0.0.0 5002 s6-tcpserver-access -t200 -v3 -rp -B "Welcome!\r\n" $(realpath $<) 1000 $|
+tcp-client: frob | d5.txt
+	s6-tcpclient -rv localhost 5002 rlwrap $(realpath $<) 1000 $|
 scan:
 	scan-build $(MAKE) clean frob
 graph-%: frame.rl adjust-%.sed
