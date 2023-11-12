@@ -269,11 +269,9 @@ static int commission_frame_on_main(struct state* const st, const token_t t, con
     struct fstate* const f = &st->fs;
     struct chstate* const ch = &f->ch[CHANNEL_FO_MAIN];
     const size_t s = free_space(ch);
-    const int ret = snprintf((char*)ch->cur, s, STX "%" PRIXTOKEN FS "%s" ETX "_", t, body);
-    if (ret < 0)
-        EXITF("Can't place frame");
-    if ((unsigned)ret >= s || ret == 0)
-        return LOGEX("Frame skipped: %s", (ret ? strerror(ENOBUFS): "Empty message")), -1;
+    const unsigned ret = xsnprintf((char*)ch->cur, s, STX "%" PRIXTOKEN FS "%s" ETX "_", t, body);
+    if (ret >= s)
+        return LOGEX("Frame skipped: %s", strerror(ENOBUFS)), -1;
     ch->cur[ret - 1] = calculate_lrc(ch->cur + 1, ch->cur + ret - 1);
 
     st->ack = true;
