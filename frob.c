@@ -400,8 +400,8 @@ static void start_master_channel(struct state* const s) {
 
 static void print_stats(const struct statistics* const st) {
     const unsigned int bad = st->received_bad_lrc + st->received_bad_parse + st->received_bad_handled;
-    const double ratio = (double)st->received_good / (bad + st->received_good);
     const unsigned total = st->received_good + bad;
+    const double ratio = (double)st->received_good / total;
     LOGIX("Current stats:");
     LOGIX("\tReceived messages");
     LOGIX("\tTotal"  "\tRatio"  "\tGood"  "\tLRC"  "\tparse"  "\thandling");
