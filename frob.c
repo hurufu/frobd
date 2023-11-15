@@ -570,7 +570,7 @@ static void perform_pending_write(const enum channel i, struct state* const st) 
     // We can write only to output channels
     assert(i >= CHANNEL_FIRST_OUTPUT && i <= CHANNEL_LAST_OUTPUT);
 
-    const ptrdiff_t l = used_space(ch);
+    const size_t l = used_space(ch);
     const ssize_t s = write(ch->fd, ch->buf, l);
     if (s != l) {
         EXITF("Can't write %td bytes to %s channel (fd %d)", l, channel_to_string(i), ch->fd);
