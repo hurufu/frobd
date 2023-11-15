@@ -16,8 +16,8 @@
  * the Level. Prefix is prepended to each message. Prologue and Epilogue are
  * executed only if the message is printed before and after the message
  * respectively. They are useful for example to allocate and free pointers that
- * are used in the message. PostScriptum is executed unconditionally after the
- * message is printed.
+ * are used in the message. PostScriptum is executed unconditionally regardless
+ * if message was printed or not.
  *
  *                         PostScriptum      ,Prefix,Level  ,Method,Prologue,Epilogue,Message     */
 #define LOGDXP(P, ...) LOG(                  ,"D"   ,DEBUG  ,warnx ,P       ,        ,##__VA_ARGS__)

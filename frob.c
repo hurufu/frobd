@@ -99,6 +99,7 @@ struct state {
 };
 
 static const char* channel_to_string(const enum channel o) {
+    assert(o >= CHANNEL_FIRST && o <= CHANNEL_LAST);
     switch (o) {
         case CHANNEL_NO_PAYMENT: return "PAYMENT (native output)";
         case CHANNEL_NO_STORAGE: return "STORAGE (native output)";
@@ -113,11 +114,11 @@ static const char* channel_to_string(const enum channel o) {
         case CHANNEL_COUNT:
             break;
     }
-    assert(false);
     return NULL;
 }
 
 static char channel_to_code(const enum channel o) {
+    assert(o >= CHANNEL_FIRST && o <= CHANNEL_LAST);
     switch (o) {
         case CHANNEL_NO_PAYMENT: return 'P';
         case CHANNEL_NO_STORAGE: return 'S';
@@ -132,7 +133,6 @@ static char channel_to_code(const enum channel o) {
         case CHANNEL_COUNT:
             break;
     }
-    assert(false);
     return '?';
 }
 
@@ -460,22 +460,19 @@ static void process_signal(struct state* const s) {
                 assert((*inf)[i].ssi_code == SI_TIMER);
                 if (s->fs.ch[CHANNEL_FO_MAIN].fd == -1)
                     break;
-                if ((*inf)[i].ssi_tid == (uintmax_t)s->timer_ack) {
+                // Actual type timer_t is unspecified in POSIX and on Linux it looks
+                // like a void* which actually holds integer value of timer id, go figure!
+                const void* const timer_id = (void*)(uintptr_t)(*inf)[i].ssi_tid;
+                assert(timer_id == s->timer_ack || timer_id == s->timer_ping);
+                if (timer_id == s->timer_ack) {
                     FD_SET(s->fs.ch[CHANNEL_FO_MAIN].fd, &s->fs.wset);
-                } else if ((*inf)[i].ssi_tid == (uintmax_t)s->timer_ping) {
+                } else if (timer_id == s->timer_ping) {
                     LOGWX("Response to ping timed out. Assuming connection is broken");
                     close_main_channel(s);
-                } else {
-                    // Unexpected timer
-                    assert(false);
                 }
                 break;
             case SIGPWR:
                 print_stats(&s->stats);
-                break;
-            default:
-                // Unexpected signal
-                assert(false);
                 break;
         }
     }
@@ -554,6 +551,7 @@ static void process_device(struct state* const s) {
 }
 
 static void process_channel(const enum channel c, struct state* const s, struct frob_frame_fsm_state* const r) {
+    assert(c >= CHANNEL_FIRST_INPUT && c <= CHANNEL_LAST_INPUT);
     switch (c) {
         case CHANNEL_II_SIGNAL: return process_signal(s);
         case CHANNEL_CI_MASTER: return process_master(s);
@@ -562,7 +560,6 @@ static void process_channel(const enum channel c, struct state* const s, struct 
         default:
             break;
     }
-    assert(false);
 }
 
 static void perform_pending_write(const enum channel i, struct state* const st) {
@@ -571,12 +568,8 @@ static void perform_pending_write(const enum channel i, struct state* const st) 
     // We shouldn't attempt to write 0 bytes
     assert(ch->cur > ch->buf);
     // We can write only to output channels
-    switch (i) {
-        case CHANNEL_FIRST_OUTPUT ... CHANNEL_LAST_OUTPUT:
-            break;
-        default:
-            assert(false);
-    }
+    assert(i >= CHANNEL_FIRST_OUTPUT && i <= CHANNEL_LAST_OUTPUT);
+
     const ptrdiff_t l = used_space(ch);
     const ssize_t s = write(ch->fd, ch->buf, l);
     if (s != l) {
@@ -604,6 +597,8 @@ static void perform_pending_read(const enum channel i, struct state* const s) {
         close(ch->fd);
         FD_CLR(ch->fd, &s->fs.rset);
         ch->fd = -1;
+        // We can read only from input channels
+        assert(i <= CHANNEL_FIRST_INPUT && i >= CHANNEL_LAST_INPUT);
         switch (i) {
             case CHANNEL_FI_MAIN:
                 close_main_channel(s);
@@ -618,8 +613,7 @@ static void perform_pending_read(const enum channel i, struct state* const s) {
             case CHANNEL_NI_DEVICE:
                 break;
             default:
-                // We can read only from input channels
-                assert(false);
+                break;
         }
         s->select_params.maxfd = get_max_fd(&s->fs.ch);
     } else {
