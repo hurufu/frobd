@@ -598,7 +598,7 @@ static void perform_pending_read(const enum channel i, struct state* const s) {
         FD_CLR(ch->fd, &s->fs.rset);
         ch->fd = -1;
         // We can read only from input channels
-        assert(i <= CHANNEL_FIRST_INPUT && i >= CHANNEL_LAST_INPUT);
+        assert(i >= CHANNEL_FIRST_INPUT && i <= CHANNEL_LAST_INPUT);
         switch (i) {
             case CHANNEL_FI_MAIN:
                 close_main_channel(s);
