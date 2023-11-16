@@ -19,23 +19,28 @@
  * are used in the message. PostScriptum is executed unconditionally regardless
  * if message was printed or not.
  *
- *                         PostScriptum      ,Prefix,Level  ,Method,Prologue,Epilogue,Message     */
-#define LOGDXP(P, ...) LOG(                  ,"D"   ,DEBUG  ,warnx ,P       ,        ,##__VA_ARGS__)
-#define LOGDX(...)     LOG(                  ,"D"   ,DEBUG  ,warnx ,        ,        ,##__VA_ARGS__)
-#define LOGD(...)      LOG(                  ,"D"   ,DEBUG  ,warn  ,        ,        ,##__VA_ARGS__)
-#define LOGIX(...)     LOG(                  ,"I"   ,INFO   ,warnx ,        ,        ,##__VA_ARGS__)
-#define LOGI(...)      LOG(                  ,"I"   ,INFO   ,warn  ,        ,        ,##__VA_ARGS__)
-#define LOGWX(...)     LOG(                  ,"W"   ,WARNING,warnx ,        ,        ,##__VA_ARGS__)
-#define LOGW(...)      LOG(                  ,"W"   ,WARNING,warn  ,        ,        ,##__VA_ARGS__)
-#define LOGEX(...)     LOG(                  ,"E"   ,ERR    ,warnx ,        ,        ,##__VA_ARGS__)
-#define LOGE(...)      LOG(                  ,"E"   ,ERR    ,warn  ,        ,        ,##__VA_ARGS__)
-#define EXITFX(...)    LOG(exit(EXIT_FAILURE),"A"   ,ALERT  ,ERRX  ,        ,        ,##__VA_ARGS__)
-#define EXITF(...)     LOG(exit(EXIT_FAILURE),"A"   ,ALERT  ,ERR   ,        ,        ,##__VA_ARGS__)
-#define ABORTFX(...)   LOG(abort()           ,"F"   ,EMERG  ,warnx ,        ,        ,##__VA_ARGS__)
-#define ABORTF(...)    LOG(abort()           ,"F"   ,EMERG  ,warn  ,        ,        ,##__VA_ARGS__)
+ *                         PostScriptum    ,Prefix,Level  ,Method,Prologue,Epilogue,Message     */
+#define LOGDXP(P, ...) LOG(                ,"D"   ,DEBUG  ,warnx ,P       ,        ,##__VA_ARGS__)
+#define LOGDX(...)     LOG(                ,"D"   ,DEBUG  ,warnx ,        ,        ,##__VA_ARGS__)
+#define LOGD(...)      LOG(                ,"D"   ,DEBUG  ,warn  ,        ,        ,##__VA_ARGS__)
+#define LOGIX(...)     LOG(                ,"I"   ,INFO   ,warnx ,        ,        ,##__VA_ARGS__)
+#define LOGI(...)      LOG(                ,"I"   ,INFO   ,warn  ,        ,        ,##__VA_ARGS__)
+#define LOGWX(...)     LOG(                ,"W"   ,WARNING,warnx ,        ,        ,##__VA_ARGS__)
+#define LOGW(...)      LOG(                ,"W"   ,WARNING,warn  ,        ,        ,##__VA_ARGS__)
+#define LOGEX(...)     LOG(                ,"E"   ,ERR    ,warnx ,        ,        ,##__VA_ARGS__)
+#define LOGE(...)      LOG(                ,"E"   ,ERR    ,warn  ,        ,        ,##__VA_ARGS__)
+#define EXITFX(...)    LOG(exit(ERR_UNSPEC),"A"   ,ALERT  ,ERRX  ,        ,        ,##__VA_ARGS__)
+#define EXITF(...)     LOG(exit(ERR_UNSPEC),"A"   ,ALERT  ,ERR   ,        ,        ,##__VA_ARGS__)
+#define ABORTFX(...)   LOG(abort()         ,"F"   ,EMERG  ,warnx ,        ,        ,##__VA_ARGS__)
+#define ABORTF(...)    LOG(abort()         ,"F"   ,EMERG  ,warn  ,        ,        ,##__VA_ARGS__)
 
-#define ERRX(...) errx(EXIT_FAILURE, __VA_ARGS__)
-#define ERR(...)  err(EXIT_FAILURE, __VA_ARGS__)
+#define ERRX(...) errx(ERR_UNSPEC, __VA_ARGS__)
+#define ERR(...)  err(ERR_UNSPEC, __VA_ARGS__)
+
+// TODO: Report error code based on actual error
+#define ERR_CLI 100
+#define ERR_SYSCALL 111
+#define ERR_UNSPEC EXIT_FAILURE
 
 #define LOG(PostScriptum, ...) ({\
     LOG_STORY(__VA_ARGS__)\
