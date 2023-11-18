@@ -64,6 +64,7 @@
 
 #define xselect(M, R, W, E, Timeout) XCALL(select, M, R, W, E, Timeout)
 #define xread(...) XCALL(read, __VA_ARGS__)
+#define xwrite(...) XCALL(write, __VA_ARGS__)
 #define xfclose(...) XCALL(fclose, true, __VA_ARGS__)
 
 #ifdef NDEBUG
@@ -139,5 +140,20 @@ int snprint_hex(size_t sbuf, input_t buf[static sbuf], size_t sbin, const byte_t
 // Same as snprint_hex, but exits on error
 int xsnprint_hex(size_t sbuf, input_t buf[static sbuf], size_t sbin, const byte_t bin[static sbin]);
 
-NORETURN void exitb(const char*);
-int syscall_exitf(const char*, int);
+NORETURN void exitb(const char* name);
+
+inline static int syscall_exitf(const char* const name, const int ret) {
+#   ifndef NDEBUG
+#   if 0
+    if (strcmp(name, "select") == 0) {
+        if (iop->running_time_sec > 0)
+            assert(t.tv_sec < iop->running_time_sec);
+        else if (iop->running_time_sec == 0)
+            assert(t.tv_sec == 0);
+    }
+#   endif
+#   endif
+    if (ret == -1)
+        exitb(name);
+    return ret;
+}

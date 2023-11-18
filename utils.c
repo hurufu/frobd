@@ -193,19 +193,3 @@ NORETURN void exitb(const char* const name) {
     backtrace_symbols_fd(stack, backtrace(stack, lengthof(stack)), STDERR_FILENO);
     EXITF("%s", name);
 }
-
-int syscall_exitf(const char* const name, const int ret) {
-#   ifndef NDEBUG
-#   if 0
-    if (strcmp(name, "select") == 0) {
-        if (iop->running_time_sec > 0)
-            assert(t.tv_sec < iop->running_time_sec);
-        else if (iop->running_time_sec == 0)
-            assert(t.tv_sec == 0);
-    }
-#   endif
-#   endif
-    if (ret == -1)
-        exitb(name);
-    return ret;
-}
