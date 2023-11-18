@@ -25,13 +25,18 @@ static int io_nowait(struct select_params* const iop) {
 }
 
 static int io_wait_timeout(struct select_params* const iop) {
-    struct timeval now, timeout;
+    struct timeval now, relative_timeout;
     gettimeofday(&now, NULL);
-    timersub(&iop->deadline, &now, &timeout);
-    const int l = iselect(iop, &timeout);
+    if (timercmp(&now, &iop->deadline, >=))
+        goto timeout;
+    timersub(&iop->deadline, &now, &relative_timeout);
+    const int l = iselect(iop, &relative_timeout);
     if (l == 0)
-        errno = ETIMEDOUT;
+        goto timeout;
     return l;
+timeout:
+    errno = ETIMEDOUT;
+    return 0;
 }
 
 static void event_loop(struct select_params* const iop) {
@@ -73,7 +78,7 @@ static struct timeval comp_deadline(const int relative) {
 
 int main(const int ac, const char* av[static const ac]) {
     init_log();
-        struct select_params iop = {
+    struct select_params iop = {
         .maxfd = 3,
         .deadline = comp_deadline(ac == 2 ? atoi(av[1]) : -1)
     };
