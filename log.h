@@ -49,14 +49,17 @@
 
 #ifdef NO_LOGS_ON_STDERR
 #   define LOG_STORY(...)
+#   define ERRNO(Value) errno = (Value)
 #else
 #   define LOG_STORY(Prefix, Level, Method, Prologue, Epilogue, Fmt, ...) \
         if (LOG_##Level <= g_log_level) {\
             Prologue;\
-            Method(Prefix " %s:%d\t" Fmt, __FILE__, __LINE__, ##__VA_ARGS__);\
+            Method(Prefix " %s:%d:%s\t" Fmt, __FILE__, __LINE__, (g_errname ?: ""), ##__VA_ARGS__);\
             Epilogue;\
         }
+#   define ERRNO(Value) g_errname = __func__, errno = (Value)
     extern int g_log_level;
+    extern const char* g_errname;
 #endif
 
 int init_log(void);

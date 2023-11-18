@@ -85,6 +85,10 @@ mut: $(NORMAL_O) mutated
 	$(LINK.o) -o $@ $(NORMAL_O) $(MUTATED_O) $(LDLIBS)
 mutated: CFLAGS += -fexperimental-new-pass-manager -fpass-plugin=/usr/local/lib/mull-ir-frontend-15 -grecord-command-line
 mutated: $(MUTATED_O)
+acknak: acknak.o log.o utils.o
+	$(LINK.o) -o $@ $^ $(LDLIBS)
+	objcopy --only-keep-debug $@ $@.debug
+	strip --strip-unneeded $@
 frob: $(OFILES)
 	$(LINK.o) -o $@ $^ $(LDLIBS)
 	objcopy --only-keep-debug $@ $@.debug
@@ -102,3 +106,4 @@ clean: F += $(wildcard $(RL_C) $(RL_C:.c=.s) $(UT_O) $(UT_T:.in=.c) $(UT_T:.in=.
 clean: F += $(wildcard *.gcda *.gcno *.gcov)
 clean: F += $(wildcard frob.log frob.sum frob.debug mut)
 clean: F += $(wildcard $(ALL_PLIST))
+clean: F += $(wildcard acknak.o)

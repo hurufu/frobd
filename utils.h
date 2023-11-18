@@ -8,6 +8,7 @@
 #include <stddef.h>
 #include <sys/types.h>
 #include <errno.h>
+#include <stdbool.h>
 
 #define STX "\x02"
 #define ETX "\x03"
@@ -47,6 +48,7 @@
 #define elementsof(Arr) APPLY_TO_ARRAY(Arr, NAIVE_ELEMENTSOF(Arr))
 #define endof(Arr)  ( (Arr) + elementsof(Arr)     )
 #define lastof(Arr) ( (Arr) + elementsof(Arr) - 1 )
+#define lengthof(Arr) elementsof(Arr)
 
 #define min(A, B) (A < B ? A : B)
 #define isempty(S) ((S)[0] == '\0')
@@ -59,6 +61,30 @@
         v = trim_whitespaces(v);\
     v;\
 })
+
+#define xselect(M, R, W, E, Timeout) XCALL(select, M, R, W, E, Timeout);
+#define xfclose(...) XCALL(fclose, true, __VA_ARGS__)
+
+#ifdef NDEBUG
+#   define XCALL(Syscall, ...) syscall_exitf(#Syscall, Syscall(__VA_ARGS__))
+#else
+#   define XCALL(Syscall, ...) ({\
+        Syscall##_preconditions(__VA_ARGS__);\
+        const int __ret = syscall_exitf(#Syscall, Syscall(__VA_ARGS__));\
+        Syscall##_postconditions(__ret, ##__VA_ARGS__);\
+        __ret;\
+    })
+#define select_preconditions(...)
+#define select_postconditions(Ret, M, R, W, E, Timeout) do {\
+    if (!Timeout)\
+        assert(Ret != 0);\
+    if (iop->running_time_sec > 0)\
+        assert(t.tv_sec < iop->running_time_sec);\
+    else if (iop->running_time_sec == 0)\
+        assert(t.tv_sec == 0);\
+    } while (0);
+#endif
+#define NORETURN __attribute__((__noreturn__))
 
 // Input character type, can be changed to something else
 typedef uint8_t input_t;
@@ -113,3 +139,6 @@ size_t xslurp(const char* name, size_t s, input_t buf[static s]);
 int snprint_hex(size_t sbuf, input_t buf[static sbuf], size_t sbin, const byte_t bin[static sbin]);
 // Same as snprint_hex, but exits on error
 int xsnprint_hex(size_t sbuf, input_t buf[static sbuf], size_t sbin, const byte_t bin[static sbin]);
+
+NORETURN void exitb(const char*);
+int syscall_exitf(const char*, int);

@@ -4,13 +4,14 @@
 
 #ifndef NO_LOGS_ON_STDERR
 int g_log_level = LOG_DEBUG;
+const char* g_errname;
 #endif
 
 int init_log(void) {
 #ifndef NO_LOGS_ON_STDERR
     return 0;
 #else
-    return fclose(stderr);
+    return xfclose(stderr);
 #endif
 }
 

@@ -8,6 +8,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <execinfo.h>
 
 input_t calculate_lrc(input_t* p, const input_t* const pe) {
     uint8_t lrc = 0;
@@ -184,5 +185,27 @@ int xsnprint_hex(const size_t sbuf, input_t buf[static const sbuf], const size_t
     const int ret = snprint_hex(sbuf, buf, sbin, bin);
     if (ret < 0)
         EXITF("snprint_hex");
+    return ret;
+}
+
+NORETURN void exitb(const char* const name) {
+    static void* stack[128];
+    backtrace_symbols_fd(stack, backtrace(stack, lengthof(stack)), STDERR_FILENO);
+    EXITF("%s", name);
+}
+
+int syscall_exitf(const char* const name, const int ret) {
+#   ifndef NDEBUG
+#   if 0
+    if (strcmp(name, "select") == 0) {
+        if (iop->running_time_sec > 0)
+            assert(t.tv_sec < iop->running_time_sec);
+        else if (iop->running_time_sec == 0)
+            assert(t.tv_sec == 0);
+    }
+#   endif
+#   endif
+    if (ret == -1)
+        exitb(name);
     return ret;
 }
