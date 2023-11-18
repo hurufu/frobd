@@ -89,6 +89,7 @@ acknak: acknak.o log.o utils.o
 	$(LINK.o) -o $@ $^ $(LDLIBS)
 	objcopy --only-keep-debug $@ $@.debug
 	strip --strip-unneeded $@
+	objcopy --add-gnu-debuglink=$@.debug $@
 frob: $(OFILES)
 	$(LINK.o) -o $@ $^ $(LDLIBS)
 	objcopy --only-keep-debug $@ $@.debug

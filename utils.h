@@ -62,25 +62,24 @@
     v;\
 })
 
-#define xselect(M, R, W, E, Timeout) XCALL(select, M, R, W, E, Timeout);
+#define xselect(M, R, W, E, Timeout) XCALL(select, M, R, W, E, Timeout)
+#define xread(...) XCALL(read, __VA_ARGS__)
 #define xfclose(...) XCALL(fclose, true, __VA_ARGS__)
 
 #ifdef NDEBUG
 #   define XCALL(Syscall, ...) syscall_exitf(#Syscall, Syscall(__VA_ARGS__))
 #else
 #   define XCALL(Syscall, ...) ({\
-        Syscall##_preconditions(__VA_ARGS__);\
         const int __ret = syscall_exitf(#Syscall, Syscall(__VA_ARGS__));\
-        Syscall##_postconditions(__ret, ##__VA_ARGS__);\
         __ret;\
     })
 #define select_preconditions(...)
 #define select_postconditions(Ret, M, R, W, E, Timeout) do {\
     if (!Timeout)\
         assert(Ret != 0);\
-    if (iop->running_time_sec > 0)\
-        assert(t.tv_sec < iop->running_time_sec);\
-    else if (iop->running_time_sec == 0)\
+    if (iop->time_left.tv_sec > 0)\
+        assert(t.tv_sec < iop->time_left.tv_sec);\
+    else if (iop->time_left.tv_sec == 0)\
         assert(t.tv_sec == 0);\
     } while (0);
 #endif
