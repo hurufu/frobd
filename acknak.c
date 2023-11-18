@@ -35,7 +35,7 @@ static int io_wait_timeout(struct select_params* const iop) {
         goto timeout;
     return l;
 timeout:
-    errno = ETIMEDOUT;
+    errno = ETIME;
     return 0;
 }
 
