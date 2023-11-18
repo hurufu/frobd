@@ -15,7 +15,7 @@ static int wait_for_io(struct io_params* const iop) {
     FD_SET(STDIN_FILENO, &iop->r);
     const int l = xselect(iop->maxfd, &iop->r, &iop->w, &iop->e, tp);
     if (l == 0 && iop->running_time_sec != 0)
-        ERRNO(ETIMEDOUT);
+        errno = ETIMEDOUT;
     return l;
 }
 
@@ -30,7 +30,7 @@ static void event_loop(struct io_params* const iop) {
             fprintf(stdout, "%*s", r, buf);
         }
     }
-    LOGD("End");
+    LOGE("End");
 }
 
 int main(const int ac, const char* av[static const ac]) {
