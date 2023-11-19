@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <syslog.h>
 
+// Reimplement using error_at_line(3)
+
 /** Serializes bytes between P and Pe into Buffer in a human-readable form.
  */
 #define PRETTY(P, Pe, Buffer) to_printable(P, Pe, elementsof(Buffer), Buffer)
