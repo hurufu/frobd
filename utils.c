@@ -191,5 +191,6 @@ int xsnprint_hex(const size_t sbuf, input_t buf[static const sbuf], const size_t
 NORETURN void exitb(const char* const name) {
     static void* stack[128];
     backtrace_symbols_fd(stack, backtrace(stack, lengthof(stack)), STDERR_FILENO);
+    // call invoke_safe_mem_constraint_handler instead of exit
     EXITF("%s", name);
 }

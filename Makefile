@@ -90,6 +90,11 @@ evloop: evloop.o log.o utils.o
 	objcopy --only-keep-debug $@ $@.debug
 	strip --strip-unneeded $@
 	objcopy --add-gnu-debuglink=$@.debug $@
+acknak: acknak.o log.o utils.o evloop.o
+	$(LINK.o) -o $@ $^ $(LDLIBS)
+	objcopy --only-keep-debug $@ $@.debug
+	strip --strip-unneeded $@
+	objcopy --add-gnu-debuglink=$@.debug $@
 frob: $(OFILES)
 	$(LINK.o) -o $@ $^ $(LDLIBS)
 	objcopy --only-keep-debug $@ $@.debug
@@ -98,7 +103,7 @@ frob: $(OFILES)
 %.c: %.rl
 	ragel -G2 -L $<
 %.s: %.c
-	$(CC) -S -o $@ -fverbose-asm -fno-asynchronous-unwind-tables $(CFLAGS) $<
+	$(CC) -S -o $@ -fverbose-asm -fno-asynchronous-unwind-tables $(CFLAGS) -fno-lto $<
 %.c: %.in
 	checkmk $< >$@
 %.plist: %.c
