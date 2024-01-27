@@ -157,12 +157,10 @@ ssize_t slurp(const char* const name, const size_t s, input_t buf[static const s
     if (fd < 0)
         return fd;
     const ssize_t ret = eread(fd, s, buf);
-    if (ret < 0) {
-        if (close(fd) < 0)
-            ABORTF("close %s", name);
-        return -1;
-    }
-    return close(fd) < 0 ? -1 : ret;
+    const int backup = errno;
+    if (close(fd) < 0 && ret < 0)
+        ABORTF("Double fault while accessing %s. eread: %s; close", name, strerror(backup));
+    return ret;
 }
 
 int snprint_hex(const size_t sbuf, input_t buf[static const sbuf], const size_t sbin, const byte_t bin[static const sbin]) {
