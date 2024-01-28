@@ -1,0 +1,3 @@
+[submodule "coroutine"]
+	path = coro
+	url = https://github.com/clibs/coro.git
