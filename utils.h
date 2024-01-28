@@ -64,6 +64,7 @@
 
 #define xselect(M, R, W, E, Timeout) XCALL(select, M, R, W, E, Timeout)
 #define xread(...) XCALL(read, __VA_ARGS__)
+#define xrread(...) XCALL(rread, __VA_ARGS__)
 #define xwrite(...) XCALL(write, __VA_ARGS__)
 #define xfclose(...) XCALL(fclose, true, __VA_ARGS__)
 
