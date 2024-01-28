@@ -60,6 +60,8 @@ graph-%: frame.rl adjust-%.sed
 	ragel -p -V $< | sed -Ef $(word 2,$^) | dot -Tpng | feh -
 protocol.png: protocol.rl protocol-adjust.sed
 	ragel -p -V $(word 1,$^) | sed -Ef $(word 2,$^) | dot -Tpng -Gdpi=200 -o $@
+first_level.png: first_level.rl first_level-adjust.sed
+	ragel -p -V $(word 1,$^) | sed -Ef $(word 2,$^) | dot -Tpng -Gdpi=200 -o $@
 
 # Internal targets #############################################################
 tags:
