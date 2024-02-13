@@ -2,6 +2,7 @@
 #include "../evloop.h"
 #include "../utils.h"
 #include "comultitask.h"
+#include "frob.h"
 #include <time.h>
 #include <unistd.h>
 
@@ -21,7 +22,6 @@ static int co_io_loop(const struct args_io_loop* const args) {
     struct io_params iop = { .maxfd = 3 };
     FD_SET(STDIN_FILENO, &iop.set[0]);
     io_wait_f* const waitio = get_io_wait(args->timeout);
-    sus_yield();
     if (args->s6_notification_fd > 0)
         s6_ready(args->s6_notification_fd);
     while (waitio(&iop)) {
@@ -36,9 +36,23 @@ static int co_io_loop(const struct args_io_loop* const args) {
 
 int main() {
     struct sus_coroutine_reg h[] = {
-        { .stack_size = 4 * 1024, .entry = (int (*)(void*))co_io_loop, .args = &(struct args_io_loop){
+        { .stack_size = 4 * 1024, .entry = (sus_entry)co_io_loop, .args = &(struct args_io_loop){
             .s6_notification_fd = 2,
             .timeout = 1
+        }},
+        { .stack_size = 64, .entry = (sus_entry)fsm_wireformat, .args = &(struct args_wireformat){
+            .fdin = STDIN_FILENO,
+            .idto = 11
+        }},
+        { .stack_size = 64, .entry = (sus_entry)fsm_frontend_foreign, &(struct args_frontend_foreign){
+            .idfrom = 11,
+            .idto = 12
+        }},
+        { .stack_size = 64, .entry = (sus_entry)fsm_frontend_internal, &(struct args_frontend_internal){
+            .idfrom = 12,
+            .fdout = STDOUT_FILENO
+        }},
+        { .stack_size = 64, .entry = (sus_entry)fsm_frontend_timer, &(struct args_frontend_timer){
         }}
     };
     if (sus_jumpstart(lengthof(h), h) != 0)

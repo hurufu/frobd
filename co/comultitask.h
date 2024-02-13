@@ -5,10 +5,12 @@
 
 #define yield sus_yield()
 
+typedef int (*sus_entry)(void*);
+
 struct sus_coroutine_reg {
     size_t stack_size;
     int result;
-    int (* const entry)(void*);
+    sus_entry entry;
     void* const args;
 };
 

@@ -1,6 +1,7 @@
 #include "comultitask.h"
 #include "frob.h"
 #include <stdbool.h>
+#include <sys/timerfd.h>
 
 %%{
     machine frontend;
@@ -51,33 +52,34 @@ void fsm_frontend_init(int* const cs) {
     %% write init;
 }
 
-int fsm_frontend_foreign(int* const cs, const struct args_frontend* const a) {
+int fsm_frontend_foreign(struct args_frontend_foreign* const a) {
     char acknak = 0x00;
     ssize_t bytes;
     const char* p;
     while ((bytes = sus_lend(a->idfrom, &p, 1)) > 0) {
         const char* const pe = p + 1;
-        fsm_exec(cs, p, pe);
+        fsm_exec(&a->cs, p, pe);
     }
     return -1;
 }
 
-int fsm_frontend_internal(int* const cs, const int from) {
+int fsm_frontend_internal(struct args_frontend_internal* const a) {
     ssize_t bytes;
     const char* msg;
-    while ((bytes = sus_lend(from, &msg, 0)) > 0) {
+    while ((bytes = sus_lend(a->idfrom, &msg, 0)) > 0) {
         const char* p = (char[]){is_idempotent(msg) ? 0x0A : 0x0D}, * const pe = p + 1;
-        fsm_exec(cs, p, pe);
+        fsm_exec(&a->cs, p, pe);
     }
     return -1;
 }
 
-int fsm_frontend_timer(int* const cs, const int fd) {
+int fsm_frontend_timer(struct args_frontend_timer* const a) {
+    const int fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
     ssize_t bytes;
     unsigned char buf[8];
     while ((bytes = sus_read(fd, buf, sizeof buf)) > 0) {
         const char* p = (char[]){0}, * const pe = p + 1;
-        fsm_exec(cs, p, pe);
+        fsm_exec(&a->cs, p, pe);
     }
     return -1;
 }

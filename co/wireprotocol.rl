@@ -22,7 +22,7 @@
 
 %% write data;
 
-void fsm_wireformat(const struct args_wireformat* const a) {
+int fsm_wireformat(const struct args_wireformat* const a) {
     char* start = NULL, * end = NULL;
     int fd = 1;
     unsigned lrc;
