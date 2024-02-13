@@ -5,8 +5,10 @@ SOURCES           := comultitask.c main.c $(GENERATED_SOURCES) $(LIB_SOURCES)
 
 vpath %.c .. ../coro
 
-.PHONY: clean all
+.PHONY: clean all run
 
+run: $(EXECUTABLE)
+	./$<
 all: $(EXECUTABLE)
 $(EXECUTABLE): $(SOURCES)
 	$(LINK.c) -o $@ $^ $(LDLIBS)
