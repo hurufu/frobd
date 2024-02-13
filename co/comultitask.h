@@ -8,9 +8,9 @@
 typedef int (*sus_entry)(void*);
 
 struct sus_coroutine_reg {
-    size_t stack_size;
+    const size_t stack_size;
     int result;
-    sus_entry entry;
+    const sus_entry entry;
     void* const args;
 };
 

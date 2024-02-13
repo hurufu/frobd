@@ -34,31 +34,32 @@ static int co_io_loop(const struct args_io_loop* const args) {
     return -1;
 }
 
+static struct sus_coroutine_reg coroutines[] = {
+    { .stack_size = 4 * 1024, .entry = (sus_entry)co_io_loop, .args = &(struct args_io_loop){
+        .s6_notification_fd = 2,
+        .timeout = 1
+    }},
+    { .stack_size = 64, .entry = (sus_entry)fsm_wireformat, .args = &(struct args_wireformat){
+        .fdin = STDIN_FILENO,
+        .idto = 11
+    }},
+    { .stack_size = 64, .entry = (sus_entry)fsm_frontend_foreign, &(struct args_frontend_foreign){
+        .idfrom = 11,
+        .idto = 12
+    }},
+    { .stack_size = 64, .entry = (sus_entry)fsm_frontend_internal, &(struct args_frontend_internal){
+        .idfrom = 12,
+        .fdout = STDOUT_FILENO
+    }},
+    { .stack_size = 64, .entry = (sus_entry)fsm_frontend_timer, &(struct args_frontend_timer){
+    }}
+};
+
 int main() {
-    struct sus_coroutine_reg h[] = {
-        { .stack_size = 4 * 1024, .entry = (sus_entry)co_io_loop, .args = &(struct args_io_loop){
-            .s6_notification_fd = 2,
-            .timeout = 1
-        }},
-        { .stack_size = 64, .entry = (sus_entry)fsm_wireformat, .args = &(struct args_wireformat){
-            .fdin = STDIN_FILENO,
-            .idto = 11
-        }},
-        { .stack_size = 64, .entry = (sus_entry)fsm_frontend_foreign, &(struct args_frontend_foreign){
-            .idfrom = 11,
-            .idto = 12
-        }},
-        { .stack_size = 64, .entry = (sus_entry)fsm_frontend_internal, &(struct args_frontend_internal){
-            .idfrom = 12,
-            .fdout = STDOUT_FILENO
-        }},
-        { .stack_size = 64, .entry = (sus_entry)fsm_frontend_timer, &(struct args_frontend_timer){
-        }}
-    };
-    if (sus_jumpstart(lengthof(h), h) != 0)
+    if (sus_jumpstart(lengthof(coroutines), coroutines) != 0)
         EXITF("Can't start");
-    for (int i = 0; i < lengthof(h); i++)
-        if (h[i].result)
+    for (int i = 0; i < lengthof(coroutines); i++)
+        if (coroutines[i].result)
             return 100;
     return 0;
 }
