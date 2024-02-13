@@ -6,7 +6,7 @@
 #include <sys/time.h>
 
 static inline int iselect(struct io_params* const iop, struct timeval* const deadline) {
-    return xselect(iop->maxfd, &iop->r, &iop->w, &iop->e, deadline);
+    return xselect(iop->maxfd, &iop->set[0], &iop->set[1], &iop->set[2], deadline);
 }
 
 static int io_wait_indefinitely(struct io_params* const iop) {

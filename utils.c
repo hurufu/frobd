@@ -99,6 +99,7 @@ char frob_trx_type_to_code(const enum FrobTransactionType t) {
     return '?';
 }
 
+#if 0
 int parse_message(const input_t* const p, const input_t* const pe, struct frob_msg* const msg) {
     const input_t* cur = p;
     const char* err;
@@ -124,6 +125,7 @@ bail:
     LOGDX("\t%*s", (int)(cur - p), "^");
     return -1;
 }
+#endif
 
 // Has similar semantics to read(2) except that it restarts itself if
 // it was interrupted by a signal or until file is fully read
