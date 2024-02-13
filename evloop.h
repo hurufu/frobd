@@ -3,7 +3,7 @@
 #include <sys/select.h>
 
 struct io_params {
-    fd_set e, w, r;
+    fd_set set[3];
     const unsigned short maxfd;
     const struct timeval deadline;
 };
