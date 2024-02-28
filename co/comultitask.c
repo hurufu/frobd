@@ -6,12 +6,14 @@
 #include <string.h>
 #include <unistd.h>
 
-static coro_context* s_ctx;
-static coro_context* s_current;
-static coro_context* s_scheduler;
-static coro_context* s_end;
+struct coro_context_ring {
+    struct coro_context_ring* prev, * next;
+    coro_context* ctx;
+};
 
-static int fd_to_index(const int set, const int fd) {
+static struct coro_context_ring* s_current, * s_end;
+
+static size_t fd_to_index(const int fd) {
     switch (fd) {
         case STDIN_FILENO:
             return 1;
@@ -19,6 +21,10 @@ static int fd_to_index(const int set, const int fd) {
             return 2;
     }
     return 0;
+}
+
+static size_t indexof(const uint8_t set, const int fd) {
+    return set * fd_to_index(fd);
 }
 
 // Register for writting
@@ -42,17 +48,29 @@ ssize_t sus_borrow(const int id, void** const data) {
     return -1;
 }
 
-// Transfer to a coroutine that is waiting on a file descriptor
-int sus_resume(int set, int fd) {
-    coro_context* const origin = s_current, * const destination = s_ctx + fd_to_index(set, fd);
+
+
+/** Transfer to a coroutine that is waiting on a file descriptor.
+ *
+ *  @param [in] set 0-2 (read, write, oob)
+ *  @param [in] fd file descriptor in set
+ */
+int sus_resume(const uint8_t set, const int fd) {
+#   if 0
+    coro_context* const origin = s_current, * const destination = s_current + indexof(set, fd);
+    if (destination < s_current)
+        return -1;
     coro_transfer(origin, destination);
+#   endif
 }
 
 // Transfer to scheduler and place current coroutine to a pending list
 void sus_yield(void) {
+#   if 0
     coro_context* const origin = s_current, * const next = NULL /* ... */;
     s_current = next;
     coro_transfer(origin, next);
+#   endif
 }
 
 int sus_wait(void) {
@@ -62,20 +80,13 @@ int sus_wait(void) {
 // Transfer to scheduler and forget about current coroutine
 __attribute__((noreturn))
 static inline void sus_return(void) {
-    //coro_transfer(origin, s_scheduler);
-    assert(0);
-}
-
-__attribute__((noreturn))
-void co_schedule(void*) {
-    size_t number_of_coroutines = 3;
-    for (size_t i = 0; sus_wait(); i = (i + 1) % number_of_coroutines) {
-        coro_context* const origin = s_current;
-        s_current = s_ctx + i;
-        coro_transfer(origin, s_current);
-    }
-    LOGDX("All coroutines returned");
-    //coro_transfer(origin, s_end);
+#   if 0
+    bool no_more_left = false;
+    coro_context* const origin = s_current->ctx, * const destination = no_more_left ? s_end : s_current->next->ctx;
+    s_current->prev->next = s_current->next;
+    free(s_current);
+    coro_transfer(origin, destination);
+#   endif
     assert(0);
 }
 
@@ -86,27 +97,20 @@ static void starter(struct sus_coroutine_reg* const reg) {
 }
 
 int sus_jumpstart(const size_t length, struct sus_coroutine_reg h[static const length]) {
-    //assert(first < length);
     assert(h);
     int ret = -1;
     struct {
         struct coro_stack stack;
         coro_context ctx;
-    } stuff[length + 2];
+    } stuff[length + 1];
     memset(stuff, 0, sizeof stuff);
-    if (!coro_stack_alloc(&stuff[1].stack, 0))
-        goto end;
     coro_create(&stuff[0].ctx, NULL, NULL, NULL, 0);
-    coro_create(&stuff[1].ctx, co_schedule, NULL, stuff[1].stack.sptr, stuff[1].stack.ssze);
-    s_end = &stuff[0].ctx;
-    s_scheduler = &stuff[1].ctx;
     for (int i = 0; i < length; i++) {
-        /*
-        if (!coro_stack_alloc(&stuff[i + 2].stack, h[i].stack.ssze))
+        if (!coro_stack_alloc(&stuff[i + 2].stack, h[i].stack_size))
             goto end;
-        coro_create(&s_ctx[i], starter, &h[i], h[i].stack.sptr, h[i].stack_size);
-        */
+        coro_create(&stuff[i].ctx, (void(*)(void*))starter, &h[i], stuff[i + 1].stack.sptr, h[i].stack_size);
     }
+
     coro_transfer(&stuff[0].ctx, &stuff[1].ctx);
     ret = 0;
 end:

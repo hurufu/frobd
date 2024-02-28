@@ -56,20 +56,24 @@ int fsm_frontend_foreign(struct args_frontend_foreign* const a) {
     char acknak = 0x00;
     ssize_t bytes;
     const char* p;
+#   if 0
     while ((bytes = sus_lend(a->idfrom, &p, 1)) > 0) {
         const char* const pe = p + 1;
         fsm_exec(&a->cs, p, pe);
     }
+#   endif
     return -1;
 }
 
 int fsm_frontend_internal(struct args_frontend_internal* const a) {
     ssize_t bytes;
     const char* msg;
+#   if 0
     while ((bytes = sus_lend(a->idfrom, &msg, 0)) > 0) {
         const char* p = (char[]){is_idempotent(msg) ? 0x0A : 0x0D}, * const pe = p + 1;
         fsm_exec(&a->cs, p, pe);
     }
+#   endif
     return -1;
 }
 
@@ -77,9 +81,28 @@ int fsm_frontend_timer(struct args_frontend_timer* const a) {
     const int fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
     ssize_t bytes;
     unsigned char buf[8];
+#   if 0
     while ((bytes = sus_read(fd, buf, sizeof buf)) > 0) {
         const char* p = (char[]){0}, * const pe = p + 1;
         fsm_exec(&a->cs, p, pe);
     }
+#   endif
+    return -1;
+}
+
+int n_fsm_frontend_timer() {
+    int cs;
+#   if 0
+    void coro(void* a) {
+        ssize_t bytes;
+        unsigned char buf[8];
+        while ((bytes = sus_read(fd, buf, sizeof buf)) > 0) {
+            const char* p = (char[]){0}, * const pe = p + 1;
+            fsm_exec(&a->cs, p, pe);
+        }
+        return -1;
+    }
+    coro_construct(32, &coro, NULL);
+#   endif
     return -1;
 }

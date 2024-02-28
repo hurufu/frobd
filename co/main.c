@@ -34,28 +34,19 @@ static int co_io_loop(const struct args_io_loop* const args) {
     return -1;
 }
 
-static struct sus_coroutine_reg coroutines[] = {
-    { .stack_size = 4 * 1024, .entry = (sus_entry)co_io_loop, .args = &(struct args_io_loop){
-        .s6_notification_fd = 2,
-        .timeout = 1
-    }},
-    { .stack_size = 64, .entry = (sus_entry)fsm_wireformat, .args = &(struct args_wireformat){
-        .fdin = STDIN_FILENO,
-        .idto = 11
-    }},
-    { .stack_size = 64, .entry = (sus_entry)fsm_frontend_foreign, &(struct args_frontend_foreign){
-        .idfrom = 11,
-        .idto = 12
-    }},
-    { .stack_size = 64, .entry = (sus_entry)fsm_frontend_internal, &(struct args_frontend_internal){
-        .idfrom = 12,
-        .fdout = STDOUT_FILENO
-    }},
-    { .stack_size = 64, .entry = (sus_entry)fsm_frontend_timer, &(struct args_frontend_timer){
-    }}
-};
-
 int main() {
+    int aux_wireformat(void* c) {
+        struct coro_args* const a = c;
+        fsm_wireformat(STDIN_FILENO, 0);
+    };
+    struct sus_coroutine_reg coroutines[] = {
+        {
+            .stack_size = 64,
+            .entry = aux_wireformat,
+            .args = NULL
+        }
+    };
+
     if (sus_jumpstart(lengthof(coroutines), coroutines) != 0)
         EXITF("Can't start");
     for (int i = 0; i < lengthof(coroutines); i++)

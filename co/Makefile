@@ -28,3 +28,5 @@ tags: $(INDEXABLE_FILES)
 	ctags -f$@ -R .
 cscope.out: $(INDEXABLE_FILES)
 	cscope -f$@ -bR
+print-%:
+	$(info $*=$($*))
