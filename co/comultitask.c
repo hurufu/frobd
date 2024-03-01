@@ -99,18 +99,17 @@ static void starter(struct sus_coroutine_reg* const reg) {
 int sus_jumpstart(const size_t length, struct sus_coroutine_reg h[static const length]) {
     assert(h);
     int ret = -1;
-    struct {
+    struct coro_stuff {
         struct coro_stack stack;
         coro_context ctx;
     } stuff[length + 1];
     memset(stuff, 0, sizeof stuff);
     coro_create(&stuff[0].ctx, NULL, NULL, NULL, 0);
-    for (int i = 0; i < length; i++) {
-        if (!coro_stack_alloc(&stuff[i + 2].stack, h[i].stack_size))
+    for (int i = 1; i <= length; i++) {
+        if (!coro_stack_alloc(&stuff[i].stack, h[i-1].stack_size))
             goto end;
-        coro_create(&stuff[i].ctx, (void(*)(void*))starter, &h[i], stuff[i + 1].stack.sptr, h[i].stack_size);
+        coro_create(&stuff[i].ctx, (void(*)(void*))starter, &h[i-1], stuff[i].stack.sptr, stuff[i].stack.ssze);
     }
-
     coro_transfer(&stuff[0].ctx, &stuff[1].ctx);
     ret = 0;
 end:

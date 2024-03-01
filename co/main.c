@@ -35,13 +35,12 @@ static int co_io_loop(const struct args_io_loop* const args) {
 }
 
 int main() {
-    int aux_wireformat(void* c) {
-        struct coro_args* const a = c;
-        fsm_wireformat(STDIN_FILENO, 0);
+    int aux_wireformat(void*) {
+        fsm_wireformat(STDIN_FILENO);
     };
     struct sus_coroutine_reg coroutines[] = {
         {
-            .stack_size = 64,
+            .stack_size = 0,
             .entry = aux_wireformat,
             .args = NULL
         }

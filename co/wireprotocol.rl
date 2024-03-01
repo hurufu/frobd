@@ -1,6 +1,7 @@
 #include "comultitask.h"
 #include "frob.h"
 #include <unistd.h>
+#include <stdio.h>
 
 %%{
     machine wireformat;
@@ -14,7 +15,7 @@
             fbreak;
     }
     action Frame_Start { start = fpc; }
-    action Send { sus_borrow(out, NULL); }
+    action Send { printf("%*s", (int)bytes, buf); }
 
     frame = stx @LRC_Init ((any-etx) @LRC_Byte >Frame_Start) ((any-etx) @LRC_Byte )* (etx @LRC_Byte) any @LRC_Check @Send;
     main := ((any-stx)* frame any)*;
@@ -22,7 +23,7 @@
 
 %% write data;
 
-int fsm_wireformat(const int in, const int out) {
+int fsm_wireformat(const int in) {
     char* start = NULL, * end = NULL;
     unsigned lrc;
     ssize_t bytes;

@@ -3,15 +3,17 @@ GENERATED_SOURCES := $(patsubst %.rl,%.c,$(wildcard *.rl))
 LIB_SOURCES       := utils.c evloop.c coro.c
 SOURCES           := comultitask.c main.c $(GENERATED_SOURCES) $(LIB_SOURCES)
 INDEXABLE_FILES   := comultitask.h frob.h $(SOURCES)
-CFLAGS            := -Os
+CFLAGS            := -Og -ggdb3 -grecord-gcc-switches -Wformat -Werror=format-security
+CFLAGS            += -fvar-tracking-assignments -fasynchronous-unwind-tables
+CFLAGS            += -gz=zlib -fdiagnostics-color=always -flto -ffat-lto-objects
 CPPFLAGS          :=
-LDFLAGS           :=
+LDFLAGS           := -Wl,-z,relro,-z,now,-z,defs
 TARGET_ARCH       := -march=native -mtune=native
 LDLIBS            :=
 
 vpath %.c .. ../coro
 
-.PHONY: clean all run index
+.PHONY: clean all run index print-%
 
 run: $(EXECUTABLE)
 	./$<
