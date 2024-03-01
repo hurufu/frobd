@@ -27,7 +27,7 @@ clean:
 	$(let f,$(strip $(wildcard $(removable_files))),$(if $f,$(RM) -- $f))
 index: tags cscope.out
 tags: $(INDEXABLE_FILES)
-	ctags -f$@ -R .
+	ctags -f$@ -R . ../coro
 cscope.out: $(INDEXABLE_FILES)
 	cscope -f$@ -bR
 print-%:
