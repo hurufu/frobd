@@ -28,21 +28,32 @@ static void suspend_until_fd(const enum fdt first, const enum fdt last, const in
     for (enum fdt set = first; set <= last; set++)
         while (fd != s_current_fd[set])
             suspend();
+    if (first == last)
+        s_current_fd[first] = -1;
 }
 
 ssize_t sus_write(const int fd, const void* const data, const size_t size) {
+    LOGDX("> %d", fd);
     suspend_until_fd(FDT_WRITE, FDT_WRITE, fd);
-    return write(fd, data, size);
+    const ssize_t ret = write(fd, data, size);
+    LOGDX("< %d", fd);
+    return ret;
 }
 
 ssize_t sus_read(const int fd, void* const data, const size_t size) {
+    LOGDX("> %d", fd);
     suspend_until_fd(FDT_READ, FDT_READ, fd);
-    return read(fd, data, size);
+    const ssize_t ret = read(fd, data, size);
+    LOGDX("< %d", fd);
+    return ret;
 }
 
 int sus_select(const int n, fd_set* restrict r, fd_set* restrict w, fd_set* restrict e, struct timeval* restrict t) {
+    LOGDX(">");
     suspend_until_fd(FDT_READ, FDT_EXCEPT, -1);
-    return select(n, r, w, e, t);
+    const int ret = select(n, r, w, e, t);
+    LOGDX("<");
+    return ret;
 }
 
 // Wait untile connected coroutine yields
@@ -56,6 +67,7 @@ ssize_t sus_borrow(const int id, void** const data) {
 }
 
 int sus_resume(const enum fdt set, const int fd) {
+    LOGDX("%d %d", set, fd);
     s_current_fd[set] = fd;
     suspend();
 }
@@ -63,13 +75,13 @@ int sus_resume(const enum fdt set, const int fd) {
 // Transfer to scheduler and forget about current coroutine
 __attribute__((noreturn))
 static inline void sus_return(void) {
-#   if 0
-    bool no_more_left = true;
-    coro_context* const origin = s_current->ctx, * const destination = no_more_left ? s_end : s_current->next->ctx;
+    coro_context* const origin = s_current->ctx;
     s_current->prev->next = s_current->next;
-    free(s_current);
-    coro_transfer(origin, destination);
-#   endif
+    s_current->next->prev = s_current->prev;
+    s_current = s_current == s_current->next ? NULL : s_current->next;
+    LOGDX("%p", s_current);
+    //free(s_current);
+    coro_transfer(origin, &s_end);
     assert(0);
 }
 
@@ -109,10 +121,14 @@ int sus_jumpstart(const size_t length, struct sus_coroutine_reg (* const h)[leng
         s_current->next = next;
     }
 
+    int i = 0;
     for (; s_current; s_current = s_current->next) {
+        LOGDX(". %d %p", i++, s_current);
         coro_transfer(&s_end, s_current->ctx);
+        LOGDX(":");
     }
 
+    LOGDX("end");
     ret = 0;
 end:
     /*

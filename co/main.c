@@ -16,10 +16,10 @@ struct args_io_loop {
 int co_io_loop(const struct coro_args* const ca, const struct args_io_loop* const args) {
     struct io_params iop = { .maxfd = ca->fd[0] + 1 };
     FD_SET(ca->fd[0], &iop.set[0]);
-    LOGDX("fd[0] %d", ca->fd[0]);
+    LOGDX("start with fd[0] %d", ca->fd[0]);
     io_wait_f* const waitio = get_io_wait(args->timeout);
     while (waitio(&iop)) {
-        LOGDX("data");
+        LOGDX("data received");
         for (int i = 0; i < lengthof(iop.set); i++)
         for (int j = 0; j < iop.maxfd; j++)
             if (FD_ISSET(j, &iop.set[i]))

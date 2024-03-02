@@ -1,5 +1,6 @@
 #include "comultitask.h"
 #include "frob.h"
+#include "../log.h"
 #include <unistd.h>
 #include <stdio.h>
 
@@ -33,6 +34,9 @@ int fsm_wireformat(const struct coro_args* const ca, void*) {
     char* p = buf, * pe = p;
     %% write init;
     while ((bytes = sus_read(ca->fd[0], buf, sizeof buf)) > 0) {
+        LOGDX("%*s", (int)bytes, buf);
         %% write exec;
     }
+    LOGDX("close");
+    close(ca->fd[0]);
 }
