@@ -12,7 +12,7 @@ struct args_frontend_timer {
     int cs;
 };
 
-int fsm_wireformat(int);
+int fsm_wireformat(const struct coro_args*, void*);
 int fsm_frontend_foreign(struct args_frontend_foreign*);
 int fsm_frontend_internal(struct args_frontend_internal*);
 int fsm_frontend_timer(struct args_frontend_timer*);

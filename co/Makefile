@@ -6,7 +6,7 @@ INDEXABLE_FILES   := comultitask.h frob.h $(SOURCES)
 CFLAGS            := -Og -ggdb3 -grecord-gcc-switches -Wformat -Werror=format-security
 CFLAGS            += -fvar-tracking-assignments -fasynchronous-unwind-tables
 CFLAGS            += -gz=zlib -fdiagnostics-color=always -flto -ffat-lto-objects
-CPPFLAGS          :=
+CPPFLAGS          := -DCORO_PTHREAD -DCORO_USE_VALGRIND
 LDFLAGS           := -Wl,-z,relro,-z,now,-z,defs
 TARGET_ARCH       := -march=native -mtune=native
 LDLIBS            :=
@@ -16,7 +16,7 @@ vpath %.c .. ../coro
 .PHONY: clean all run index print-%
 
 run: $(EXECUTABLE)
-	./$<
+	echo hello | ./$<
 all: $(EXECUTABLE)
 $(EXECUTABLE): $(SOURCES)
 	$(LINK.c) -o $@ $^ $(LDLIBS)
@@ -27,7 +27,7 @@ clean:
 	$(let f,$(strip $(wildcard $(removable_files))),$(if $f,$(RM) -- $f))
 index: tags cscope.out
 tags: $(INDEXABLE_FILES)
-	ctags -f$@ -R . ../coro
+	ctags -f$@ -R . ..
 cscope.out: $(INDEXABLE_FILES)
 	cscope -f$@ -bR
 print-%:

@@ -23,7 +23,7 @@
 
 %% write data;
 
-int fsm_wireformat(const int in) {
+int fsm_wireformat(const struct coro_args* const ca, void*) {
     char* start = NULL, * end = NULL;
     unsigned lrc;
     ssize_t bytes;
@@ -32,7 +32,7 @@ int fsm_wireformat(const int in) {
     int to = 4;
     char* p = buf, * pe = p;
     %% write init;
-    while ((bytes = sus_read(in, buf, sizeof buf)) > 0) {
+    while ((bytes = sus_read(ca->fd[0], buf, sizeof buf)) > 0) {
         %% write exec;
     }
 }
