@@ -20,12 +20,13 @@ int co_io_loop(const struct coro_args* const ca, const struct args_io_loop* cons
     io_wait_f* const waitio = get_io_wait(args->timeout);
     while (waitio(&iop)) {
         LOGDX("data received");
-        for (int i = 0; i < lengthof(iop.set); i++)
+        for (size_t i = 0; i < lengthof(iop.set); i++)
         for (int j = 0; j < iop.maxfd; j++)
             if (FD_ISSET(j, &iop.set[i]))
                 sus_resume(i, j);
         // Remove closed or if need add a new file descriptor
     }
+    return 0;
 }
 
 int main() {
@@ -50,9 +51,9 @@ int main() {
         }
     };
 
-    if (sus_jumpstart(lengthof(coroutines), &coroutines) != 0)
+    if (sus_runall(lengthof(coroutines), &coroutines) != 0)
         EXITF("Can't start");
-    for (int i = 0; i < lengthof(coroutines); i++)
+    for (size_t i = 0; i < lengthof(coroutines); i++)
         if (coroutines[i].result)
             return 100;
     return 0;

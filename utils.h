@@ -62,7 +62,7 @@
     v;\
 })
 
-#define xselect(M, R, W, E, Timeout) XCALL(sus_select, M, R, W, E, Timeout)
+#define xselect(M, R, W, E, Timeout) XCALL(select, M, R, W, E, Timeout)
 #define xread(...) XCALL(read, __VA_ARGS__)
 #define xrread(...) XCALL(rread, __VA_ARGS__)
 #define xwrite(...) XCALL(write, __VA_ARGS__)

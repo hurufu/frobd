@@ -32,6 +32,7 @@
 
 %% write data;
 
+#if 0
 static bool is_idempotent(const char* const msg) {
     switch (msg[5]) {
         case 'T':
@@ -47,16 +48,19 @@ static int fsm_exec(int* cs, const char* p, const char* const pe) {
     %% write exec;
     return -1;
 }
+#endif
 
 void fsm_frontend_init(int* const cs) {
+    (void)frontend_en_main, (void)frontend_error, (void)frontend_first_final;
     %% write init;
 }
 
 int fsm_frontend_foreign(struct args_frontend_foreign* const a) {
+    (void)a;
+#   if 0
     char acknak = 0x00;
     ssize_t bytes;
     const char* p;
-#   if 0
     while ((bytes = sus_lend(a->idfrom, &p, 1)) > 0) {
         const char* const pe = p + 1;
         fsm_exec(&a->cs, p, pe);
@@ -66,10 +70,11 @@ int fsm_frontend_foreign(struct args_frontend_foreign* const a) {
 }
 
 int fsm_frontend_internal(struct args_frontend_internal* const a) {
+    (void)a;
+#   if 0
     ssize_t bytes;
     const char* msg;
-#   if 0
-    while ((bytes = sus_lend(a->idfrom, &msg, 0)) > 0) {
+    while ((bytes = sus_lend(1, &msg, 0)) > 0) {
         const char* p = (char[]){is_idempotent(msg) ? 0x0A : 0x0D}, * const pe = p + 1;
         fsm_exec(&a->cs, p, pe);
     }
@@ -78,10 +83,11 @@ int fsm_frontend_internal(struct args_frontend_internal* const a) {
 }
 
 int fsm_frontend_timer(struct args_frontend_timer* const a) {
+    (void)a;
+#   if 0
     const int fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
     ssize_t bytes;
     unsigned char buf[8];
-#   if 0
     while ((bytes = sus_read(fd, buf, sizeof buf)) > 0) {
         const char* p = (char[]){0}, * const pe = p + 1;
         fsm_exec(&a->cs, p, pe);
@@ -91,8 +97,8 @@ int fsm_frontend_timer(struct args_frontend_timer* const a) {
 }
 
 int n_fsm_frontend_timer() {
-    int cs;
 #   if 0
+    int cs;
     void coro(void* a) {
         ssize_t bytes;
         unsigned char buf[8];

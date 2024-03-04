@@ -1,12 +1,14 @@
 EXECUTABLE        := demo
 GENERATED_SOURCES := $(patsubst %.rl,%.c,$(wildcard *.rl))
 LIB_SOURCES       := utils.c evloop.c coro.c
-SOURCES           := comultitask.c main.c $(GENERATED_SOURCES) $(LIB_SOURCES)
-INDEXABLE_FILES   := comultitask.h frob.h $(SOURCES)
-CFLAGS            := -Og -ggdb3 -grecord-gcc-switches -Wformat -Werror=format-security
-CFLAGS            += -fvar-tracking-assignments -fasynchronous-unwind-tables
+SOURCES           := comultitask.c main.c contextring.c $(GENERATED_SOURCES) $(LIB_SOURCES)
+INDEXABLE_FILES   := comultitask.h frob.h contextring.h $(SOURCES)
+CFLAGS            := -Wall -Wextra
+CFLAGS            += -Os -ggdb3 -grecord-gcc-switches -Wformat -Werror=format-security
+#CFLAGS            += -fvar-tracking-assignments -fasynchronous-unwind-tables
 CFLAGS            += -gz=zlib -fdiagnostics-color=always -flto -ffat-lto-objects
 CPPFLAGS          := -DCORO_PTHREAD -DCORO_USE_VALGRIND
+CPPFLAGS          := -DNO_LOGS_ON_STDERR
 LDFLAGS           := -Wl,-z,relro,-z,now,-z,defs
 TARGET_ARCH       := -march=native -mtune=native
 LDLIBS            :=

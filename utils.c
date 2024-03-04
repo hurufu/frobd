@@ -162,6 +162,7 @@ ssize_t slurp(const char* const name, const size_t s, input_t buf[static const s
     const int backup = errno;
     if (close(fd) < 0 && ret < 0)
         ABORTF("Double fault while accessing %s. eread: %s; close", name, strerror(backup));
+    (void)backup;
     return ret;
 }
 
@@ -190,6 +191,7 @@ int xsnprint_hex(const size_t sbuf, input_t buf[static const sbuf], const size_t
 
 NORETURN void exitb(const char* const name) {
     static void* stack[128];
+    (void)name;
     backtrace_symbols_fd(stack, backtrace(stack, lengthof(stack)), STDERR_FILENO);
     // call invoke_safe_mem_constraint_handler instead of exit
     EXITF("%s", name);
