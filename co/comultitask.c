@@ -40,17 +40,14 @@ ssize_t sus_read(const int fd, void* const data, const size_t size) {
 
 int sus_select(const int n, fd_set* restrict r, fd_set* restrict w, fd_set* restrict e, struct timeval* restrict t) {
     suspend_until_fd(FDT_READ, FDT_EXCEPT, -1);
-    const int ret = xselect(n, r, w, e, t);
-    return ret;
+    return xselect(n, r, w, e, t);
 }
 
-// Wait until connected coroutine yields
 ssize_t sus_lend(const int id, void* const data, const size_t size) {
     (void)id, (void)data;
     return size;
 }
 
-// Transfer directly to connected coroutine
 ssize_t sus_borrow(const int id, void** const data) {
     (void)id, (void)data;
     return -1;
@@ -95,7 +92,7 @@ int sus_runall(const size_t length, struct sus_coroutine_reg (* const h)[length]
     ret = 0;
 end:
     for (size_t i = 0; i < length; i++) {
-        //coro_destroy(&stuff[i].ctx);
+        coro_destroy(&stuff[i].ctx);
         coro_stack_free(&stuff[i].stack);
     }
     return ret;

@@ -4,8 +4,6 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-#define yield sus_yield()
-
 enum fdt { FDT_READ, FDT_WRITE, FDT_EXCEPT };
 
 struct coro_args {
