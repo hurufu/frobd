@@ -2,6 +2,7 @@
 // FIXME: This file should be renamed to common.h
 
 #include "frob.h"
+#include "log.h"
 
 #include <string.h>
 #include <stdint.h>
@@ -9,6 +10,7 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 #define STX "\x02"
 #define ETX "\x03"
@@ -156,5 +158,13 @@ inline static int syscall_exitf(const char* const name, const int ret) {
 #   endif
     if (ret == -1)
         exitb(name);
+    return ret;
+}
+
+__attribute__((malloc(free), returns_nonnull))
+inline static void* xmalloc(const size_t size) {
+    void* const ret = malloc(size);
+    if (!ret)
+        ABORTF("malloc");
     return ret;
 }
