@@ -7,7 +7,8 @@ CFLAGS            := -Wall -Wextra
 CFLAGS            += -Os -ggdb3 -grecord-gcc-switches -Wformat -Werror=format-security
 #CFLAGS            += -fvar-tracking-assignments -fasynchronous-unwind-tables
 CFLAGS            += -gz=zlib -fdiagnostics-color=always -flto -ffat-lto-objects
-CPPFLAGS          := -DCORO_PTHREAD -DCORO_USE_VALGRIND
+CPPFLAGS          := -DCORO_PTHREAD
+#CPPFLAGS          += -DCORO_USE_VALGRIND
 CPPFLAGS          := -DNO_LOGS_ON_STDERR
 LDFLAGS           := -Wl,-z,relro,-z,now,-z,defs
 TARGET_ARCH       := -march=native -mtune=native
