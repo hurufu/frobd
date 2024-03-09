@@ -2,6 +2,7 @@
 #include "frob.h"
 #include <stdbool.h>
 #include <sys/timerfd.h>
+#include <unistd.h>
 
 static int cs;
 
@@ -23,7 +24,7 @@ static int cs;
 
     action Confirm { acknak = 0x06; }
     action Reject { acknak = 0x15; }
-    action Send { sus_write(2, &acknak, 1); }
+    action Send { sus_write(STDOUT_FILENO, &acknak, 1); }
 
     foreign = (OK @Confirm | NAK @Reject) @Send;
     internal = IDEMPOTENT ACK | IDEMPOTENT TIMEOUT{1,3} ACK;

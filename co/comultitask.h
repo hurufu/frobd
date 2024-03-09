@@ -6,15 +6,10 @@
 
 enum fdt { FDT_READ, FDT_WRITE, FDT_EXCEPT };
 
-struct coro_args {
-    const int* fd, * idx;
-};
-
-typedef int (* sus_entry)(const struct coro_args*, void*);
+typedef int (* sus_entry)(void*);
 
 struct sus_coroutine_reg {
     const size_t stack_size;
-    struct coro_args ca;
     int result;
     const sus_entry entry;
     void* const args;

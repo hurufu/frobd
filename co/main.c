@@ -13,10 +13,10 @@ struct args_io_loop {
     time_t timeout;
 };
 
-int co_io_loop(const struct coro_args* const ca, const struct args_io_loop* const args) {
-    struct io_params iop = { .maxfd = ca->fd[0] + 1 };
-    FD_SET(ca->fd[0], &iop.set[0]);
-    LOGDX("start with fd[0] %d", ca->fd[0]);
+int co_io_loop(const struct args_io_loop* const args) {
+    struct io_params iop = { .maxfd = STDIN_FILENO + 1 };
+    FD_SET(STDIN_FILENO, &iop.set[0]);
+    LOGDX("start with fd[0] %d", STDIN_FILENO);
     io_wait_f* const waitio = get_io_wait(args->timeout);
     while (waitio(&iop)) {
         LOGDX("data received");
@@ -33,28 +33,16 @@ int main() {
     struct sus_coroutine_reg tasks[] = {
         {
             .stack_size = 0,
-            .ca = {
-                .fd = (int[]){ STDIN_FILENO },
-                .idx = NULL
-            },
             .entry = fsm_wireformat,
             .args = NULL
         },
         {
             .stack_size = 0,
-            .ca = {
-                .fd = (int[]){ STDIN_FILENO },
-                .idx = NULL
-            },
             .entry = (sus_entry)co_io_loop,
             .args = &(struct args_io_loop){ .timeout = -1, .s6_notification_fd = -1 }
         },
         {
             .stack_size = 0,
-            .ca = {
-                .fd = NULL,
-                .idx = (int[]){ 0 }
-            },
             .entry = (sus_entry)fsm_frontend_foreign,
             .args = &(struct args_frontend_foreign){}
         }

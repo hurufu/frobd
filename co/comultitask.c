@@ -92,7 +92,7 @@ static inline void sus_exit(void) {
 
 __attribute__((noreturn))
 static void starter(struct sus_coroutine_reg* const reg) {
-    reg->result = reg->entry(&reg->ca, reg->args);
+    reg->result = reg->entry(reg->args);
     sus_exit();
 }
 
