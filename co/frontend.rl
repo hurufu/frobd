@@ -3,11 +3,12 @@
 #include <stdbool.h>
 #include <sys/timerfd.h>
 
+static int cs;
+
 %%{
     machine frontend;
     alphtype char;
     include frob_common "../common.rl";
-    variable cs *cs;
 
     # Foreign:
     OK = stx;
@@ -22,7 +23,7 @@
 
     action Confirm { acknak = 0x06; }
     action Reject { acknak = 0x15; }
-    action Send { sus_write(fdout, &acknak, 1); }
+    action Send { sus_write(2, &acknak, 1); }
 
     foreign = (OK @Confirm | NAK @Reject) @Send;
     internal = IDEMPOTENT ACK | IDEMPOTENT TIMEOUT{1,3} ACK;
@@ -41,31 +42,30 @@ static bool is_idempotent(const char* const msg) {
     }
     return false;
 }
+#endif
 
-static int fsm_exec(int* cs, const char* p, const char* const pe) {
+static int fsm_exec(const char* p, const char* const pe) {
     char acknak;
-    int fdout = 5;
     %% write exec;
     return -1;
 }
-#endif
 
-void fsm_frontend_init(int* const cs) {
+__attribute__((constructor))
+void fsm_frontend_init() {
     (void)frontend_en_main, (void)frontend_error, (void)frontend_first_final;
     %% write init;
 }
 
 int fsm_frontend_foreign(struct args_frontend_foreign* const a) {
     (void)a;
-#   if 0
-    char acknak = 0x00;
+    //char acknak = 0x00;
     ssize_t bytes;
     const char* p;
-    while ((bytes = sus_lend(a->idfrom, &p, 1)) > 0) {
+    while ((bytes = sus_borrow(0, (void**)&p)) >= 0) {
         const char* const pe = p + 1;
-        fsm_exec(&a->cs, p, pe);
+        fsm_exec(p, pe);
+        sus_return(0);
     }
-#   endif
     return -1;
 }
 
@@ -76,7 +76,7 @@ int fsm_frontend_internal(struct args_frontend_internal* const a) {
     const char* msg;
     while ((bytes = sus_lend(1, &msg, 0)) > 0) {
         const char* p = (char[]){is_idempotent(msg) ? 0x0A : 0x0D}, * const pe = p + 1;
-        fsm_exec(&a->cs, p, pe);
+        fsm_exec(p, pe);
     }
 #   endif
     return -1;
@@ -90,7 +90,7 @@ int fsm_frontend_timer(struct args_frontend_timer* const a) {
     unsigned char buf[8];
     while ((bytes = sus_read(fd, buf, sizeof buf)) > 0) {
         const char* p = (char[]){0}, * const pe = p + 1;
-        fsm_exec(&a->cs, p, pe);
+        fsm_exec(p, pe);
     }
 #   endif
     return -1;
@@ -98,13 +98,12 @@ int fsm_frontend_timer(struct args_frontend_timer* const a) {
 
 int n_fsm_frontend_timer() {
 #   if 0
-    int cs;
     void coro(void* a) {
         ssize_t bytes;
         unsigned char buf[8];
         while ((bytes = sus_read(fd, buf, sizeof buf)) > 0) {
             const char* p = (char[]){0}, * const pe = p + 1;
-            fsm_exec(&a->cs, p, pe);
+            fsm_exec(p, pe);
         }
         return -1;
     }

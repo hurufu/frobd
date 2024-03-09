@@ -23,14 +23,14 @@ int co_io_loop(const struct coro_args* const ca, const struct args_io_loop* cons
         for (size_t i = 0; i < lengthof(iop.set); i++)
         for (int j = 0; j < iop.maxfd; j++)
             if (FD_ISSET(j, &iop.set[i]))
-                sus_resume(i, j);
+                sus_notify(i, j);
         // Remove closed or if need add a new file descriptor
     }
     return 0;
 }
 
 int main() {
-    struct sus_coroutine_reg coroutines[] = {
+    struct sus_coroutine_reg tasks[] = {
         {
             .stack_size = 0,
             .ca = {
@@ -48,13 +48,22 @@ int main() {
             },
             .entry = (sus_entry)co_io_loop,
             .args = &(struct args_io_loop){ .timeout = -1, .s6_notification_fd = -1 }
+        },
+        {
+            .stack_size = 0,
+            .ca = {
+                .fd = NULL,
+                .idx = (int[]){ 0 }
+            },
+            .entry = (sus_entry)fsm_frontend_foreign,
+            .args = &(struct args_frontend_foreign){}
         }
     };
 
-    if (sus_runall(lengthof(coroutines), &coroutines) != 0)
+    if (sus_runall(lengthof(tasks), &tasks) != 0)
         EXITF("Can't start");
-    for (size_t i = 0; i < lengthof(coroutines); i++)
-        if (coroutines[i].result)
+    for (size_t i = 0; i < lengthof(tasks); i++)
+        if (tasks[i].result)
             return 100;
     return 0;
 }

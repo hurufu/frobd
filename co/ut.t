@@ -33,3 +33,8 @@ int g_log_level = LOG_DEBUG;
             shrink(&ring);
         ck_assert_ptr_null(ring);
     }
+
+#suite coroutines
+
+#test coroutine1
+
