@@ -17,11 +17,12 @@ LDLIBS            :=
 LOADLIBES         :=
 
 vpath %.c .. ../coro
+vpath %.txt ..
 
 .PHONY: clean all run index print-% check
 
-run: $(EXECUTABLE)
-	echo hello | ./$<
+run: $(EXECUTABLE) | d5.txt
+	./$< <$|
 check: ut
 	./$<
 ut: LDLIBS += -lcheck
