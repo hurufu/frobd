@@ -22,7 +22,7 @@ vpath %.txt ..
 .PHONY: clean all run index print-% check
 
 run: $(EXECUTABLE) | d5.txt
-	./$< <$|
+	./$< <$| | od -An -tx1z
 check: ut
 	./$<
 ut: LDLIBS += -lcheck
@@ -31,7 +31,7 @@ all: $(EXECUTABLE)
 $(EXECUTABLE): $(SOURCES)
 	$(LINK.c) -o $@ $^ $(LDLIBS)
 %.c: %.rl
-	ragel -G2 -o $@ $<
+	ragel -L -G2 -o $@ $<
 %.c: %.t
 	checkmk <$< >$@
 clean: removable_files := ut ut.c $(EXECUTABLE) $(GENERATED_SOURCES)
