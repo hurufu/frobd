@@ -88,7 +88,6 @@ void sus_notify(const enum fdt set, const int fd) {
     LOGDX("Will notify %s %d", set_to_string(set), fd);
     s_shared.fd[set] = fd;
     suspend_until_fd(set, set, -1);
-    return 0;
 }
 
 // Transfer to scheduler and forget about current coroutine
