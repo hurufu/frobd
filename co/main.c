@@ -23,8 +23,10 @@ int co_io_loop(const struct args_io_loop* const args) {
         for (size_t i = 0; i < lengthof(iop.set); i++)
         for (int j = 0; j < iop.maxfd; j++)
             if (FD_ISSET(j, &iop.set[i]))
-                sus_notify(i, j);
-        // Remove closed or if need add a new file descriptor
+                if (sus_notify(i, j) != 0) {
+                    LOGWX("Will close %lu %d", i, j);
+                    FD_CLR(j, &iop.set[i]);
+                }
     }
     return 0;
 }
@@ -39,7 +41,7 @@ int main() {
         {
             .stack_size = 0,
             .entry = (sus_entry)co_io_loop,
-            .args = &(struct args_io_loop){ .timeout = -1, .s6_notification_fd = -1 }
+            .args = &(struct args_io_loop){ .timeout = -1, .s6_notification_fd = 1 }
         },
         {
             .stack_size = 0,

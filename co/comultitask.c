@@ -23,6 +23,15 @@ static struct shared_data {
     } buf;
 } s_shared = { .fd = { -1, -1, -1 }, .buf = { .id = -1, .size = 0, .data = NULL } };
 
+static const char* set_to_string(const enum fdt set) {
+    switch (set) {
+        case FDT_READ: return "r";
+        case FDT_WRITE: return "w";
+        case FDT_EXCEPT: return "e";
+    }
+    return NULL;
+}
+
 static void suspend(void) {
     coro_transfer(s_current->ctx, &s_end);
 }
@@ -76,6 +85,7 @@ void sus_return(const int id) {
 }
 
 int sus_notify(const enum fdt set, const int fd) {
+    LOGDX("Will notify %s %d", set_to_string(set), fd);
     s_shared.fd[set] = fd;
     suspend();
     return 0;

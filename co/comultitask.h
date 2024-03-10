@@ -16,13 +16,11 @@ struct sus_coroutine_reg {
 };
 
 int sus_select(int n, fd_set* restrict r, fd_set* restrict w, fd_set* restrict e, struct timeval* restrict t);
+int sus_notify(enum fdt set, int fd);
 ssize_t sus_write(int fd, const void* data, size_t size);
 ssize_t sus_read(int fd, void* data, size_t size);
 void sus_lend(int id, void* data, size_t size);
 ssize_t sus_borrow(int id, void** value);
-int sus_notify(enum fdt set, int fd);
+void sus_return(const int id);
 int sus_runall(size_t s, struct sus_coroutine_reg (* c)[s]);
 int sus_wait(void);
-ssize_t sus_sendmsg(int mux, int priority, int type, size_t length, char value[static length]);
-ssize_t sus_recvmsg(int mux, int* type, char** value);
-void sus_yield(void);

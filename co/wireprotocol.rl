@@ -21,6 +21,7 @@
             LOGDX("wireformat: LRC NOK");
             fbreak;
         } else {
+            end =fpc;
             LOGDX("wireformat: LRC OK");
         }
     }
@@ -34,14 +35,15 @@
     }
 
     frame = stx @LRC_Init ((any-etx) @LRC_Byte >Frame_Start) ((any-etx) @LRC_Byte )* (etx @LRC_Byte) any @LRC_Check @Send;
-    main := ((any-stx)* frame any)*;
+    #main := ((any-stx)* frame any)*;
+    main := frame;
 }%%
 
 %% write data;
 
 int fsm_wireformat(void*) {
     char* start = NULL, * end = NULL;
-    (void)end, (void)start, (void)wireformat_en_main, (void)wireformat_error, (void)wireformat_first_final;
+    (void)wireformat_en_main, (void)wireformat_error, (void)wireformat_first_final;
     char lrc;
     ssize_t bytes;
     char buf[1024] = {};
@@ -49,11 +51,12 @@ int fsm_wireformat(void*) {
     char* p = buf, * pe = p;
     %% write init;
     while ((bytes = sus_read(STDIN_FILENO, buf, sizeof buf)) > 0) {
-        LOGDX("Received bytes: %*s", bytes, buf);
+        LOGDX("Received bytes: %*s", (int)bytes, buf);
         pe = buf + bytes;
         %% write exec;
         LOGDX("Bytes processed");
     }
     close(STDIN_FILENO);
-    return 0;
+    LOGWX("STDIN closed %d entry/error/final %d/%d/%d", cs, wireformat_en_main, wireformat_error, wireformat_first_final);
+    return cs == wireformat_error ? -1 : 0;
 }
