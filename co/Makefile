@@ -6,6 +6,7 @@ INDEXABLE_FILES   := comultitask.h frob.h contextring.h $(SOURCES)
 CFLAGS            := -Wall -Wextra
 CFLAGS            += -Og -ggdb3 -grecord-gcc-switches -Wformat -Werror=format-security
 #CFLAGS            += -fvar-tracking-assignments -fasynchronous-unwind-tables
+CFLAGS            += -Wno-implicit-fallthrough
 CFLAGS            += -gz=zlib -fdiagnostics-color=always -flto -ffat-lto-objects
 #CFLAGS            += -fanalyzer
 CPPFLAGS          := -DCORO_PTHREAD
@@ -17,12 +18,11 @@ LDLIBS            :=
 LOADLIBES         :=
 
 vpath %.c .. ../coro
-vpath %.txt ..
 
 .PHONY: clean all run index print-% check
 
-run: $(EXECUTABLE) | d5.txt
-	./$< <$| | od -An -tx1z
+run: $(EXECUTABLE) | ./gent1.tcl
+	./$| | ./$< | od -An -tx1z
 check: ut
 	./$<
 ut: LDLIBS += -lcheck
