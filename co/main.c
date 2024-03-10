@@ -23,10 +23,9 @@ int co_io_loop(const struct args_io_loop* const args) {
         for (size_t i = 0; i < lengthof(iop.set); i++)
         for (int j = 0; j < iop.maxfd; j++)
             if (FD_ISSET(j, &iop.set[i]))
-                if (sus_notify(i, j) != 0) {
-                    LOGWX("Will close %lu %d", i, j);
-                    FD_CLR(j, &iop.set[i]);
-                }
+                sus_notify(i, j);
+        // FIXME: Remove fd from iop.set if no more data expected on it
+        // FIXME: Who is responsible for closing fd? io_loop or each task
     }
     return 0;
 }
