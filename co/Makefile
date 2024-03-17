@@ -1,6 +1,6 @@
 EXECUTABLE        := demo
 GENERATED_SOURCES := $(patsubst %.rl,%.c,$(wildcard *.rl))
-LIB_SOURCES       := utils.c evloop.c coro.c
+LIB_SOURCES       := utils.c evloop.c coro.c log.c
 SOURCES           := comultitask.c main.c contextring.c $(GENERATED_SOURCES) $(LIB_SOURCES)
 INDEXABLE_FILES   := comultitask.h frob.h contextring.h $(SOURCES)
 CFLAGS            := -Wall -Wextra

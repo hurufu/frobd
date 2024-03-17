@@ -1,11 +1,12 @@
 #include "comultitask.h"
 #include "frob.h"
+#include "../utils.h"
 #include "../log.h"
 #include <unistd.h>
 
 %%{
     machine wireformat;
-    alphtype char;
+    alphtype unsigned char;
     include frob_common "../common.rl";
 
     action LRC_Init {
@@ -43,16 +44,16 @@
 %% write data;
 
 int fsm_wireformat(void*) {
-    char* start = NULL, * end = NULL;
+    unsigned char* start = NULL, * end = NULL;
     (void)wireformat_en_main, (void)wireformat_error, (void)wireformat_first_final;
     char lrc;
     ssize_t bytes;
-    char buf[1024] = {};
+    unsigned char buf[1024] = {};
     volatile int cs;
-    char* p = buf, * pe = p;
+    unsigned char* p = buf, * pe = p;
     %% write init;
     while ((bytes = sus_read(STDIN_FILENO, buf, sizeof buf)) > 0) {
-        LOGDX("Received bytes: %*s", (int)bytes, buf);
+        LOGDXP(char tmp[4*bytes], "→ % 4zd %s", bytes, PRETTY(buf, buf + bytes, tmp));
         pe = buf + bytes;
         %% write exec;
         LOGDX("Bytes processed");

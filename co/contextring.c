@@ -2,7 +2,8 @@
 #include "../utils.h"
 
 void insert(struct coro_context_ring** const cursor, struct coro_context* const ctx) {
-    assert(ctx && cursor);
+    assert(ctx);
+    assert(cursor);
     struct coro_context_ring* const new = xmalloc(sizeof (struct coro_context_ring));
     if (*cursor) {
         const struct coro_context_ring tmp = {

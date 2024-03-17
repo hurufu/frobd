@@ -6,8 +6,6 @@
 #include <time.h>
 #include <unistd.h>
 
-int g_log_level = LOG_DEBUG;
-
 struct args_io_loop {
     int s6_notification_fd;
     time_t timeout;
