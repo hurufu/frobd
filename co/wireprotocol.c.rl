@@ -26,6 +26,9 @@
             LOGDX("wireformat: LRC OK");
         }
     }
+    action Log_Byte {
+        LOGDX("wireformat: Byte skipped");
+    }
     action Frame_Start {
         LOGDX("wireformat: Frame_Start");
         start = fpc;
@@ -37,7 +40,7 @@
     }
 
     frame = stx @LRC_Init ((any-etx) @LRC_Byte >Frame_Start) ((any-etx) @LRC_Byte )* (etx @LRC_Byte) any @LRC_Check @Send;
-    main := ((any-stx)* frame any)*;
+    main := (((any-stx) @Log_Byte)* frame)*;
 }%%
 
 %% write data;
@@ -58,6 +61,6 @@ int fsm_wireformat(void*) {
         LOGDX("Bytes processed");
     }
     close(STDIN_FILENO);
-    LOGWX("STDIN closed %d entry/error/final %d/%d/%d", cs, wireformat_en_main, wireformat_error, wireformat_first_final);
+    LOGWX("STDIN closed. FSM state: current/entry/error/final %d/%d/%d/%d", cs, wireformat_en_main, wireformat_error, wireformat_first_final);
     return cs == wireformat_error ? -1 : 0;
 }
