@@ -1,5 +1,5 @@
 EXECUTABLE        := demo
-GENERATED_SOURCES := $(patsubst %.rl,%.c,$(wildcard *.rl))
+GENERATED_SOURCES := $(patsubst %.rl,%,$(wildcard *.rl))
 LIB_SOURCES       := utils.c evloop.c coro.c log.c
 SOURCES           := comultitask.c main.c contextring.c $(GENERATED_SOURCES) $(LIB_SOURCES)
 INDEXABLE_FILES   := comultitask.h frob.h contextring.h $(SOURCES)
@@ -30,9 +30,9 @@ ut: ut.c contextring.c
 all: $(EXECUTABLE)
 $(EXECUTABLE): $(SOURCES)
 	$(LINK.c) -o $@ $^ $(LDLIBS)
-%.c: %.rl
+%.c: %.c.rl
 	ragel -L -G2 -o $@ $<
-%.c: %.t
+%.c: %.c.t
 	checkmk <$< >$@
 clean: removable_files := ut ut.c $(EXECUTABLE) $(GENERATED_SOURCES)
 clean:
