@@ -2,24 +2,27 @@
 #include "../utils.h"
 
 void insert(struct coro_context_ring** const cursor, struct coro_context* const ctx) {
-    struct coro_context_ring* const tmp = xmalloc(sizeof (struct coro_context_ring));
+    assert(ctx && cursor);
+    struct coro_context_ring* const new = xmalloc(sizeof (struct coro_context_ring));
     if (*cursor) {
-        *tmp = (struct coro_context_ring) {
+        const struct coro_context_ring tmp = {
             .ctx = ctx,
             .next = (*cursor)->next,
             .prev = *cursor
         };
-        (*cursor)->next->prev = tmp;
-        (*cursor)->next = tmp;
-        *cursor = tmp;
+        memcpy(new, &tmp, sizeof tmp);
+        (*cursor)->next->prev = new;
+        (*cursor)->next = new;
+        *cursor = new;
     } else {
-        *tmp = (struct coro_context_ring) {
+        const struct coro_context_ring tmp = {
             .ctx = ctx,
-            .next = tmp,
-            .prev = tmp
+            .next = new,
+            .prev = new
         };
+        memcpy(new, &tmp, sizeof tmp);
     }
-    *cursor = tmp;
+    *cursor = new;
 }
 
 void shrink(struct coro_context_ring** const cursor) {

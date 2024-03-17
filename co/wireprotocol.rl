@@ -30,8 +30,9 @@
         start = fpc;
     }
     action Send {
-        LOGDX("wireformat: Lending frame to 0");
-        sus_lend(0, buf, bytes);
+        const int out = 0;
+        LOGDX("wireformat: Lending frame to % 2d % 2zd %p", out, bytes, buf);
+        sus_lend(out, buf, bytes);
     }
 
     frame = stx @LRC_Init ((any-etx) @LRC_Byte >Frame_Start) ((any-etx) @LRC_Byte )* (etx @LRC_Byte) any @LRC_Check @Send;

@@ -4,8 +4,8 @@
 
 struct coro_context_ring {
     struct coro_context_ring* prev, * next;
-    struct coro_context* ctx;
+    struct coro_context* const ctx;
 };
 
-void insert(struct coro_context_ring** cursor, struct coro_context* ctx);
-void shrink(struct coro_context_ring** cursor);
+void insert(struct coro_context_ring** cursor, struct coro_context* ctx) __attribute__((nonnull (1,2)));
+void shrink(struct coro_context_ring** cursor) __attribute__((nonnull (1)));

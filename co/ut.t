@@ -19,13 +19,14 @@ int g_log_level = LOG_DEBUG;
 
 #test multiple_elements_can_be_added_and_removed
     struct coro_context_ring* ring = NULL;
-    for (int i = 1; i <= 1000; i++) {
+    const int max = 1000;
+    for (int i = 1; i <= max; i++) {
         struct coro_context tmp[i] = {};
         for (size_t i = 0; i < lengthof(tmp); i++)
             insert(&ring, &tmp[i]);
         struct coro_context_ring* p = ring;
         for (size_t i = 0; i < lengthof(tmp); i++) {
-            //ck_assert_ptr_eq(p->ctx, &tmp[i]);
+            //ck_assert_ptr_eq(p->ctx, &tmp[(i + max) % max]);
             ck_assert_ptr_eq(p, p->next->prev);
             ck_assert_ptr_eq(p, p->prev->next);
         }

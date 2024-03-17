@@ -22,5 +22,5 @@ ssize_t sus_read(int fd, void* data, size_t size);
 void sus_lend(int id, void* data, size_t size);
 ssize_t sus_borrow(int id, void** value);
 void sus_return(const int id);
-int sus_runall(size_t s, struct sus_coroutine_reg (* c)[s]);
+int sus_runall(size_t s, struct sus_coroutine_reg (* c)[s]) __attribute__((nonnull (2)));
 int sus_wait(void);

@@ -14,9 +14,10 @@ struct args_io_loop {
 };
 
 int co_io_loop(const struct args_io_loop* const args) {
-    struct io_params iop = { .maxfd = STDIN_FILENO + 1 };
-    FD_SET(STDIN_FILENO, &iop.set[0]);
-    LOGDX("start with fd[0] %d", STDIN_FILENO);
+    struct io_params iop = { .maxfd = STDOUT_FILENO + 1 };
+    FD_SET(STDIN_FILENO, &iop.set[FDT_READ]);
+    //FD_SET(STDOUT_FILENO, &iop.set[FDT_WRITE]);
+    LOGDX("start with r %d", STDIN_FILENO);
     io_wait_f* const waitio = get_io_wait(args->timeout);
     while (waitio(&iop)) {
         LOGDX("data received");
