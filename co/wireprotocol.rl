@@ -22,7 +22,7 @@
             LOGDX("wireformat: LRC NOK");
             fbreak;
         } else {
-            end =fpc;
+            end = fpc;
             LOGDX("wireformat: LRC OK");
         }
     }
@@ -37,8 +37,7 @@
     }
 
     frame = stx @LRC_Init ((any-etx) @LRC_Byte >Frame_Start) ((any-etx) @LRC_Byte )* (etx @LRC_Byte) any @LRC_Check @Send;
-    #main := ((any-stx)* frame any)*;
-    main := frame;
+    main := ((any-stx)* frame any)*;
 }%%
 
 %% write data;
