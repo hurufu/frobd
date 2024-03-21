@@ -16,11 +16,12 @@ I've considered a lot of alternatives, they are all too fat: e.g. [pth][2].
 
 Also interesting to read:
 
-  * https://en.wikipedia.org/wiki/Computer_multitasking after reading this my
-      implementation is better named *multiprogramming* or even *multiroutining*?
-  * https://en.wikipedia.org/wiki/Batch_processing
-  * https://en.wikipedia.org/wiki/Spooling
-  * https://en.wikipedia.org/wiki/Coroutine
+  * [Computer multitasking](https://en.wikipedia.org/wiki/Computer_multitasking)
+    after reading this my implementation is better named *multiprogramming* or
+    even *multiroutining*?
+  * [Batch processing](https://en.wikipedia.org/wiki/Batch_processing)
+  * [Spooling](https://en.wikipedia.org/wiki/Spooling)
+  * [Coroutine](https://en.wikipedia.org/wiki/Coroutine)
 
 [1]: https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1364r0.pdf "Fibers under the magnifying glass"
 [2]: https://www.gnu.org/software/pth/pth-manual.html "GNU Portable Threads"
