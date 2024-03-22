@@ -2,6 +2,7 @@ EXECUTABLE        := demo
 GENERATED_SOURCES := $(patsubst %.rl,%,$(wildcard *.rl))
 LIB_SOURCES       := utils.c evloop.c coro.c log.c
 SOURCES           := comultitask.c main.c contextring.c $(GENERATED_SOURCES) $(LIB_SOURCES)
+OBJECTS           := $(SOURCES:.c=.o)
 INDEXABLE_FILES   := comultitask.h frob.h contextring.h $(SOURCES)
 CFLAGS            := -Wall -Wextra
 CFLAGS            += -Og -ggdb3 -grecord-gcc-switches -Wformat -Werror=format-security
@@ -28,13 +29,13 @@ check: ut
 ut: LDLIBS += -lcheck
 ut: ut.c contextring.c
 all: $(EXECUTABLE)
-$(EXECUTABLE): $(SOURCES)
-	$(LINK.c) -o $@ $^ $(LDLIBS)
+$(EXECUTABLE): $(OBJECTS)
+	$(LINK.o) -o $@ $^ $(LDLIBS)
 %.c: %.c.rl
 	ragel -L -G2 -o $@ $<
 %.c: %.c.t
 	checkmk <$< >$@
-clean: removable_files := ut ut.c $(EXECUTABLE) $(GENERATED_SOURCES)
+clean: removable_files := ut ut.c $(OBJECTS) $(EXECUTABLE) $(GENERATED_SOURCES)
 clean:
 	$(let f,$(strip $(wildcard $(removable_files))),$(if $f,$(RM) -- $f))
 index: tags cscope.out
