@@ -6,13 +6,14 @@ I'm well aware of [C++ critique of "fibers"][1]. They mention this as a problem:
 > completely stops progress of all N fibers [...]
 
 I consider this as an actual desirable property, to guarantee sequential access
-to all shared variables.
+to all shared variables. The rest of critique doesn't apply to my use case.
 
 I think most problems with fibers are because implementers need to handle
 arbitrary code and be very generic and with advanced scheduling. My cooperative
 tasks have are use-case specific and this avoids a lot of problems.
 
-I've considered a lot of alternatives, they are all too fat: e.g. [pth][2].
+I've considered a lot of alternatives, they are all too fat: e.g. [pth][2],
+[qemu][3], etc.
 
 Also interesting to read:
 
@@ -25,3 +26,4 @@ Also interesting to read:
 
 [1]: https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1364r0.pdf "Fibers under the magnifying glass"
 [2]: https://www.gnu.org/software/pth/pth-manual.html "GNU Portable Threads"
+[3]: https://gsb16.github.io/qemu/qemu/coroutine.html "QEMU coroutine implementation"
