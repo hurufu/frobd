@@ -2,6 +2,7 @@
 
 #include <sys/select.h>
 
+// TODO: Rename to select_parameters
 struct io_params {
     fd_set set[3];
     const unsigned short maxfd;

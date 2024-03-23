@@ -33,7 +33,8 @@ static int cs;
     }
     action Send {
         LOGDX("frontend: Send");
-        sus_write(STDOUT_FILENO, &acknak, 1);
+        (void)acknak;
+        //sus_write(STDOUT_FILENO, &acknak, 1);
     }
 
     foreign = (OK @Confirm | NAK @Reject) @Send;
@@ -76,7 +77,7 @@ int fsm_frontend_foreign(struct args_frontend_foreign* const a) {
         LOGDX("Borrowed frame from 0");
         const char* const pe = p + 1;
         fsm_exec(p, pe);
-        sus_return(0);
+        //sus_return(0);
         LOGDX("Returned frame on 0");
     }
     return -1;

@@ -9,24 +9,77 @@
 struct args_io_loop {
     int s6_notification_fd;
     time_t timeout;
+    unsigned routines;
 };
 
-int co_io_loop(const struct args_io_loop* const args) {
-    struct io_params iop = { .maxfd = STDOUT_FILENO + 1 };
-    FD_SET(STDIN_FILENO, &iop.set[FDT_READ]);
-    //FD_SET(STDOUT_FILENO, &iop.set[FDT_WRITE]);
-    LOGDX("start with r %d", STDIN_FILENO);
-    io_wait_f* const waitio = get_io_wait(args->timeout);
-    while (waitio(&iop)) {
-        LOGDX("data received");
-        for (size_t i = 0; i < lengthof(iop.set); i++)
-        for (int j = 0; j < iop.maxfd; j++)
-            if (FD_ISSET(j, &iop.set[i]))
-                sus_notify(i, j);
-        // FIXME: Remove fd from iop.set if no more data expected on it
-        // FIXME: Who is responsible for closing fd? io_loop or each task
+void comp_max_fd(struct io_params* const iop) {
+    (void)iop;
+    //suspend();
+}
+
+static enum ioset channel_to_set(const enum channel ch) {
+    switch (ch) {
+        case CHANNEL_FI_MAIN:
+            return IOSET_READ;
+        case CHANNEL_FO_MAIN:
+            return IOSET_WRITE;
     }
-    return 0;
+    assert(0);
+}
+
+static int map_to_fd(const enum channel ch, enum ioset* const set) {
+    static const int map[] = {
+        [CHANNEL_FI_MAIN] = STDIN_FILENO,
+        [CHANNEL_FO_MAIN] = STDOUT_FILENO
+    };
+    *set = channel_to_set(ch);
+    return map[ch];
+}
+
+static int co_io_loop(const struct args_io_loop* const args) {
+    struct iowork {
+        enum channel ch;
+        size_t size;
+        void* data;
+    } work[args->routines] = {};
+
+    for (;;) {
+        struct io_params iop = {};
+        {
+            for (size_t i = 0; i < lengthof(work); ) {
+                const ssize_t s = sus_borrow(&work[i].ch, &work[i].data);
+                if (s < 0)
+                    break;
+                enum ioset set;
+                const int fd = map_to_fd(work[i].ch, &set);
+                if (fd < 0)
+                    continue;
+                FD_SET(fd, &iop.set[set]);
+                i++;
+            }
+        }
+
+        io_wait_f* const waitio = get_io_wait(args->timeout);
+        for (;;) {
+            comp_max_fd(&iop);
+            const int r = waitio(&iop);
+            if (r < 0)
+                return -1;
+            else if (r == 0)
+                return 0;
+            for (size_t i = 0; i < lengthof(iop.set); i++)
+            for (int j = 0; j < iop.maxfd; j++)
+                if (FD_ISSET(j, &iop.set[i])) {
+                    ;
+                    //perform_pending_io();
+                }
+        }
+
+        {
+            //sus_return_all();
+        }
+    }
+    return -1;
 }
 
 int main() {
@@ -39,7 +92,11 @@ int main() {
         {
             .stack_size = 0,
             .entry = (sus_entry)co_io_loop,
-            .args = &(struct args_io_loop){ .timeout = -1, .s6_notification_fd = 1 }
+            .args = &(struct args_io_loop){
+                .timeout = -1,
+                .s6_notification_fd = 1,
+                .routines = 2
+            }
         },
         {
             .stack_size = 0,

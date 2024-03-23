@@ -14,87 +14,16 @@ struct coro_stuff {
 static struct coro_context s_end;
 static struct coro_context_ring* s_current;
 
-static struct shared_data {
-    int fd[3];
-    struct shared_buf {
-        int id;
-        ssize_t size;
-        void* data;
-    } buf;
-} s_shared = { .fd = { -1, -1, -1 }, .buf = { .id = -1, .size = -2, .data = NULL } };
-
-static const char* set_to_string(const enum fdt set) {
-    switch (set) {
-        case FDT_READ: return "r";
-        case FDT_WRITE: return "w";
-        case FDT_EXCEPT: return "e";
-    }
-    return NULL;
+void sus_lend(const int id, const size_t size, void* const data) {
+    assert(id);
+    assert(data);
+    (void)size;
 }
 
-static void suspend(void) {
-    coro_transfer(s_current->ctx, &s_end);
-}
-
-static void suspend_until_fd(const enum fdt first, const enum fdt last, const int fd) {
-    for (enum fdt set = first; set <= last; set++)
-        while (fd != s_shared.fd[set])
-            suspend();
-    if (first == last)
-        s_shared.fd[first] = -1;
-}
-
-static void suspend_until_id(const int id) {
-    while (s_shared.buf.id != id)
-        suspend();
-}
-
-ssize_t sus_write(const int fd, const void* const data, const size_t size) {
-    LOGDX("1. Suspending to write %d %lu %p", fd, size, data);
-    //suspend_until_fd(FDT_WRITE, FDT_WRITE, fd);
-    LOGDX("2. Will write %d %lu %p", fd, size, data);
-    return xwrite(fd, data, size);
-}
-
-ssize_t sus_read(const int fd, void* const data, const size_t size) {
-    suspend_until_fd(FDT_READ, FDT_READ, fd);
-    return xread(fd, data, size);
-}
-
-int sus_select(const int n, fd_set* restrict r, fd_set* restrict w, fd_set* restrict e, struct timeval* restrict t) {
-    suspend_until_id(-1);
-    suspend_until_fd(FDT_READ, FDT_EXCEPT, -1);
-    return xselect(n, r, w, e, t);
-}
-
-void sus_lend(const int id, void* const data, const size_t size) {
-    LOGDX("1 before suspend % 2d % 2ld %p", id, size, data);
-    suspend_until_id(-1);
-    LOGDX("1 after suspend  % 2d % 2ld %p", s_shared.buf.id, s_shared.buf.size, s_shared.buf.data);
-    assert(s_shared.buf.id == -1 && s_shared.buf.size < 0 && s_shared.buf.data == NULL);
-    s_shared.buf = (struct shared_buf){ .id = id, .data = data, .size = size };
-    LOGDX("2 before suspend % 2d % 2ld %p", s_shared.buf.id, s_shared.buf.size, s_shared.buf.data);
-    suspend_until_id(-1);
-    LOGDX("2 after suspend  % 2d % 2ld %p", s_shared.buf.id, s_shared.buf.size, s_shared.buf.data);
-}
-
-ssize_t sus_borrow(const int id, void** const data) {
-    suspend_until_id(id);
-    assert(s_shared.buf.id == id && (s_shared.buf.size == 0 || (s_shared.buf.size > 0 && s_shared.buf.data != NULL)));
-    *data = s_shared.buf.data;
-    return s_shared.buf.size;
-}
-
-void sus_return(const int id) {
-    assert(s_shared.buf.id == id && s_shared.buf.size > 0 && s_shared.buf.data != NULL);
-    s_shared.buf = (struct shared_buf){ .id = -1, .size = -1, .data = NULL };
-    suspend();
-}
-
-void sus_notify(const enum fdt set, const int fd) {
-    LOGDX("Will notify %s %d", set_to_string(set), fd);
-    s_shared.fd[set] = fd;
-    suspend();
+ssize_t sus_borrow(enum channel* const id, void** const data) {
+    assert(id);
+    assert(data);
+    return -1;
 }
 
 // Transfer to scheduler and forget about current coroutine

@@ -54,12 +54,15 @@ int fsm_wireformat(void*) {
     volatile int cs;
     unsigned char* p = buf, * pe = p;
     %% write init;
-    while ((bytes = sus_read(STDIN_FILENO, buf, sizeof buf)) > 0) {
+    (void)pe, (void)bytes, (void)lrc, (void)start, (void)end;
+    /*
+    while ((bytes = sus_lend(STDIN_FILENO, sizeof buf, buf)) > 0) {
         LOGDXP(char tmp[4*bytes], "→ % 4zd %s", bytes, PRETTY(buf, buf + bytes, tmp));
         pe = buf + bytes;
         %% write exec;
         LOGDX("Bytes processed");
     }
+    */
     close(STDIN_FILENO);
     LOGWX("STDIN closed. FSM state: current/entry/error/final %d/%d/%d/%d", cs, wireformat_en_main, wireformat_error, wireformat_first_final);
     return cs == wireformat_error ? -1 : 0;
