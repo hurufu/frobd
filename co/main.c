@@ -6,6 +6,11 @@
 #include <time.h>
 #include <unistd.h>
 
+enum channel {
+    CHANNEL_FI_MAIN = 0,
+    CHANNEL_FO_MAIN = 1
+};
+
 struct args_io_loop {
     int s6_notification_fd;
     time_t timeout;
@@ -37,23 +42,19 @@ static int map_to_fd(const enum channel ch, enum ioset* const set) {
 }
 
 static int co_io_loop(const struct args_io_loop* const args) {
-    struct iowork {
-        enum channel ch;
-        size_t size;
-        void* data;
-    } work[args->routines] = {};
+    struct iowork work[args->routines] = {};
 
     for (;;) {
         struct io_params iop = {};
         {
             for (size_t i = 0; i < lengthof(work); ) {
-                const ssize_t s = sus_borrow(&work[i].ch, &work[i].data);
-                if (s < 0)
-                    break;
+                sus_peek(&work[i]);
                 enum ioset set;
-                const int fd = map_to_fd(work[i].ch, &set);
-                if (fd < 0)
+                const int fd = map_to_fd(work[i].id, &set);
+                if (fd < 0) {
+                    //sus_return_untouched(work[i].ch);
                     continue;
+                }
                 FD_SET(fd, &iop.set[set]);
                 i++;
             }

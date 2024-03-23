@@ -13,17 +13,56 @@ struct coro_stuff {
 
 static struct coro_context s_end;
 static struct coro_context_ring* s_current;
+static struct iowork s_work; // TODO: Replace with a linked list of iowork
 
-void sus_lend(const int id, const size_t size, void* const data) {
-    assert(id);
-    assert(data);
-    (void)size;
+static void suspend() {
+    coro_transfer(s_current->ctx, &s_end);
 }
 
-ssize_t sus_borrow(enum channel* const id, void** const data) {
-    assert(id);
+void sus_lend(const int id, const size_t size, void* const data) {
     assert(data);
-    return -1;
+    // Wait for until s_work is free
+    while (s_work.id != 0)
+        suspend();
+    // Publish my data
+    s_work = (struct iowork){ .id = id, .size = size, .data = data };
+    // Wait until data is borrowed
+    while (s_work.id != 0)
+        suspend();
+    // Wait until data is returned
+    while (s_work.id != id)
+        suspend();
+    s_work = (struct iowork){};
+}
+
+void sus_peek(struct iowork* const w) {
+    assert(w);
+    // Wait until there is something published
+    while (s_work.id == 0)
+        suspend();
+    *w = s_work;
+    // Free-up space for a new work
+    s_work = (struct iowork){};
+}
+
+ssize_t sus_borrow(const int id, void** const data) {
+    assert(data);
+    // Wait until id is published
+    while (s_work.id != id)
+        suspend();
+    *data = s_work.data;
+    const ssize_t size = s_work.size;
+    // Free-up space for a new work
+    s_work = (struct iowork){};
+    return size;
+}
+
+void sus_return(const int id) {
+    assert(id == s_work.id);
+    s_work = (struct iowork){ .id = id };
+    // Wait until work was returned
+    while (s_work.id != 0)
+        suspend();
 }
 
 // Transfer to scheduler and forget about current coroutine
