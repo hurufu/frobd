@@ -2,10 +2,10 @@
 set env CK_FORK=no
 file ./demo
 set print repeats 0
-#break main
+break main
 #break fsm_frontend_foreign
 break fsm_wireformat
-#break starter
+break starter
 #break sus_select
 #break sus_read
 #break sus_write

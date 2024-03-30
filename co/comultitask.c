@@ -35,25 +35,33 @@ void sus_lend(const int id, const size_t size, void* const data) {
     s_work = (struct iowork){};
 }
 
-void sus_peek(struct iowork* const w) {
+void sus_borrow_any(struct iowork* const w) {
+    static bool repeated_call = false;
     assert(w);
     // Wait until there is something published
-    while (s_work.id == 0)
+    while (s_work.id == 0 && !repeated_call) {
         suspend();
+        repeated_call = true;
+    }
+    repeated_call = false;
     *w = s_work;
+}
+
+void sus_borrow_any_confirm(const int id) {
+    assert(id == s_work.id);
     // Free-up space for a new work
     s_work = (struct iowork){};
 }
 
 ssize_t sus_borrow(const int id, void** const data) {
     assert(data);
-    // Wait until id is published
-    while (s_work.id != id)
-        suspend();
+    struct iowork w;
+    do {
+        sus_borrow_any(&w);
+    } while (w.id != id);
     *data = s_work.data;
     const ssize_t size = s_work.size;
-    // Free-up space for a new work
-    s_work = (struct iowork){};
+    sus_borrow_any_confirm(id);
     return size;
 }
 

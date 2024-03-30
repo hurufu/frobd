@@ -23,7 +23,8 @@ struct sus_coroutine_reg {
 
 void sus_lend(int ch, size_t size, void* data);
 
-void sus_peek(struct iowork*);
+void sus_borrow_any(struct iowork*);
+void sus_borrow_any_confirm(int id);
 
 ssize_t sus_borrow(int id, void** value);
 

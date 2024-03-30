@@ -7,8 +7,10 @@
 #include <unistd.h>
 
 enum channel {
-    CHANNEL_FI_MAIN = 0,
-    CHANNEL_FO_MAIN = 1
+    CHANNEL_FO_MAIN = 1,
+    CHANNEL_FI_MAIN = 3,
+
+    CHANNEL_LAST = CHANNEL_FI_MAIN
 };
 
 struct args_io_loop {
@@ -32,35 +34,42 @@ static enum ioset channel_to_set(const enum channel ch) {
     assert(0);
 }
 
-static int map_to_fd(const enum channel ch, enum ioset* const set) {
-    static const int map[] = {
-        [CHANNEL_FI_MAIN] = STDIN_FILENO,
-        [CHANNEL_FO_MAIN] = STDOUT_FILENO
+static int channel_to_fd(const enum channel ch) {
+    switch (ch) {
+        case CHANNEL_FO_MAIN:
+            return STDOUT_FILENO;
+        case CHANNEL_FI_MAIN:
+            return STDIN_FILENO;
     };
-    *set = channel_to_set(ch);
-    return map[ch];
+    return -1;
+}
+
+static int map_to_fd(enum channel ch, enum ioset* const set) {
+    assert(ch > 0);
+    const int ret = channel_to_fd(ch);
+    if (ret > 0)
+        *set = channel_to_set(ch);
+    return ret;
 }
 
 static int co_io_loop(const struct args_io_loop* const args) {
     struct iowork work[args->routines] = {};
-
+    io_wait_f* const waitio = get_io_wait(args->timeout);
     for (;;) {
         struct io_params iop = {};
         {
             for (size_t i = 0; i < lengthof(work); ) {
-                sus_peek(&work[i]);
+                sus_borrow_any(&work[i]);
                 enum ioset set;
                 const int fd = map_to_fd(work[i].id, &set);
                 if (fd < 0) {
-                    //sus_return_untouched(work[i].ch);
                     continue;
                 }
+                sus_borrow_any_confirm(work[i].id);
                 FD_SET(fd, &iop.set[set]);
                 i++;
             }
         }
-
-        io_wait_f* const waitio = get_io_wait(args->timeout);
         for (;;) {
             comp_max_fd(&iop);
             const int r = waitio(&iop);
@@ -69,15 +78,11 @@ static int co_io_loop(const struct args_io_loop* const args) {
             else if (r == 0)
                 return 0;
             for (size_t i = 0; i < lengthof(iop.set); i++)
-            for (int j = 0; j < iop.maxfd; j++)
-                if (FD_ISSET(j, &iop.set[i])) {
-                    ;
-                    //perform_pending_io();
-                }
-        }
-
-        {
-            //sus_return_all();
+                for (int j = 0; j < iop.maxfd; j++)
+                    if (FD_ISSET(j, &iop.set[i])) {
+                        // TODO: Perform IO
+                        sus_return(work[i].id);
+                    }
         }
     }
     return -1;

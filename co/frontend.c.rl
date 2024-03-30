@@ -34,7 +34,7 @@ static int cs;
     action Send {
         LOGDX("frontend: Send");
         (void)acknak;
-        //sus_write(STDOUT_FILENO, &acknak, 1);
+        //sus_write(1, &acknak, 1);
     }
 
     foreign = (OK @Confirm | NAK @Reject) @Send;
@@ -73,11 +73,11 @@ int fsm_frontend_foreign(struct args_frontend_foreign* const a) {
     //char acknak = 0x00;
     ssize_t bytes;
     const char* p;
-    while ((bytes = sus_borrow(0, (void**)&p)) >= 0) {
+    while ((bytes = sus_borrow(3, (void**)&p)) >= 0) {
         LOGDX("Borrowed frame from 0");
         const char* const pe = p + 1;
         fsm_exec(p, pe);
-        //sus_return(0);
+        //sus_return(3);
         LOGDX("Returned frame on 0");
     }
     return -1;
@@ -88,7 +88,7 @@ int fsm_frontend_internal(struct args_frontend_internal* const a) {
 #   if 0
     ssize_t bytes;
     const char* msg;
-    while ((bytes = sus_lend(1, &msg, 0)) > 0) {
+    while ((bytes = sus_lend(_, &msg, 0)) > 0) {
         const char* p = (char[]){is_idempotent(msg) ? 0x0A : 0x0D}, * const pe = p + 1;
         fsm_exec(p, pe);
     }
@@ -102,7 +102,7 @@ int fsm_frontend_timer(struct args_frontend_timer* const a) {
     const int fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
     ssize_t bytes;
     unsigned char buf[8];
-    while ((bytes = sus_read(fd, buf, sizeof buf)) > 0) {
+    while ((bytes = sus_read(_, buf, sizeof buf)) > 0) {
         const char* p = (char[]){0}, * const pe = p + 1;
         fsm_exec(p, pe);
     }
@@ -115,7 +115,7 @@ int n_fsm_frontend_timer() {
     void coro(void* a) {
         ssize_t bytes;
         unsigned char buf[8];
-        while ((bytes = sus_read(fd, buf, sizeof buf)) > 0) {
+        while ((bytes = sus_read(_, buf, sizeof buf)) > 0) {
             const char* p = (char[]){0}, * const pe = p + 1;
             fsm_exec(p, pe);
         }
