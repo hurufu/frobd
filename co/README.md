@@ -15,6 +15,8 @@ tasks have are use-case specific and this avoids a lot of problems.
 I've considered a lot of alternatives, they are all too fat: e.g. [pth][2],
 [qemu][3], etc.
 
+I've used and idea of a special channel for `Waitmsg` events from [Plan 9][4].
+
 Also interesting to read:
 
   * [Computer multitasking](https://en.wikipedia.org/wiki/Computer_multitasking)
@@ -27,3 +29,4 @@ Also interesting to read:
 [1]: https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1364r0.pdf "Fibers under the magnifying glass"
 [2]: https://www.gnu.org/software/pth/pth-manual.html "GNU Portable Threads"
 [3]: https://gsb16.github.io/qemu/qemu/coroutine.html "QEMU coroutine implementation"
+[4]: https://9fans.github.io/plan9port/man/man3/thread.html
