@@ -16,7 +16,7 @@ int main() {
             .stack_size = 0,
             .entry = (sus_entry)sus_io_loop,
             .args = &(struct sus_args_io_loop){
-                .timeout = -1,
+                .timeout = 3,
                 .s6_notification_fd = 1,
                 .routines = 2
             }

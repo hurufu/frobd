@@ -6,12 +6,6 @@
 
 enum ioset { IOSET_READ, IOSET_WRITE, IOSET_OOB };
 
-struct iowork {
-    int id;
-    size_t size;
-    void* data;
-};
-
 typedef int (* sus_entry)(void*);
 
 struct sus_coroutine_reg {
@@ -27,16 +21,11 @@ struct sus_args_io_loop {
     unsigned routines;
 };
 
-
-int sus_io_loop(struct sus_args_io_loop* args);
-void sus_lend(int ch, size_t size, void* data);
-
-void sus_borrow_any(struct iowork*);
-void sus_borrow_any_confirm(int id);
-
-ssize_t sus_borrow(int id, void** value);
-
-// Dual of sus_borrow
-void sus_return(const int id);
+ssize_t sus_read(int fd, void* data, size_t size) __attribute__((nonnull(2)));
+ssize_t sus_write(int fd, void* data, size_t size) __attribute__((nonnull(2)));
+int sus_io_loop(struct sus_args_io_loop* args) __attribute__((nonnull(1)));
+void sus_lend(uint8_t ch, size_t size, void* data) __attribute__((nonnull(3)));
+ssize_t sus_borrow(uint8_t id, void** value) __attribute__((nonnull(2)));
+void sus_return(uint8_t id, const void* data, size_t size);
 
 int sus_runall(size_t s, struct sus_coroutine_reg (* c)[s]) __attribute__((nonnull (2)));

@@ -45,7 +45,7 @@ static int cs;
 
 %% write data;
 
-#if 0
+/*
 static bool is_idempotent(const char* const msg) {
     switch (msg[5]) {
         case 'T':
@@ -54,7 +54,7 @@ static bool is_idempotent(const char* const msg) {
     }
     return false;
 }
-#endif
+*/
 
 static int fsm_exec(const char* p, const char* const pe) {
     char acknak;
@@ -85,20 +85,20 @@ int fsm_frontend_foreign(struct args_frontend_foreign* const a) {
 
 int fsm_frontend_internal(struct args_frontend_internal* const a) {
     (void)a;
-#   if 0
+/*
     ssize_t bytes;
     const char* msg;
     while ((bytes = sus_lend(_, &msg, 0)) > 0) {
         const char* p = (char[]){is_idempotent(msg) ? 0x0A : 0x0D}, * const pe = p + 1;
         fsm_exec(p, pe);
     }
-#   endif
+*/
     return -1;
 }
 
 int fsm_frontend_timer(struct args_frontend_timer* const a) {
     (void)a;
-#   if 0
+/*
     const int fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
     ssize_t bytes;
     unsigned char buf[8];
@@ -106,12 +106,12 @@ int fsm_frontend_timer(struct args_frontend_timer* const a) {
         const char* p = (char[]){0}, * const pe = p + 1;
         fsm_exec(p, pe);
     }
-#   endif
+*/
     return -1;
 }
 
 int n_fsm_frontend_timer() {
-#   if 0
+/*
     void coro(void* a) {
         ssize_t bytes;
         unsigned char buf[8];
@@ -122,6 +122,6 @@ int n_fsm_frontend_timer() {
         return -1;
     }
     coro_construct(32, &coro, NULL);
-#   endif
+*/
     return -1;
 }

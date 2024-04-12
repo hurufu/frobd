@@ -36,7 +36,7 @@
     action Send {
         const int out = 0;
         LOGDX("wireformat: Lending frame to % 2d % 2zd %p", out, bytes, buf);
-        sus_lend(4, bytes, buf);
+        //sus_lend(4, bytes, buf);
     }
 
     frame = stx @LRC_Init ((any-etx) @LRC_Byte >Frame_Start) ((any-etx) @LRC_Byte )* (etx @LRC_Byte) any @LRC_Check @Send;
@@ -54,15 +54,17 @@ int fsm_wireformat(void*) {
     volatile int cs;
     unsigned char* p = buf, * pe = p;
     %% write init;
-    (void)pe, (void)bytes, (void)lrc, (void)start, (void)end;
+    (void)lrc, (void)start, (void)end;
     while (true) {
-        sus_lend(3, sizeof buf, buf);
+        bytes = sus_read(STDIN_FILENO, buf, sizeof buf);
+        if (bytes <= 0)
+            break;
         LOGDXP(char tmp[4*bytes], "→ % 4zd %s", bytes, PRETTY(buf, buf + bytes, tmp));
         pe = buf + bytes;
         %% write exec;
         LOGDX("Bytes processed");
     }
     close(STDIN_FILENO);
-    LOGWX("STDIN closed. FSM state: current/entry/error/final %d/%d/%d/%d", cs, wireformat_en_main, wireformat_error, wireformat_first_final);
+    LOGWX("STDIN closed: %m. FSM state: current/entry/error/final %d/%d/%d/%d", cs, wireformat_en_main, wireformat_error, wireformat_first_final);
     return cs == wireformat_error ? -1 : 0;
 }

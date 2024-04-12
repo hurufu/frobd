@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 struct coro_stuff {
     struct coro_stack stack;
@@ -19,8 +20,15 @@ union fdset {
     };
 };
 
+struct iowork {
+    size_t size;
+    void* data;
+    bool borrowed;
+};
+
 static struct coro_context s_end;
 static struct coro_context_ring* s_current;
+static struct iowork s_iow[UINT8_MAX];
 
 static struct fdsets {
     union fdset scheduled, active;
@@ -30,7 +38,7 @@ static void suspend() {
     coro_transfer(s_current->ctx, &s_end);
 }
 
-static void suspend_until_active(const int fd, const int set) {
+static void suspend_until_active(const int fd, const enum ioset set) {
     while (!FD_ISSET(fd, &s_iop.active.a[set])) {
         FD_SET(fd, &s_iop.scheduled.a[set]);
         suspend();
@@ -38,26 +46,45 @@ static void suspend_until_active(const int fd, const int set) {
 }
 
 ssize_t sus_write(const int fd, void* const data, const size_t size) {
-    suspend_until_active(fd, 1);
+    suspend_until_active(fd, IOSET_WRITE);
     return write(fd, data, size);
 }
 
 ssize_t sus_read(const int fd, void* const data, const size_t size) {
-    suspend_until_active(fd, 0);
+    suspend_until_active(fd, IOSET_READ);
     return read(fd, data, size);
 }
 
-void sus_lend(const int id, const size_t size, void* const data) {
-    (void)id, (void)size, (void)data;
+void sus_lend(const uint8_t id, const size_t size, void* const data) {
+    assert(data != NULL);
+    assert(!s_iow[id].borrowed);
+    assert(s_iow[id].data == NULL);
+    assert(s_iow[id].size == 0);
+    s_iow[id] = (struct iowork){ .data = data, .size = size };
+    while (s_iow[id].data != NULL)
+        suspend();
+    assert(s_iow[id].data == NULL);
+    assert(s_iow[id].size == 0);
 }
 
-ssize_t sus_borrow(const int id, void** const data) {
-    (void)id, (void)data;
-    return -1;
+ssize_t sus_borrow(const uint8_t id, void** const data) {
+    assert(data != NULL);
+    assert(!s_iow[id].borrowed);
+    while (s_iow[id].data == NULL)
+        suspend();
+    s_iow[id].borrowed = true;
+    *data = s_iow[id].data;
+    return s_iow[id].size;
 }
 
-void sus_return(const int id) {
-    (void)id;
+void sus_return(const uint8_t id, const void* const data, const size_t size) {
+    assert(data != NULL);
+    assert(s_iow[id].borrowed);
+    assert(s_iow[id].data != NULL);
+    assert(s_iow[id].data == data);
+    assert(s_iow[id].size == size);
+    s_iow[id] = (struct iowork){};
+    suspend();
 }
 
 // Transfer to scheduler and forget about current coroutine
