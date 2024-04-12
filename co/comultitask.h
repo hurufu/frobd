@@ -22,7 +22,7 @@ struct sus_args_io_loop {
 };
 
 ssize_t sus_read(int fd, void* data, size_t size) __attribute__((nonnull(2)));
-ssize_t sus_write(int fd, void* data, size_t size) __attribute__((nonnull(2)));
+ssize_t sus_write(int fd, const void* data, size_t size) __attribute__((nonnull(2)));
 int sus_io_loop(struct sus_args_io_loop* args) __attribute__((nonnull(1)));
 void sus_lend(uint8_t ch, size_t size, void* data) __attribute__((nonnull(3)));
 ssize_t sus_borrow(uint8_t id, void** value) __attribute__((nonnull(2)));

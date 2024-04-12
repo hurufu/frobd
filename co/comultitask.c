@@ -47,7 +47,7 @@ static void suspend_until_active(const int fd, const enum ioset set) {
     }
 }
 
-ssize_t sus_write(const int fd, void* const data, const size_t size) {
+ssize_t sus_write(const int fd, const void* const data, const size_t size) {
     suspend_until_active(fd, IOSET_WRITE);
     return write(fd, data, size);
 }
