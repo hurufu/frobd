@@ -2,6 +2,7 @@
 #include "contextring.h"
 #include "../coro/coro.h"
 #include "../utils.h"
+#include "../evloop.h"
 #include <assert.h>
 #include <string.h>
 #include <unistd.h>
@@ -11,66 +12,52 @@ struct coro_stuff {
     struct coro_context ctx;
 };
 
+union fdset {
+    fd_set a[3];
+    struct {
+        fd_set r, w, e;
+    };
+};
+
 static struct coro_context s_end;
 static struct coro_context_ring* s_current;
-static struct iowork s_work; // TODO: Replace with a linked list of iowork
+
+static struct fdsets {
+    union fdset scheduled, active;
+} s_iop;
 
 static void suspend() {
     coro_transfer(s_current->ctx, &s_end);
 }
 
-void sus_lend(const int id, const size_t size, void* const data) {
-    assert(data);
-    // Wait for until s_work is free
-    while (s_work.id != 0)
+static void suspend_until_active(const int fd, const int set) {
+    while (!FD_ISSET(fd, &s_iop.active.a[set])) {
+        FD_SET(fd, &s_iop.scheduled.a[set]);
         suspend();
-    // Publish my data
-    s_work = (struct iowork){ .id = id, .size = size, .data = data };
-    // Wait until data is borrowed
-    while (s_work.id != 0)
-        suspend();
-    // Wait until data is returned
-    while (s_work.id != id)
-        suspend();
-    s_work = (struct iowork){};
-}
-
-void sus_borrow_any(struct iowork* const w) {
-    static bool repeated_call = false;
-    assert(w);
-    // Wait until there is something published
-    while (s_work.id == 0 && !repeated_call) {
-        suspend();
-        repeated_call = true;
     }
-    repeated_call = false;
-    *w = s_work;
 }
 
-void sus_borrow_any_confirm(const int id) {
-    assert(id == s_work.id);
-    // Free-up space for a new work
-    s_work = (struct iowork){};
+ssize_t sus_write(const int fd, void* const data, const size_t size) {
+    suspend_until_active(fd, 1);
+    return write(fd, data, size);
+}
+
+ssize_t sus_read(const int fd, void* const data, const size_t size) {
+    suspend_until_active(fd, 0);
+    return read(fd, data, size);
+}
+
+void sus_lend(const int id, const size_t size, void* const data) {
+    (void)id, (void)size, (void)data;
 }
 
 ssize_t sus_borrow(const int id, void** const data) {
-    assert(data);
-    struct iowork w;
-    do {
-        sus_borrow_any(&w);
-    } while (w.id != id);
-    *data = s_work.data;
-    const ssize_t size = s_work.size;
-    sus_borrow_any_confirm(id);
-    return size;
+    (void)id, (void)data;
+    return -1;
 }
 
 void sus_return(const int id) {
-    assert(id == s_work.id);
-    s_work = (struct iowork){ .id = id };
-    // Wait until work was returned
-    while (s_work.id != 0)
-        suspend();
+    (void)id;
 }
 
 // Transfer to scheduler and forget about current coroutine
@@ -88,6 +75,21 @@ static void starter(struct sus_coroutine_reg* const reg) {
     sus_exit();
 }
 
+int sus_io_loop(struct sus_args_io_loop* const args) {
+    io_wait_f* const iowait = get_io_wait(args->timeout);
+    struct io_params iop = {
+        .maxfd = 10,
+        .deadline = comp_deadline(args->timeout)
+    };
+    do {
+        s_iop = (struct fdsets){ .active = { .r = iop.set[0], .w = iop.set[1], .e = iop.set[2] }};
+        suspend();
+        for (int i = 0; i < 3; i++)
+            iop.set[i] = s_iop.scheduled.a[i];
+    } while (iowait(&iop) > 0);
+    return -1;
+}
+
 int sus_runall(const size_t length, struct sus_coroutine_reg (* const h)[length]) {
     assert(h);
     int ret = -1;
@@ -103,7 +105,6 @@ int sus_runall(const size_t length, struct sus_coroutine_reg (* const h)[length]
     for (; s_current; s_current = s_current->next)
         coro_transfer(&s_end, s_current->ctx);
     ret = 0;
-    assert(!s_current);
 end:
     for (size_t i = 0; i < length; i++) {
         coro_destroy(&stuff[i].ctx);

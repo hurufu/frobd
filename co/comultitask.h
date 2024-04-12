@@ -21,6 +21,14 @@ struct sus_coroutine_reg {
     void* const args;
 };
 
+struct sus_args_io_loop {
+    int s6_notification_fd;
+    time_t timeout;
+    unsigned routines;
+};
+
+
+int sus_io_loop(struct sus_args_io_loop* args);
 void sus_lend(int ch, size_t size, void* data);
 
 void sus_borrow_any(struct iowork*);

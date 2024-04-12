@@ -9,7 +9,7 @@ struct io_params {
     const struct timeval deadline;
 };
 
-typedef int io_wait_f(struct io_params*);
+typedef int io_wait_f(struct io_params*) __attribute__((nonnull(1)));
 
 struct timeval comp_deadline(time_t relative);
 
