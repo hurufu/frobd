@@ -23,7 +23,9 @@ union fdset {
 struct iowork {
     size_t size;
     void* data;
-    bool borrowed;
+#ifndef NDEBUG
+    bool borrowed; // This field is need exclusively for assertions
+#endif
 };
 
 static struct coro_context s_end;
@@ -72,7 +74,9 @@ ssize_t sus_borrow(const uint8_t id, void** const data) {
     assert(!s_iow[id].borrowed);
     while (s_iow[id].data == NULL)
         suspend();
+#   ifndef NDEBUG
     s_iow[id].borrowed = true;
+#   endif
     *data = s_iow[id].data;
     return s_iow[id].size;
 }
