@@ -39,7 +39,7 @@ static struct fdsets {
 } s_iop;
 
 static void suspend(const char* const method) {
-    LOGDX("%s at %s", s_current->name, method);
+    LOGDX("%s suspended at %s", s_current->name, method);
     assert(s_current->visited < 10); // EDEADLK
     s_current->visited++;
     coro_transfer(s_current->ctx, &s_end);
@@ -133,7 +133,6 @@ void sus_return(const uint8_t id, const void* const data, const size_t size) {
     assert(s_iow[id].data == data);
     assert(s_iow[id].size == size);
     s_iow[id] = (struct iowork){};
-    suspend("return");
     s_current->visited = 0;
 }
 
@@ -148,9 +147,9 @@ static inline void sus_exit(void) {
 
 __attribute__((noreturn))
 static void starter(struct sus_coroutine_reg* const reg) {
-    LOGDX("Task started %s", reg->name);
+    LOGDX("%s task started", reg->name);
     reg->result = reg->entry(reg->args);
-    LOGDX("Task ended %s", reg->name);
+    LOGDX("%s task ended", reg->name);
     sus_exit();
 }
 
