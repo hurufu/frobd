@@ -19,7 +19,6 @@ struct sus_coroutine_reg {
 struct sus_args_io_loop {
     int s6_notification_fd;
     time_t timeout;
-    unsigned routines;
 };
 
 ssize_t sus_read(int fd, void* data, size_t size) __attribute__((nonnull(2)));

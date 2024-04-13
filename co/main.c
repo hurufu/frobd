@@ -25,8 +25,7 @@ int main() {
             .entry = (sus_entry)sus_io_loop,
             .args = &(struct sus_args_io_loop){
                 .timeout = 3,
-                .s6_notification_fd = 1,
-                .routines = 2
+                .s6_notification_fd = 1
             }
         }
     };
