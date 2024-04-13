@@ -3,6 +3,7 @@
 #include "../utils.h"
 #include "../log.h"
 #include <unistd.h>
+#include <fcntl.h>
 
 %%{
     machine wireformat;
@@ -43,7 +44,7 @@ static void set_nonblocking(const int fd) {
     const int flags = fcntl(fd, F_GETFL, 0);
     if (flags == -1)
         EXITF("fcntl F_GETFL");
-    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
         EXITF("fcntl F_SETFL O_NONBLOCK");
 }
 
@@ -51,24 +52,21 @@ int fsm_wireformat(void*) {
     unsigned char* start = NULL, * end = NULL;
     (void)start, (void)end;
     char lrc;
-    ssize_t bytes = 0;
-    unsigned char buf[1024] = {};
+    ssize_t bytes;
+    unsigned char buf[1024];
     int cs;
     unsigned char* p = buf, * pe = p;
     %% write init;
     set_nonblocking(STDIN_FILENO);
-    while (true) {
-        bytes = sus_read(STDIN_FILENO, buf, sizeof buf);
-        if (bytes <= 0)
-            break;
+    while ((bytes = sus_read(STDIN_FILENO, buf, sizeof buf)) > 0) {
         LOGDXP(char tmp[4*bytes], "→ % 4zd %s", bytes, PRETTY(buf, buf + bytes, tmp));
         pe = buf + bytes;
         %% write exec;
     }
     if (bytes < 0)
-        LOGW("stdin closed");
+        LOGE("read");
+    close(STDIN_FILENO);
     LOGIX("FSM state: current/entry/error/final %d/%d/%d/%d", cs, wireformat_en_main, wireformat_error, wireformat_first_final);
     sus_disable(0);
-    close(STDIN_FILENO);
     return cs == wireformat_error ? -1 : 0;
 }

@@ -4,7 +4,6 @@
 #include "frob.h"
 #include <time.h>
 #include <unistd.h>
-#include <fcntl.h>
 
 int main() {
     struct sus_coroutine_reg tasks[] = {
@@ -15,6 +14,12 @@ int main() {
             .args = NULL
         },
         {
+            .name = "frontend",
+            .stack_size = 0,
+            .entry = (sus_entry)fsm_frontend_foreign,
+            .args = &(struct args_frontend_foreign){}
+        },
+        {
             .name = "io_loop",
             .stack_size = 0,
             .entry = (sus_entry)sus_io_loop,
@@ -23,12 +28,6 @@ int main() {
                 .s6_notification_fd = 1,
                 .routines = 2
             }
-        },
-        {
-            .name = "frontend",
-            .stack_size = 0,
-            .entry = (sus_entry)fsm_frontend_foreign,
-            .args = &(struct args_frontend_foreign){}
         }
     };
     if (sus_runall(lengthof(tasks), &tasks) != 0)

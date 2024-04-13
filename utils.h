@@ -69,6 +69,7 @@
 #define xrread(...) XCALL(rread, __VA_ARGS__)
 #define xwrite(...) XCALL(write, __VA_ARGS__)
 #define xfclose(...) XCALL(fclose, true, __VA_ARGS__)
+#define xclose(...) XCALL(close, __VA_ARGS__)
 
 #ifdef NDEBUG
 #   define XCALL(Syscall, ...) syscall_exitf(#Syscall, Syscall(__VA_ARGS__))

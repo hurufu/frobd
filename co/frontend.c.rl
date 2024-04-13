@@ -24,15 +24,15 @@ static int cs;
     EFFECTFUL = 0x0D;
 
     action Confirm {
-        LOGDX("frontend: Confirm");
+        LOGDX("Confirm");
         acknak = 0x06;
     }
     action Reject {
-        LOGDX("frontend: Reject");
+        LOGDX("Reject");
         acknak = 0x15;
     }
     action Send {
-        LOGDX("frontend: Send");
+        LOGDX("Send");
         (void)acknak;
         //sus_write(1, &acknak, 1);
     }
@@ -74,11 +74,9 @@ int fsm_frontend_foreign(struct args_frontend_foreign* const a) {
     ssize_t bytes;
     const char* p;
     while ((bytes = sus_borrow(0, (void**)&p)) >= 0) {
-        LOGDX("Borrowed frame from 0");
         const char* const pe = p + 1;
         fsm_exec(p, pe);
         sus_return(0, p, bytes);
-        LOGDX("Returned frame on 0");
     }
     if (bytes < 0)
         LOGE("Closing fronted");

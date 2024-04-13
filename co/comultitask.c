@@ -90,8 +90,13 @@ ssize_t sus_borrow(const uint8_t id, void** const data) {
         errno = EIDRM;
         return -1;
     }
-    while (s_iow[id].data == NULL)
+    while (s_iow[id].data == NULL) {
+        if (s_iow[id].disabled) {
+            errno = EIDRM;
+            return -1;
+        }
         suspend();
+    }
 #   ifndef NDEBUG
     s_iow[id].borrowed = true;
 #   endif
