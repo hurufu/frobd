@@ -1,6 +1,7 @@
 #include "comultitask.h"
 #include "frob.h"
 #include "../log.h"
+#include "../utils.h"
 #include <stdbool.h>
 #include <sys/timerfd.h>
 #include <unistd.h>
@@ -24,15 +25,13 @@ static int cs;
     EFFECTFUL = 0x0D;
 
     action Confirm {
-        LOGDX("Confirm");
         acknak = 0x06;
     }
     action Reject {
-        LOGDX("Reject");
         acknak = 0x15;
     }
     action Send {
-        LOGDX("Send %#04x", acknak);
+        LOGDXP(char tmp[4*1], "← % 4zd %s", 1, PRETTY(&acknak, &acknak + 1, tmp));
         if (sus_write(STDOUT_FILENO, &acknak, 1) != 1) {
             LOGE("write");
             fbreak;
@@ -73,7 +72,6 @@ void fsm_frontend_init() {
 
 int fsm_frontend_foreign(struct args_frontend_foreign* const a) {
     (void)a;
-    //char acknak = 0x00;
     ssize_t bytes;
     const char* p;
     while ((bytes = sus_borrow(0, (void**)&p)) >= 0) {

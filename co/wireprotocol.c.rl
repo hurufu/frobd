@@ -18,10 +18,8 @@
     }
     action LRC_Check {
         if (lrc != fc) {
-            LOGDX("lend NAK");
-            sus_lend(0, 1, "\x15");
+            sus_lend(0, 1, "\x03");
         } else {
-            LOGDX("lend: ACK");
             sus_lend(0, fpc - start, buf);
         }
     }
