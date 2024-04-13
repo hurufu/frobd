@@ -93,6 +93,9 @@
 // Input character type, can be changed to something else
 typedef uint8_t input_t;
 
+
+void set_nonblocking(int fd);
+
 byte_t hex2nibble(char h);
 byte_t unhex(const char h[static 2]);
 

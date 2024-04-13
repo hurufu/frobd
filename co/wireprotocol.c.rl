@@ -35,14 +35,6 @@
 
 %% write data;
 
-static void set_nonblocking(const int fd) {
-    const int flags = fcntl(fd, F_GETFL, 0);
-    if (flags == -1)
-        EXITF("fcntl F_GETFL");
-    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
-        EXITF("fcntl F_SETFL O_NONBLOCK");
-}
-
 int fsm_wireformat(void*) {
     unsigned char* start = NULL;
     char lrc;

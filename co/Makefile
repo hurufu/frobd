@@ -4,6 +4,7 @@ LIB_SOURCES       := utils.c evloop.c coro.c log.c
 SOURCES           := comultitask.c main.c contextring.c $(GENERATED_SOURCES) $(LIB_SOURCES)
 OBJECTS           := $(SOURCES:.c=.o)
 INDEXABLE_FILES   := comultitask.h frob.h contextring.h $(SOURCES)
+CPPFLAGS          := -D_FORTIFY_SOURCE=2 -D_GLIBCXX_ASSERTIONS
 CFLAGS            := -Wall -Wextra
 CFLAGS            += -Og -ggdb3 -grecord-gcc-switches -Wformat -Werror=format-security
 CFLAGS            += -fvar-tracking-assignments -fasynchronous-unwind-tables

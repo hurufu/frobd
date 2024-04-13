@@ -39,7 +39,7 @@ static struct fdsets {
 } s_iop;
 
 static void suspend(const char* const method) {
-    LOGDX("%s %s", s_current->name, method);
+    LOGDX("%s at %s", s_current->name, method);
     assert(s_current->visited < 10); // EDEADLK
     s_current->visited++;
     coro_transfer(s_current->ctx, &s_end);

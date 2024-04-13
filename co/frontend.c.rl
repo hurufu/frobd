@@ -33,7 +33,7 @@ static int cs;
     }
     action Send {
         LOGDX("Send %#04x", acknak);
-        if (sus_write(1, &acknak, 1) != 1) {
+        if (sus_write(STDOUT_FILENO, &acknak, 1) != 1) {
             LOGE("write");
             fbreak;
         }
@@ -67,6 +67,7 @@ static int fsm_exec(const char* p, const char* const pe) {
 __attribute__((constructor))
 void fsm_frontend_init() {
     (void)frontend_en_main, (void)frontend_error, (void)frontend_first_final;
+    set_nonblocking(STDOUT_FILENO);
     %% write init;
 }
 
