@@ -14,7 +14,7 @@ CFLAGS            += -fstack-protector-all
 CFLAGS            += -Wno-implicit-fallthrough
 CFLAGS            += -gz=zlib -fdiagnostics-color=always -flto -ffat-lto-objects
 #CFLAGS            += -fanalyzer
-CPPFLAGS          := -DCORO_PTHREAD
+#CPPFLAGS          := -DCORO_PTHREAD
 #CPPFLAGS          += -DCORO_USE_VALGRIND
 #CPPFLAGS          := -DNO_LOGS_ON_STDERR
 LDFLAGS           := -Wl,-z,relro,-z,now,-z,defs
