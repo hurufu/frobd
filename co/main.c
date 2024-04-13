@@ -6,21 +6,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-int set_nonblocking(int fd) {
-    int flags = fcntl(fd, F_GETFL, 0);
-    if (flags == -1) {
-        LOGE("fcntl F_GETFL");
-        return -1;
-    }
-
-    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
-        LOGE("fcntl F_SETFL O_NONBLOCK");
-        return -1;
-    }
-
-    return 0;
-}
-
 int main() {
     struct sus_coroutine_reg tasks[] = {
         {
@@ -46,7 +31,6 @@ int main() {
             .args = &(struct args_frontend_foreign){}
         }
     };
-    set_nonblocking(STDIN_FILENO);
     if (sus_runall(lengthof(tasks), &tasks) != 0)
         EXITF("Can't start");
     int ret = 0;
