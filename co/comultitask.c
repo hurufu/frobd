@@ -171,14 +171,8 @@ int sus_io_loop(struct sus_args_io_loop* const args) {
         LOGE("iowait failed");
     else if (ret == 0)
         LOGI("iowait done");
-
-    for (int i = 0; i < 3; i++)
-        for (unsigned short j = 0; j < iop.maxfd; j++)
-            if (FD_ISSET(j, &s_iop.active.a[i])) {
-                LOGWX("Closing %hu at %d", j, i);
-                close(j);
-            }
     close(0);
+    close(1);
     s_io_surrended = true;
     return -1;
 }
