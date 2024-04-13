@@ -1,13 +1,14 @@
 #include "contextring.h"
 #include "../utils.h"
 
-void insert(struct coro_context_ring** const cursor, struct coro_context* const ctx) {
+void insert(struct coro_context_ring** const cursor, struct coro_context* const ctx, const char* const name) {
     assert(ctx);
     assert(cursor);
     struct coro_context_ring* const new = xmalloc(sizeof (struct coro_context_ring));
     memset(new, 0, sizeof *new);
     if (*cursor) {
         const struct coro_context_ring tmp = {
+            .name = name,
             .ctx = ctx,
             .next = (*cursor)->next,
             .prev = *cursor
@@ -18,6 +19,7 @@ void insert(struct coro_context_ring** const cursor, struct coro_context* const 
         *cursor = new;
     } else {
         const struct coro_context_ring tmp = {
+            .name = name,
             .ctx = ctx,
             .next = new,
             .prev = new

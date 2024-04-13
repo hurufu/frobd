@@ -32,9 +32,11 @@ static int cs;
         acknak = 0x15;
     }
     action Send {
-        LOGDX("Send");
-        (void)acknak;
-        //sus_write(1, &acknak, 1);
+        LOGDX("Send %#04x", acknak);
+        if (sus_write(1, &acknak, 1) != 1) {
+            LOGE("write");
+            fbreak;
+        }
     }
 
     foreign = (OK @Confirm | NAK @Reject) @Send;

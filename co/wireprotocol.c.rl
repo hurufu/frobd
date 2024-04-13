@@ -18,23 +18,18 @@
     }
     action LRC_Check {
         if (lrc != fc) {
-            LOGDX("LRC NOK");
-            fbreak;
+            LOGDX("lend NAK");
+            sus_lend(0, 1, "\x15");
         } else {
-            end = fpc;
-            LOGDX("LRC OK");
+            LOGDX("lend: ACK");
+            sus_lend(0, fpc - start, buf);
         }
     }
     action Frame_Start {
         start = fpc;
     }
-    action Send {
-        const int out = 0;
-        LOGDX("Lending frame to % 2d % 2zd %p", out, bytes, buf);
-        sus_lend(out, bytes, buf);
-    }
 
-    frame = stx @LRC_Init ((any-etx) @LRC_Byte >Frame_Start) ((any-etx) @LRC_Byte )* (etx @LRC_Byte) any @LRC_Check @Send;
+    frame = stx @LRC_Init ((any-etx) @LRC_Byte >Frame_Start) ((any-etx) @LRC_Byte )* (etx @LRC_Byte) any @LRC_Check;
     main := ((any-stx)* frame)*;
 }%%
 
@@ -49,8 +44,7 @@ static void set_nonblocking(const int fd) {
 }
 
 int fsm_wireformat(void*) {
-    unsigned char* start = NULL, * end = NULL;
-    (void)start, (void)end;
+    unsigned char* start = NULL;
     char lrc;
     ssize_t bytes;
     unsigned char buf[1024];

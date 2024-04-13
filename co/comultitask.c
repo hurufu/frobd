@@ -32,36 +32,57 @@ struct iowork {
 static struct coro_context s_end;
 static struct coro_context_ring* s_current;
 static struct iowork s_iow[UINT8_MAX];
+static bool s_io_surrended;
 
 static struct fdsets {
     union fdset scheduled, active;
 } s_iop;
 
-static void suspend() {
+static void suspend(const char* const method) {
+    LOGDX("%s %s", s_current->name, method);
     assert(s_current->visited < 10); // EDEADLK
     s_current->visited++;
     coro_transfer(s_current->ctx, &s_end);
 }
 
+static const char* ioset_to_method(const enum ioset set) {
+    switch (set) {
+        case IOSET_READ: return "read";
+        case IOSET_WRITE: return "write";
+        case IOSET_OOB: return "oob";
+    }
+    return NULL;
+}
+
 static void suspend_until_active(const int fd, const enum ioset set) {
+    if (s_io_surrended) {
+        LOGEX("I/O imposible");
+        return;
+    }
     while (!FD_ISSET(fd, &s_iop.active.a[set])) {
         FD_SET(fd, &s_iop.scheduled.a[set]);
-        suspend();
+        suspend(ioset_to_method(set));
     }
 }
 
 ssize_t sus_write(const int fd, const void* const data, const size_t size) {
+again:
     suspend_until_active(fd, IOSET_WRITE);
+    const ssize_t r = write(fd, data, size);
+    if (r < 0 && errno == EAGAIN)
+        goto again;
     s_current->visited = 0;
-    return write(fd, data, size);
+    return r;
 }
 
 ssize_t sus_read(const int fd, void* const data, const size_t size) {
 again:
     suspend_until_active(fd, IOSET_READ);
     const ssize_t r = read(fd, data, size);
-    if (r < 0 && errno == EAGAIN)
+    if (r < 0 && errno == EAGAIN) {
+        LOGD("read");
         goto again;
+    }
     s_current->visited = 0;
     return r;
 }
@@ -77,7 +98,7 @@ void sus_lend(const uint8_t id, const size_t size, void* const data) {
     assert(s_iow[id].size == 0);
     s_iow[id] = (struct iowork){ .data = data, .size = size };
     while (s_iow[id].data != NULL)
-        suspend();
+        suspend("lend");
     assert(s_iow[id].data == NULL);
     assert(s_iow[id].size == 0);
     s_current->visited = 0;
@@ -95,7 +116,7 @@ ssize_t sus_borrow(const uint8_t id, void** const data) {
             errno = EIDRM;
             return -1;
         }
-        suspend();
+        suspend("borrow");
     }
 #   ifndef NDEBUG
     s_iow[id].borrowed = true;
@@ -112,7 +133,7 @@ void sus_return(const uint8_t id, const void* const data, const size_t size) {
     assert(s_iow[id].data == data);
     assert(s_iow[id].size == size);
     s_iow[id] = (struct iowork){};
-    suspend();
+    suspend("return");
     s_current->visited = 0;
 }
 
@@ -142,7 +163,7 @@ int sus_io_loop(struct sus_args_io_loop* const args) {
     int ret;
     do {
         s_iop = (struct fdsets){ .active = { .r = iop.set[0], .w = iop.set[1], .e = iop.set[2] }};
-        suspend();
+        suspend("iowait");
         for (int i = 0; i < 3; i++)
             iop.set[i] = s_iop.scheduled.a[i];
     } while ((ret = iowait(&iop)) > 0);
@@ -157,6 +178,8 @@ int sus_io_loop(struct sus_args_io_loop* const args) {
                 LOGWX("Closing %hu at %d", j, i);
                 close(j);
             }
+    close(0);
+    s_io_surrended = true;
     return -1;
 }
 
@@ -171,7 +194,7 @@ int sus_runall(const size_t length, struct sus_coroutine_reg (* const h)[length]
         coro_create(&stuff[i].ctx, (coro_func)starter, &(*h)[i], stuff[i].stack.sptr, stuff[i].stack.ssze);
     }
     for (size_t i = 0; i < length; i++)
-        insert(&s_current, &stuff[i].ctx);
+        insert(&s_current, &stuff[i].ctx, (*h)[i].name);
     for (; s_current; s_current = s_current ? s_current->next : NULL)
         coro_transfer(&s_end, s_current->ctx);
     ret = 0;
