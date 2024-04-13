@@ -24,8 +24,6 @@
             LOGDX("LRC OK");
         }
     }
-    action Log_Byte {
-    }
     action Frame_Start {
         start = fpc;
     }
@@ -36,21 +34,20 @@
     }
 
     frame = stx @LRC_Init ((any-etx) @LRC_Byte >Frame_Start) ((any-etx) @LRC_Byte )* (etx @LRC_Byte) any @LRC_Check @Send;
-    main := (((any-stx) @Log_Byte)* frame)*;
+    main := ((any-stx)* frame)*;
 }%%
 
 %% write data;
 
 int fsm_wireformat(void*) {
     unsigned char* start = NULL, * end = NULL;
-    (void)wireformat_en_main, (void)wireformat_error, (void)wireformat_first_final;
+    (void)start, (void)end;
     char lrc;
     ssize_t bytes = 0;
     unsigned char buf[1024] = {};
-    volatile int cs;
+    int cs;
     unsigned char* p = buf, * pe = p;
     %% write init;
-    (void)lrc, (void)start, (void)end;
     while (true) {
         bytes = sus_read(STDIN_FILENO, buf, sizeof buf);
         if (bytes <= 0)

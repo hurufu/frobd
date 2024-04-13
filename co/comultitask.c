@@ -48,17 +48,22 @@ static void suspend_until_active(const int fd, const enum ioset set) {
         FD_SET(fd, &s_iop.scheduled.a[set]);
         suspend();
     }
-    s_current->visited = 0;
 }
 
 ssize_t sus_write(const int fd, const void* const data, const size_t size) {
     suspend_until_active(fd, IOSET_WRITE);
+    s_current->visited = 0;
     return write(fd, data, size);
 }
 
 ssize_t sus_read(const int fd, void* const data, const size_t size) {
+again:
     suspend_until_active(fd, IOSET_READ);
-    return read(fd, data, size);
+    const ssize_t r = read(fd, data, size);
+    if (r < 0 && errno == EAGAIN)
+        goto again;
+    s_current->visited = 0;
+    return r;
 }
 
 void sus_disable(const uint8_t id) {
@@ -129,12 +134,24 @@ int sus_io_loop(struct sus_args_io_loop* const args) {
         .maxfd = 10,
         .deadline = comp_deadline(args->timeout)
     };
+    int ret;
     do {
         s_iop = (struct fdsets){ .active = { .r = iop.set[0], .w = iop.set[1], .e = iop.set[2] }};
         suspend();
         for (int i = 0; i < 3; i++)
             iop.set[i] = s_iop.scheduled.a[i];
-    } while (iowait(&iop) > 0);
+    } while ((ret = iowait(&iop)) > 0);
+    if (ret < 0)
+        LOGE("iowait failed");
+    else if (ret == 0)
+        LOGI("iowait done");
+
+    for (int i = 0; i < 3; i++)
+        for (unsigned short j = 0; j < iop.maxfd; j++)
+            if (FD_ISSET(j, &s_iop.active.a[i])) {
+                LOGWX("Closing %hu at %d", j, i);
+                close(j);
+            }
     return -1;
 }
 
