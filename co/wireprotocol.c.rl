@@ -10,32 +10,32 @@
     include frob_common "../common.rl";
 
     action LRC_Init {
-        LOGDX("wireformat: LRC Init");
+        LOGDX("LRC Init");
         lrc = 0;
     }
     action LRC_Byte {
-        LOGDX("wireformat: LRC Byte");
+        LOGDX("LRC Byte");
         lrc ^= fc;
     }
     action LRC_Check {
         if (lrc != fc) {
-            LOGDX("wireformat: LRC NOK");
+            LOGDX("LRC NOK");
             fbreak;
         } else {
             end = fpc;
-            LOGDX("wireformat: LRC OK");
+            LOGDX("LRC OK");
         }
     }
     action Log_Byte {
-        LOGDX("wireformat: Byte skipped");
+        LOGDX("Byte skipped");
     }
     action Frame_Start {
-        LOGDX("wireformat: Frame_Start");
+        LOGDX("Frame_Start");
         start = fpc;
     }
     action Send {
         const int out = 0;
-        LOGDX("wireformat: Lending frame to % 2d % 2zd %p", out, bytes, buf);
+        LOGDX("Lending frame to % 2d % 2zd %p", out, bytes, buf);
         //sus_lend(4, bytes, buf);
     }
 
@@ -46,7 +46,6 @@
 %% write data;
 
 int fsm_wireformat(void*) {
-    LOGDX("Start");
     unsigned char* start = NULL, * end = NULL;
     (void)wireformat_en_main, (void)wireformat_error, (void)wireformat_first_final;
     char lrc;
@@ -66,6 +65,6 @@ int fsm_wireformat(void*) {
         LOGDX("Bytes processed");
     }
     close(STDIN_FILENO);
-    LOGWX("Done. STDIN closed: %m. FSM state: current/entry/error/final %d/%d/%d/%d", cs, wireformat_en_main, wireformat_error, wireformat_first_final);
+    LOGWX("STDIN closed: %m. FSM state: current/entry/error/final %d/%d/%d/%d", cs, wireformat_en_main, wireformat_error, wireformat_first_final);
     return cs == wireformat_error ? -1 : 0;
 }

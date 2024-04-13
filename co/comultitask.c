@@ -108,12 +108,13 @@ static inline void sus_exit(void) {
 
 __attribute__((noreturn))
 static void starter(struct sus_coroutine_reg* const reg) {
+    LOGDX("Task started %s", reg->name);
     reg->result = reg->entry(reg->args);
+    LOGDX("Task ended %s", reg->name);
     sus_exit();
 }
 
 int sus_io_loop(struct sus_args_io_loop* const args) {
-    LOGDX("Start");
     io_wait_f* const iowait = get_io_wait(args->timeout);
     struct io_params iop = {
         .maxfd = 10,
@@ -125,7 +126,6 @@ int sus_io_loop(struct sus_args_io_loop* const args) {
         for (int i = 0; i < 3; i++)
             iop.set[i] = s_iop.scheduled.a[i];
     } while (iowait(&iop) > 0);
-    LOGDX("Done");
     return -1;
 }
 
