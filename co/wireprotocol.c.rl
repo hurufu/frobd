@@ -46,6 +46,7 @@
 %% write data;
 
 int fsm_wireformat(void*) {
+    LOGDX("Start");
     unsigned char* start = NULL, * end = NULL;
     (void)wireformat_en_main, (void)wireformat_error, (void)wireformat_first_final;
     char lrc;
@@ -65,6 +66,6 @@ int fsm_wireformat(void*) {
         LOGDX("Bytes processed");
     }
     close(STDIN_FILENO);
-    LOGWX("STDIN closed: %m. FSM state: current/entry/error/final %d/%d/%d/%d", cs, wireformat_en_main, wireformat_error, wireformat_first_final);
+    LOGWX("Done. STDIN closed: %m. FSM state: current/entry/error/final %d/%d/%d/%d", cs, wireformat_en_main, wireformat_error, wireformat_first_final);
     return cs == wireformat_error ? -1 : 0;
 }

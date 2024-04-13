@@ -37,6 +37,8 @@ static struct fdsets {
 } s_iop;
 
 static void suspend() {
+    assert(s_current->visited < 10);
+    s_current->visited++;
     coro_transfer(s_current->ctx, &s_end);
 }
 
@@ -45,6 +47,7 @@ static void suspend_until_active(const int fd, const enum ioset set) {
         FD_SET(fd, &s_iop.scheduled.a[set]);
         suspend();
     }
+    s_current->visited = 0;
 }
 
 ssize_t sus_write(const int fd, const void* const data, const size_t size) {
@@ -67,6 +70,7 @@ void sus_lend(const uint8_t id, const size_t size, void* const data) {
         suspend();
     assert(s_iow[id].data == NULL);
     assert(s_iow[id].size == 0);
+    s_current->visited = 0;
 }
 
 ssize_t sus_borrow(const uint8_t id, void** const data) {
@@ -78,6 +82,7 @@ ssize_t sus_borrow(const uint8_t id, void** const data) {
     s_iow[id].borrowed = true;
 #   endif
     *data = s_iow[id].data;
+    s_current->visited = 0;
     return s_iow[id].size;
 }
 
@@ -89,6 +94,7 @@ void sus_return(const uint8_t id, const void* const data, const size_t size) {
     assert(s_iow[id].size == size);
     s_iow[id] = (struct iowork){};
     suspend();
+    s_current->visited = 0;
 }
 
 // Transfer to scheduler and forget about current coroutine
@@ -107,6 +113,7 @@ static void starter(struct sus_coroutine_reg* const reg) {
 }
 
 int sus_io_loop(struct sus_args_io_loop* const args) {
+    LOGDX("Start");
     io_wait_f* const iowait = get_io_wait(args->timeout);
     struct io_params iop = {
         .maxfd = 10,
@@ -118,6 +125,7 @@ int sus_io_loop(struct sus_args_io_loop* const args) {
         for (int i = 0; i < 3; i++)
             iop.set[i] = s_iop.scheduled.a[i];
     } while (iowait(&iop) > 0);
+    LOGDX("Done");
     return -1;
 }
 
@@ -133,7 +141,7 @@ int sus_runall(const size_t length, struct sus_coroutine_reg (* const h)[length]
     }
     for (size_t i = 0; i < length; i++)
         insert(&s_current, &stuff[i].ctx);
-    for (; s_current; s_current = s_current->next)
+    for (; s_current; s_current = s_current ? s_current->next : NULL)
         coro_transfer(&s_end, s_current->ctx);
     ret = 0;
 end:

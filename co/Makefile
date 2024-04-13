@@ -5,11 +5,14 @@ SOURCES           := comultitask.c main.c contextring.c $(GENERATED_SOURCES) $(L
 OBJECTS           := $(SOURCES:.c=.o)
 INDEXABLE_FILES   := comultitask.h frob.h contextring.h $(SOURCES)
 CFLAGS            := -Wall -Wextra
-CFLAGS            += -Og -ggdb3 -grecord-gcc-switches -Wformat -Werror=format-security
-#CFLAGS            += -fvar-tracking-assignments -fasynchronous-unwind-tables
+CFLAGS            += -O0 -ggdb3 -grecord-gcc-switches -Wformat -Werror=format-security
+CFLAGS            += -fvar-tracking-assignments -fasynchronous-unwind-tables
+CFLAGS            += -fno-omit-frame-pointer
+CFLAGS            += -fno-inline
+CFLAGS            += -fstack-protector-all
 CFLAGS            += -Wno-implicit-fallthrough
 CFLAGS            += -gz=zlib -fdiagnostics-color=always -flto -ffat-lto-objects
-#CFLAGS            += -fanalyzer
+CFLAGS            += -fanalyzer
 CPPFLAGS          := -DCORO_PTHREAD
 #CPPFLAGS          += -DCORO_USE_VALGRIND
 #CPPFLAGS          := -DNO_LOGS_ON_STDERR

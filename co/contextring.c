@@ -5,6 +5,7 @@ void insert(struct coro_context_ring** const cursor, struct coro_context* const 
     assert(ctx);
     assert(cursor);
     struct coro_context_ring* const new = xmalloc(sizeof (struct coro_context_ring));
+    memset(new, 0, sizeof *new);
     if (*cursor) {
         const struct coro_context_ring tmp = {
             .ctx = ctx,

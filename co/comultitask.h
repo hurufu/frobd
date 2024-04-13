@@ -9,6 +9,7 @@ enum ioset { IOSET_READ, IOSET_WRITE, IOSET_OOB };
 typedef int (* sus_entry)(void*);
 
 struct sus_coroutine_reg {
+    const char* const name;
     const size_t stack_size;
     int result;
     const sus_entry entry;
