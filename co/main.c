@@ -23,21 +23,20 @@ int main() {
                 .routines = 2
             }
         },
-        /*
         {
             .name = "frontend",
             .stack_size = 0,
             .entry = (sus_entry)fsm_frontend_foreign,
             .args = &(struct args_frontend_foreign){}
         }
-        */
     };
     if (sus_runall(lengthof(tasks), &tasks) != 0)
         EXITF("Can't start");
+    int ret = 0;
     for (size_t i = 0; i < lengthof(tasks); i++) {
         LOGDX("task %zu returned % 2d (%s)", i, tasks[i].result, tasks[i].name);
         if (tasks[i].result)
-            return 100;
+            ret = 100;
     }
-    return 0;
+    return ret;
 }

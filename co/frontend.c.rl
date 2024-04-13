@@ -73,13 +73,15 @@ int fsm_frontend_foreign(struct args_frontend_foreign* const a) {
     //char acknak = 0x00;
     ssize_t bytes;
     const char* p;
-    while ((bytes = sus_borrow(3, (void**)&p)) >= 0) {
+    while ((bytes = sus_borrow(0, (void**)&p)) >= 0) {
         LOGDX("Borrowed frame from 0");
         const char* const pe = p + 1;
         fsm_exec(p, pe);
-        //sus_return(3);
+        sus_return(0, p, bytes);
         LOGDX("Returned frame on 0");
     }
+    if (bytes < 0)
+        LOGE("Closing fronted");
     return -1;
 }
 

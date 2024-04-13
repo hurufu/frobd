@@ -26,6 +26,7 @@ struct iowork {
 #ifndef NDEBUG
     bool borrowed; // This field is need exclusively for assertions
 #endif
+    bool disabled;
 };
 
 static struct coro_context s_end;
@@ -37,7 +38,7 @@ static struct fdsets {
 } s_iop;
 
 static void suspend() {
-    assert(s_current->visited < 10);
+    assert(s_current->visited < 10); // EDEADLK
     s_current->visited++;
     coro_transfer(s_current->ctx, &s_end);
 }
@@ -60,6 +61,10 @@ ssize_t sus_read(const int fd, void* const data, const size_t size) {
     return read(fd, data, size);
 }
 
+void sus_disable(const uint8_t id) {
+    s_iow[id].disabled = true;
+}
+
 void sus_lend(const uint8_t id, const size_t size, void* const data) {
     assert(data != NULL);
     assert(!s_iow[id].borrowed);
@@ -76,6 +81,10 @@ void sus_lend(const uint8_t id, const size_t size, void* const data) {
 ssize_t sus_borrow(const uint8_t id, void** const data) {
     assert(data != NULL);
     assert(!s_iow[id].borrowed);
+    if (s_iow[id].disabled) {
+        errno = EIDRM;
+        return -1;
+    }
     while (s_iow[id].data == NULL)
         suspend();
 #   ifndef NDEBUG
