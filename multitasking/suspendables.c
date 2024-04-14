@@ -1,12 +1,13 @@
-#include "comultitask.h"
-#include "contextring.h"
+#include "sus.h"
 #include "coro/coro.h"
-#include "utils.h"
-#include "evloop.h"
+#include "contextring.h"
+#include "eventloop.h"
+#include "../log.h"
 #include <assert.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <errno.h>
 
 enum ioset { IOSET_READ, IOSET_WRITE, IOSET_OOB };
 
@@ -148,7 +149,7 @@ static inline void sus_exit(void) {
 }
 
 __attribute__((noreturn))
-static void starter(struct sus_coroutine_reg* const reg) {
+static void starter(struct sus_registation_form* const reg) {
     LOGDX("%s task started", reg->name);
     reg->result = reg->entry(reg->args);
     LOGDX("%s task ended", reg->name);
@@ -178,7 +179,7 @@ int sus_ioloop(struct sus_ioloop_args* const args) {
     return -1;
 }
 
-int sus_runall(const size_t length, struct sus_coroutine_reg (* const h)[length]) {
+int sus_runall(const size_t length, struct sus_registation_form (* const h)[length]) {
     assert(h);
     int ret = -1;
     struct coro_stuff stuff[length] = {};

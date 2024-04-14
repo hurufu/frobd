@@ -2,6 +2,8 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/types.h>
+#include <time.h>
 
 #define sus_registration(Entry, ...) (struct sus_registation_form){\
     .name = #Entry,\
