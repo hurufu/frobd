@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/time.h>
-#include "co/comultitask.h"
 
 static inline int iselect(struct io_params* const iop, struct timeval* const deadline) {
     return xselect(iop->maxfd, &iop->set[0], &iop->set[1], &iop->set[2], deadline);

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../coro/coro.h"
+#include "coro/coro.h"
 
 struct coro_context_ring {
     struct coro_context_ring* prev, * next;

@@ -1,5 +1,5 @@
-#include "../log.h"
-#include "../utils.h"
+#include "log.h"
+#include "utils.h"
 #include "comultitask.h"
 #include "frob.h"
 #include <time.h>
