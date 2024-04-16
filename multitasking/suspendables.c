@@ -63,6 +63,10 @@ static void suspend_until_active(const int fd, const enum ioset set) {
         return;
     }
     while (!FD_ISSET(fd, &s_iop.active.a[set])) {
+        if (s_io_surrended) {
+            LOGEX("I/O imposible");
+            return;
+        }
         FD_SET(fd, &s_iop.scheduled.a[set]);
         suspend(ioset_to_method(set));
     }
@@ -72,8 +76,11 @@ ssize_t sus_write(const int fd, const void* const data, const size_t size) {
 again:
     suspend_until_active(fd, IOSET_WRITE);
     const ssize_t r = write(fd, data, size);
-    if (r < 0 && errno == EAGAIN)
+    if (r < 0 && errno == EAGAIN) {
+        LOGD("write");
+        suspend(ioset_to_method(IOSET_READ));
         goto again;
+    }
     s_current->visited = 0;
     return r;
 }
@@ -84,6 +91,7 @@ again:
     const ssize_t r = read(fd, data, size);
     if (r < 0 && errno == EAGAIN) {
         LOGD("read");
+        suspend(ioset_to_method(IOSET_READ));
         goto again;
     }
     s_current->visited = 0;
@@ -175,6 +183,7 @@ int sus_ioloop(struct sus_ioloop_args* const args) {
         LOGI("iowait done");
     close(0);
     close(1);
+    LOGDX("surrended");
     s_io_surrended = true;
     return -1;
 }
