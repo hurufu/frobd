@@ -29,9 +29,8 @@ LDFLAGS ?= -flto
 LDFLAGS += $(call if_coverage,--coverage)
 
 # Project configuration ########################################################
-RL_FILES  := wireprotocol.rl frontend.rl
-RL_C      := $(RL_FILES:.rl=.c)
-RL_O      := $(RL_FILES:.rl=.o)
+RL_C      := wireprotocol.c frontend.c
+RL_O      := $(RL_C:.c=.o)
 CFILES    := $(RL_C) main.c log.c utils.c serialization.c
 OFILES    := $(CFILES:.c=.o)
 UT_T      := $(wildcard *.in)
@@ -41,6 +40,8 @@ MUTATED_O := utils.o serialization.o
 NORMAL_O  := $(RL_O) $(UT_T:.in=.o) log.o
 ALL_C     := $(CFILES) $(UT_C)
 ALL_PLIST := $(ALL_C:.c=.plist)
+
+vpath %.rl fsm
 
 # Public targets ###############################################################
 all: frob ut
@@ -90,16 +91,6 @@ mut: $(NORMAL_O) mutated
 	$(LINK.o) -o $@ $(NORMAL_O) $(MUTATED_O) $(LDLIBS)
 mutated: CFLAGS += -fexperimental-new-pass-manager -fpass-plugin=/usr/local/lib/mull-ir-frontend-15 -grecord-command-line
 mutated: $(MUTATED_O)
-evloop: evloop.o log.o utils.o
-	$(LINK.o) -o $@ $^ $(LDLIBS)
-	objcopy --only-keep-debug $@ $@.debug
-	strip --strip-unneeded $@
-	objcopy --add-gnu-debuglink=$@.debug $@
-acknak: acknak.o log.o utils.o evloop.o
-	$(LINK.o) -o $@ $^ $(LDLIBS)
-	objcopy --only-keep-debug $@ $@.debug
-	strip --strip-unneeded $@
-	objcopy --add-gnu-debuglink=$@.debug $@
 frob: $(OFILES) multitasking/libcomulti.a
 	$(LINK.o) -o $@ $^ $(LDLIBS)
 	objcopy --only-keep-debug $@ $@.debug
