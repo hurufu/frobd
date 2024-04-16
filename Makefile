@@ -47,6 +47,8 @@ ALL_PLIST := $(ALL_C:.c=.plist)
 LIBCOMULTI_C := coro.c contextring.c eventloop.c suspendables.c
 LIBCOMULTI_O := $(LIBCOMULTI_C:.c=.o)
 
+BUILD_DIR ?= build
+
 vpath %.rl $(PROJECT_DIR)/fsm
 vpath %.c $(addprefix $(PROJECT_DIR)/,. multitasking multitasking/coro)
 vpath %.t $(PROJECT_DIR)
@@ -74,6 +76,8 @@ protocol.png: protocol.rl protocol-adjust.sed
 	ragel -p -V $(word 1,$^) | sed -Ef $(word 2,$^) | dot -Tpng -Gdpi=200 -o $@
 first_level.png: first_level.rl first_level-adjust.sed
 	ragel -p -V $(word 1,$^) | sed -Ef $(word 2,$^) | dot -Tpng -Gdpi=200 -o $@
+dir-%: | $(BUILD_DIR)/
+	+$(MAKE) -C $< $(addprefix -f ,$(abspath $(MAKEFILE_LIST))) $*
 
 # Internal targets #############################################################
 tags:
@@ -120,7 +124,3 @@ clean: F += $(wildcard *.gcda *.gcno *.gcov)
 clean: F += $(wildcard frob.log frob.sum frob.debug mut)
 clean: F += $(wildcard $(ALL_PLIST))
 clean: F += $(wildcard evloop.o evloop.debug evloop.s evloop)
-
-BUILD_DIR ?= build
-dir-%: | $(BUILD_DIR)/
-	+$(MAKE) -C $< $(addprefix -f ,$(abspath $(MAKEFILE_LIST))) $*
