@@ -2,6 +2,8 @@
 
 OPTLEVEL := g
 
+PROJECT_DIR := $(dir $(firstword $(MAKEFILE_LIST)))
+
 # Compiler configuration #######################################################
 if_coverage = $(if $(findstring coverage,$(MAKECMDGOALS)),$(1),)
 
@@ -10,6 +12,7 @@ CPPFLAGS_clang := -D_FORTIFY_SOURCE=3
 # so we need undefine it and then redefine it
 CPPFLAGS_gcc   := -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS
 CPPFLAGS       ?= $(CPPFLAGS_$(CC))
+CPPFLAGS       += -I$(PROJECT_DIR)
 #CPPFLAGS       += -DNDEBUG
 # Disable all logs
 #CPPFLAGS       += -DNO_LOGS_ON_STDERR
@@ -31,8 +34,8 @@ LDFLAGS += $(call if_coverage,--coverage)
 # Project configuration ########################################################
 RL_C      := wireprotocol.c frontend.c
 RL_O      := $(RL_C:.c=.o)
-CFILES    := $(RL_C) main.c log.c utils.c serialization.c
-OFILES    := $(CFILES:.c=.o)
+CFILES    := $ main.c log.c utils.c serialization.c
+OFILES    := $(RL_O) $(CFILES:.c=.o)
 UT_T      := $(wildcard *.in)
 UT_C      := $(UT_T:.in=.c) utils.c serialization.c log.c
 UT_O      := $(UT_C:.c=.o)
@@ -41,7 +44,11 @@ NORMAL_O  := $(RL_O) $(UT_T:.in=.o) log.o
 ALL_C     := $(CFILES) $(UT_C)
 ALL_PLIST := $(ALL_C:.c=.plist)
 
-vpath %.rl fsm
+LIBCOMULTI_C := coro.c contextring.c eventloop.c suspendables.c
+LIBCOMULTI_O := $(LIBCOMULTI_C:.c=.o)
+
+vpath %.rl $(PROJECT_DIR)/fsm
+vpath %.c $(addprefix $(PROJECT_DIR)/,. multitasking multitasking/coro)
 
 # Public targets ###############################################################
 all: frob ut
@@ -91,15 +98,14 @@ mut: $(NORMAL_O) mutated
 	$(LINK.o) -o $@ $(NORMAL_O) $(MUTATED_O) $(LDLIBS)
 mutated: CFLAGS += -fexperimental-new-pass-manager -fpass-plugin=/usr/local/lib/mull-ir-frontend-15 -grecord-command-line
 mutated: $(MUTATED_O)
-frob: $(OFILES) multitasking/libcomulti.a
+frob: $(OFILES) libcomulti.a
 	$(LINK.o) -o $@ $^ $(LDLIBS)
 	objcopy --only-keep-debug $@ $@.debug
 	strip --strip-unneeded $@
 	objcopy --add-gnu-debuglink=$@.debug $@
-multitasking/libcomulti.a:
-	$(MAKE) -j1 -C multitasking libcomulti.a
+libcomulti.a: libcomulti.a($(LIBCOMULTI_O))
 %.c: %.rl
-	ragel -G2 -L $<
+	ragel -G2 -L -o $@ $<
 %.s: %.c
 	$(CC) -S -o $@ -fverbose-asm -fno-asynchronous-unwind-tables $(CFLAGS) -fno-lto $<
 %.c: %.in
