@@ -1,14 +1,14 @@
-#include "comultitask.h"
+#include "multitasking/sus.h"
 #include "frob.h"
-#include "../utils.h"
-#include "../log.h"
+#include "utils.h"
+#include "log.h"
 #include <unistd.h>
 #include <fcntl.h>
 
 %%{
     machine wireformat;
     alphtype unsigned char;
-    include frob_common "../common.rl";
+    include frob_common "common.rl";
 
     action LRC_Init {
         lrc = 0;

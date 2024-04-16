@@ -1,7 +1,7 @@
 CPPFLAGS     ?=
 CFLAGS       ?=
 TARGET_ARCH  ?=
-SOURCES      := $(wildcard *.c coro/coro.c)
+SOURCES      := coro/coro.c contextring.c eventloop.c suspendables.c
 OBJECTS      := $(SOURCES:.c=.o)
 DEPENDENCIES  = $(if $(filter clean wipe,$(MAKECMDGOALS)),,$(SOURCES:.c=.d) ut.d)
 LOADLIBES    :=

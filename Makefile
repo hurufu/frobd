@@ -18,20 +18,21 @@ CFLAGS_gcc := -fanalyzer -fanalyzer-checker=taint -fsanitize=bounds -fsanitize-u
 CFLAGS_gcc += -Wformat -Werror=format-security -grecord-gcc-switches
 CFLAGS_gcc += -fstack-protector-all
 CFLAGS_gcc += -fstack-clash-protection
-CFLAGS     ?= -std=gnu11 -O$(OPTLEVEL) -ggdb3 -Wall -Wextra -mtune=native -march=native -flto $(CFLAGS_$(CC))
+CFLAGS     ?= -std=gnu11 -O$(OPTLEVEL) -ggdb3 -Wall -Wextra -flto $(CFLAGS_$(CC))
 CFLAGS     += $(call if_coverage,--coverage)
 #CFLAGS   += -fstrict-flex-arrays
 # TODO: Remove those warnings only for generated files
 CFLAGS     += -Wno-implicit-fallthrough -Wno-unused-const-variable -Wno-sign-compare -Wno-unused-variable -Wno-unused-parameter
+TARGET_ARCH := -mtune=native -march=native 
 
 LDFLAGS ?= -flto
 LDFLAGS += $(call if_coverage,--coverage)
 
 # Project configuration ########################################################
-RL_FILES  := $(wildcard *.rl)
+RL_FILES  := wireprotocol.rl frontend.rl
 RL_C      := $(RL_FILES:.rl=.c)
 RL_O      := $(RL_FILES:.rl=.o)
-CFILES    := $(RL_C) frob.c log.c utils.c serialization.c
+CFILES    := $(RL_C) main.c log.c utils.c serialization.c
 OFILES    := $(CFILES:.c=.o)
 UT_T      := $(wildcard *.in)
 UT_C      := $(UT_T:.in=.c) utils.c serialization.c log.c
@@ -45,8 +46,10 @@ ALL_PLIST := $(ALL_C:.c=.plist)
 all: frob ut
 index: tags cscope.out
 test: test-unit test-functional test-random
-clean:
+clean: clean-multitasking
 	$(if $(strip $F),$(RM) -- $F)
+clean-multitasking:
+	$(MAKE) -C multitasking clean
 coverage: test | $(CFILES) $(UT_C)
 	gcov -o . $|
 clang-analyze: $(ALL_PLIST)
@@ -97,11 +100,13 @@ acknak: acknak.o log.o utils.o evloop.o
 	objcopy --only-keep-debug $@ $@.debug
 	strip --strip-unneeded $@
 	objcopy --add-gnu-debuglink=$@.debug $@
-frob: $(OFILES)
+frob: $(OFILES) multitasking/libcomulti.a
 	$(LINK.o) -o $@ $^ $(LDLIBS)
 	objcopy --only-keep-debug $@ $@.debug
 	strip --strip-unneeded $@
 	objcopy --add-gnu-debuglink=$@.debug $@
+multitasking/libcomulti.a:
+	$(MAKE) -j1 -C multitasking libcomulti.a
 %.c: %.rl
 	ragel -G2 -L $<
 %.s: %.c

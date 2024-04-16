@@ -1,6 +1,6 @@
 #include "log.h"
 #include "utils.h"
-#include "comultitask.h"
+#include "multitasking/sus.h"
 #include "frob.h"
 
 int main() {

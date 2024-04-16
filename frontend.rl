@@ -1,7 +1,7 @@
-#include "comultitask.h"
+#include "multitasking/sus.h"
 #include "frob.h"
-#include "../log.h"
-#include "../utils.h"
+#include "log.h"
+#include "utils.h"
 #include <stdbool.h>
 #include <sys/timerfd.h>
 #include <unistd.h>
@@ -11,7 +11,7 @@ static int cs;
 %%{
     machine frontend;
     alphtype char;
-    include frob_common "../common.rl";
+    include frob_common "common.rl";
 
     # Foreign:
     OK = stx;
@@ -70,7 +70,7 @@ void fsm_frontend_init() {
     %% write init;
 }
 
-int fsm_frontend_foreign(struct args_frontend_foreign* const a) {
+int fsm_frontend_foreign(struct fsm_frontend_foreign_args* const a) {
     (void)a;
     ssize_t bytes;
     const char* p;
@@ -84,7 +84,7 @@ int fsm_frontend_foreign(struct args_frontend_foreign* const a) {
     return -1;
 }
 
-int fsm_frontend_internal(struct args_frontend_internal* const a) {
+int fsm_frontend_internal(struct fsm_frontend_internal_args* const a) {
     (void)a;
 /*
     ssize_t bytes;
@@ -97,7 +97,7 @@ int fsm_frontend_internal(struct args_frontend_internal* const a) {
     return -1;
 }
 
-int fsm_frontend_timer(struct args_frontend_timer* const a) {
+int fsm_frontend_timer(struct fsm_frontend_timer_args* const a) {
     (void)a;
 /*
     const int fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
