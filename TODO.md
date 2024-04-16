@@ -33,6 +33,8 @@ What shall be considered:
         type should go. This can be achieved eg by embeding a scripting language
         like GNU Guile or Lua or something less common; or alternatively by
         executing external shell script.
+  * [ ] Use stderr for human readable error output and stdlog (fd 3) to error
+        messages ment for logging systems
 
 ### Additional programs
 

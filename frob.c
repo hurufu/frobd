@@ -572,7 +572,7 @@ static void perform_pending_write(const enum channel i, struct state* const st) 
 
     const size_t l = used_space(ch);
     const ssize_t s = write(ch->fd, ch->buf, l);
-    if (s != l) {
+    if (s < 0 || (size_t)s != l) {
         EXITF("Can't write %td bytes to %s channel (fd %d)", l, channel_to_string(i), ch->fd);
     } else {
         if (i == CHANNEL_FO_MAIN) {

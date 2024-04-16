@@ -2,6 +2,8 @@
 
 OPTLEVEL := g
 
+PROJECT_DIR := $(dir $(firstword $(MAKEFILE_LIST)))
+
 # Compiler configuration #######################################################
 if_coverage = $(if $(findstring coverage,$(MAKECMDGOALS)),$(1),)
 
@@ -10,6 +12,7 @@ CPPFLAGS_clang := -D_FORTIFY_SOURCE=3
 # so we need undefine it and then redefine it
 CPPFLAGS_gcc   := -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS
 CPPFLAGS       ?= $(CPPFLAGS_$(CC))
+CPPFLAGS       += -I$(PROJECT_DIR)
 #CPPFLAGS       += -DNDEBUG
 # Disable all logs
 #CPPFLAGS       += -DNO_LOGS_ON_STDERR
@@ -18,21 +21,21 @@ CFLAGS_gcc := -fanalyzer -fanalyzer-checker=taint -fsanitize=bounds -fsanitize-u
 CFLAGS_gcc += -Wformat -Werror=format-security -grecord-gcc-switches
 CFLAGS_gcc += -fstack-protector-all
 CFLAGS_gcc += -fstack-clash-protection
-CFLAGS     ?= -std=gnu11 -O$(OPTLEVEL) -ggdb3 -Wall -Wextra -mtune=native -march=native -flto $(CFLAGS_$(CC))
+CFLAGS     ?= -std=gnu11 -O$(OPTLEVEL) -ggdb3 -Wall -Wextra -flto $(CFLAGS_$(CC))
 CFLAGS     += $(call if_coverage,--coverage)
 #CFLAGS   += -fstrict-flex-arrays
 # TODO: Remove those warnings only for generated files
 CFLAGS     += -Wno-implicit-fallthrough -Wno-unused-const-variable -Wno-sign-compare -Wno-unused-variable -Wno-unused-parameter
+TARGET_ARCH := -mtune=native -march=native 
 
 LDFLAGS ?= -flto
 LDFLAGS += $(call if_coverage,--coverage)
 
 # Project configuration ########################################################
-RL_FILES  := $(wildcard *.rl)
-RL_C      := $(RL_FILES:.rl=.c)
-RL_O      := $(RL_FILES:.rl=.o)
-CFILES    := $(RL_C) frob.c log.c utils.c serialization.c
-OFILES    := $(CFILES:.c=.o)
+RL_C      := wireprotocol.c frontend.c
+RL_O      := $(RL_C:.c=.o)
+CFILES    := $ main.c log.c utils.c serialization.c
+OFILES    := $(RL_O) $(CFILES:.c=.o)
 UT_T      := $(wildcard *.in)
 UT_C      := $(UT_T:.in=.c) utils.c serialization.c log.c
 UT_O      := $(UT_C:.c=.o)
@@ -41,12 +44,20 @@ NORMAL_O  := $(RL_O) $(UT_T:.in=.o) log.o
 ALL_C     := $(CFILES) $(UT_C)
 ALL_PLIST := $(ALL_C:.c=.plist)
 
+LIBCOMULTI_C := coro.c contextring.c eventloop.c suspendables.c
+LIBCOMULTI_O := $(LIBCOMULTI_C:.c=.o)
+
+vpath %.rl $(PROJECT_DIR)/fsm
+vpath %.c $(addprefix $(PROJECT_DIR)/,. multitasking multitasking/coro)
+
 # Public targets ###############################################################
 all: frob ut
 index: tags cscope.out
 test: test-unit test-functional test-random
-clean:
+clean: clean-multitasking
 	$(if $(strip $F),$(RM) -- $F)
+clean-multitasking:
+	$(MAKE) -C multitasking clean
 coverage: test | $(CFILES) $(UT_C)
 	gcov -o . $|
 clang-analyze: $(ALL_PLIST)
@@ -59,6 +70,8 @@ scan:
 graph-%: frame.rl adjust-%.sed
 	ragel -p -V $< | sed -Ef $(word 2,$^) | dot -Tpng | feh -
 protocol.png: protocol.rl protocol-adjust.sed
+	ragel -p -V $(word 1,$^) | sed -Ef $(word 2,$^) | dot -Tpng -Gdpi=200 -o $@
+first_level.png: first_level.rl first_level-adjust.sed
 	ragel -p -V $(word 1,$^) | sed -Ef $(word 2,$^) | dot -Tpng -Gdpi=200 -o $@
 
 # Internal targets #############################################################
@@ -85,15 +98,16 @@ mut: $(NORMAL_O) mutated
 	$(LINK.o) -o $@ $(NORMAL_O) $(MUTATED_O) $(LDLIBS)
 mutated: CFLAGS += -fexperimental-new-pass-manager -fpass-plugin=/usr/local/lib/mull-ir-frontend-15 -grecord-command-line
 mutated: $(MUTATED_O)
-frob: $(OFILES)
+frob: $(OFILES) libcomulti.a
 	$(LINK.o) -o $@ $^ $(LDLIBS)
 	objcopy --only-keep-debug $@ $@.debug
 	strip --strip-unneeded $@
 	objcopy --add-gnu-debuglink=$@.debug $@
+libcomulti.a: libcomulti.a($(LIBCOMULTI_O))
 %.c: %.rl
-	ragel -G2 -L $<
+	ragel -G2 -L -o $@ $<
 %.s: %.c
-	$(CC) -S -o $@ -fverbose-asm -fno-asynchronous-unwind-tables $(CFLAGS) $<
+	$(CC) -S -o $@ -fverbose-asm -fno-asynchronous-unwind-tables $(CFLAGS) -fno-lto $<
 %.c: %.in
 	checkmk $< >$@
 %.plist: %.c
@@ -102,3 +116,4 @@ clean: F += $(wildcard $(RL_C) $(RL_C:.c=.s) $(UT_O) $(UT_T:.in=.c) $(UT_T:.in=.
 clean: F += $(wildcard *.gcda *.gcno *.gcov)
 clean: F += $(wildcard frob.log frob.sum frob.debug mut)
 clean: F += $(wildcard $(ALL_PLIST))
+clean: F += $(wildcard evloop.o evloop.debug evloop.s evloop)

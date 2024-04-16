@@ -35,6 +35,11 @@
     write data;
 }%%
 
+void frob_frame_init(struct frob_frame_fsm_state* const st) {
+    %% write init;
+    st->lrc = 0;
+}
+
 int frob_frame_process(struct frob_frame_fsm_state* const st) {
     // It's better to crash with NULL pointer dereference than have an UB
     unsigned char* start = st->p, * end = NULL;
@@ -61,3 +66,20 @@ int frob_frame_process(struct frob_frame_fsm_state* const st) {
         return 0;
     return EAGAIN;
 }
+
+/*
+int frob_fp(read_cb_f* const read_cb, ...) {
+    %% write init;
+    va_list a;
+    va_start(a, read_cb);
+    do {
+        pe += read_cb(sizeof p + p - pe, p, a) < 0)
+        %% write exec;
+        if (frob_frame_error == cs)
+            return -1;
+        if (frob_frame_first_final == cs)
+            schedule_for_writting(3, start, end);
+    } while (!error);
+    va_end(a);
+}
+*/

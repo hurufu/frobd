@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <syslog.h>
 
+// Reimplement using error_at_line(3)
+
 /** Serializes bytes between P and Pe into Buffer in a human-readable form.
  */
 #define PRETTY(P, Pe, Buffer) to_printable(P, Pe, elementsof(Buffer), Buffer)
@@ -53,7 +55,7 @@
 #   define LOG_STORY(Prefix, Level, Method, Prologue, Epilogue, Fmt, ...) \
         if (LOG_##Level <= g_log_level) {\
             Prologue;\
-            Method(Prefix " %s:%d\t" Fmt, __FILE__, __LINE__, ##__VA_ARGS__);\
+            Method("\x1f" Prefix "\x1f %16s\x1f% 4d\x1f %24s\x1f " Fmt "\x1e", __FILE__, __LINE__, __func__, ##__VA_ARGS__);\
             Epilogue;\
         }
     extern int g_log_level;

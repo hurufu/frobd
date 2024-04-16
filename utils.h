@@ -2,12 +2,15 @@
 // FIXME: This file should be renamed to common.h
 
 #include "frob.h"
+#include "log.h"
 
 #include <string.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <sys/types.h>
 #include <errno.h>
+#include <stdbool.h>
+#include <stdlib.h>
 
 #define STX "\x02"
 #define ETX "\x03"
@@ -47,6 +50,7 @@
 #define elementsof(Arr) APPLY_TO_ARRAY(Arr, NAIVE_ELEMENTSOF(Arr))
 #define endof(Arr)  ( (Arr) + elementsof(Arr)     )
 #define lastof(Arr) ( (Arr) + elementsof(Arr) - 1 )
+#define lengthof(Arr) elementsof(Arr)
 
 #define min(A, B) (A < B ? A : B)
 #define isempty(S) ((S)[0] == '\0')
@@ -60,8 +64,37 @@
     v;\
 })
 
+#define xselect(M, R, W, E, Timeout) XCALL(select, M, R, W, E, Timeout)
+#define xread(...) XCALL(read, __VA_ARGS__)
+#define xrread(...) XCALL(rread, __VA_ARGS__)
+#define xwrite(...) XCALL(write, __VA_ARGS__)
+#define xfclose(...) XCALL(fclose, true, __VA_ARGS__)
+#define xclose(...) XCALL(close, __VA_ARGS__)
+
+#ifdef NDEBUG
+#   define XCALL(Syscall, ...) syscall_exitf(#Syscall, Syscall(__VA_ARGS__))
+#else
+#   define XCALL(Syscall, ...) ({\
+        const int __ret = syscall_exitf(#Syscall, Syscall(__VA_ARGS__));\
+        __ret;\
+    })
+#define select_preconditions(...)
+#define select_postconditions(Ret, M, R, W, E, Timeout) do {\
+    if (!Timeout)\
+        assert(Ret != 0);\
+    if (iop->time_left.tv_sec > 0)\
+        assert(t.tv_sec < iop->time_left.tv_sec);\
+    else if (iop->time_left.tv_sec == 0)\
+        assert(t.tv_sec == 0);\
+    } while (0);
+#endif
+#define NORETURN __attribute__((__noreturn__))
+
 // Input character type, can be changed to something else
 typedef uint8_t input_t;
+
+
+void set_nonblocking(int fd);
 
 byte_t hex2nibble(char h);
 byte_t unhex(const char h[static 2]);
@@ -113,3 +146,29 @@ size_t xslurp(const char* name, size_t s, input_t buf[static s]);
 int snprint_hex(size_t sbuf, input_t buf[static sbuf], size_t sbin, const byte_t bin[static sbin]);
 // Same as snprint_hex, but exits on error
 int xsnprint_hex(size_t sbuf, input_t buf[static sbuf], size_t sbin, const byte_t bin[static sbin]);
+
+NORETURN void exitb(const char* name);
+
+inline static int syscall_exitf(const char* const name, const int ret) {
+#   ifndef NDEBUG
+#   if 0
+    if (strcmp(name, "select") == 0) {
+        if (iop->running_time_sec > 0)
+            assert(t.tv_sec < iop->running_time_sec);
+        else if (iop->running_time_sec == 0)
+            assert(t.tv_sec == 0);
+    }
+#   endif
+#   endif
+    if (ret == -1)
+        exitb(name);
+    return ret;
+}
+
+__attribute__((malloc(free), returns_nonnull))
+inline static void* xmalloc(const size_t size) {
+    void* const ret = malloc(size);
+    if (!ret)
+        ABORTF("malloc");
+    return ret;
+}

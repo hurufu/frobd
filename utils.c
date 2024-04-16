@@ -8,6 +8,15 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <execinfo.h>
+
+void set_nonblocking(const int fd) {
+    const int flags = fcntl(fd, F_GETFL, 0);
+    if (flags == -1)
+        EXITF("fcntl F_GETFL");
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
+        EXITF("fcntl F_SETFL O_NONBLOCK");
+}
 
 input_t calculate_lrc(input_t* p, const input_t* const pe) {
     uint8_t lrc = 0;
@@ -98,6 +107,7 @@ char frob_trx_type_to_code(const enum FrobTransactionType t) {
     return '?';
 }
 
+#if 0
 int parse_message(const input_t* const p, const input_t* const pe, struct frob_msg* const msg) {
     const input_t* cur = p;
     const char* err;
@@ -123,6 +133,7 @@ bail:
     LOGDX("\t%*s", (int)(cur - p), "^");
     return -1;
 }
+#endif
 
 // Has similar semantics to read(2) except that it restarts itself if
 // it was interrupted by a signal or until file is fully read
@@ -156,12 +167,11 @@ ssize_t slurp(const char* const name, const size_t s, input_t buf[static const s
     if (fd < 0)
         return fd;
     const ssize_t ret = eread(fd, s, buf);
-    if (ret < 0) {
-        if (close(fd) < 0)
-            ABORTF("close %s", name);
-        return -1;
-    }
-    return close(fd) < 0 ? -1 : ret;
+    const int backup = errno;
+    if (close(fd) < 0 && ret < 0)
+        ABORTF("Double fault while accessing %s. eread: %s; close", name, strerror(backup));
+    (void)backup;
+    return ret;
 }
 
 int snprint_hex(const size_t sbuf, input_t buf[static const sbuf], const size_t sbin, const byte_t bin[static const sbin]) {
@@ -185,4 +195,11 @@ int xsnprint_hex(const size_t sbuf, input_t buf[static const sbuf], const size_t
     if (ret < 0)
         EXITF("snprint_hex");
     return ret;
+}
+
+NORETURN void exitb(const char* const name) {
+    static void* stack[128];
+    backtrace_symbols_fd(stack, backtrace(stack, lengthof(stack)), STDERR_FILENO);
+    // call invoke_safe_mem_constraint_handler instead of exit
+    EXITF("%s", name);
 }

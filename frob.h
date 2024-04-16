@@ -285,3 +285,23 @@ struct frob_msg {
 };
 
 static_assert(sizeof (struct frob_msg) % 16 == 0, "Message shall fit into 16-byte blocks, so output of od(1) will line up nicely");
+#pragma once
+
+struct fsm_frontend_foreign_args {
+    int cs;
+};
+
+struct fsm_frontend_internal_args {
+    int cs;
+};
+
+struct fsm_frontend_timer_args {
+    int cs;
+};
+
+struct fsm_wireformat_args {};
+
+int fsm_wireformat(void*);
+int fsm_frontend_foreign(struct fsm_frontend_foreign_args*);
+int fsm_frontend_internal(struct fsm_frontend_internal_args*);
+int fsm_frontend_timer(struct fsm_frontend_timer_args*);
