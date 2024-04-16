@@ -27,6 +27,7 @@ CFLAGS     += $(call if_coverage,--coverage)
 # TODO: Remove those warnings only for generated files
 CFLAGS     += -Wno-implicit-fallthrough -Wno-unused-const-variable -Wno-sign-compare -Wno-unused-variable -Wno-unused-parameter
 TARGET_ARCH := -mtune=native -march=native 
+LDLIBS     :=
 
 LDFLAGS ?= -flto
 LDFLAGS += $(call if_coverage,--coverage)
@@ -112,8 +113,14 @@ libcomulti.a: libcomulti.a($(LIBCOMULTI_O))
 	checkmk $< >$@
 %.plist: %.c
 	clang --analyze -o $@ $<
+%/:
+	mkdir -p -- $@
 clean: F += $(wildcard $(RL_C) $(RL_C:.c=.s) $(UT_O) ut.c ut.s ut.o $(OFILES) frob frob.s log.s tags cscope.out ut)
 clean: F += $(wildcard *.gcda *.gcno *.gcov)
 clean: F += $(wildcard frob.log frob.sum frob.debug mut)
 clean: F += $(wildcard $(ALL_PLIST))
 clean: F += $(wildcard evloop.o evloop.debug evloop.s evloop)
+
+BUILD_DIR ?= build
+dir-%: | $(BUILD_DIR)/
+	+$(MAKE) -C $< $(addprefix -f ,$(abspath $(MAKEFILE_LIST))) $*
