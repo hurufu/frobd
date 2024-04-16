@@ -107,7 +107,7 @@ char frob_trx_type_to_code(const enum FrobTransactionType t) {
     return '?';
 }
 
-#if 0
+#if 1
 int parse_message(const input_t* const p, const input_t* const pe, struct frob_msg* const msg) {
     const input_t* cur = p;
     const char* err;

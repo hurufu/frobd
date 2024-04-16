@@ -12,7 +12,7 @@ CPPFLAGS_clang := -D_FORTIFY_SOURCE=3
 # so we need undefine it and then redefine it
 CPPFLAGS_gcc   := -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS
 CPPFLAGS       ?= $(CPPFLAGS_$(CC))
-CPPFLAGS       += -I$(PROJECT_DIR)
+CPPFLAGS       += -I$(PROJECT_DIR) -I$(PROJECT_DIR)/multitasking
 #CPPFLAGS       += -DNDEBUG
 # Disable all logs
 #CPPFLAGS       += -DNO_LOGS_ON_STDERR
@@ -34,13 +34,12 @@ LDFLAGS += $(call if_coverage,--coverage)
 # Project configuration ########################################################
 RL_C      := wireprotocol.c frontend.c
 RL_O      := $(RL_C:.c=.o)
-CFILES    := $ main.c log.c utils.c serialization.c
+CFILES    := main.c log.c utils.c serialization.c
 OFILES    := $(RL_O) $(CFILES:.c=.o)
-UT_T      := $(wildcard *.in)
-UT_C      := $(UT_T:.in=.c) utils.c serialization.c log.c
-UT_O      := $(UT_C:.c=.o)
+UT_C      := ut.c serialization.c log.c utils.c contextring.c
+UT_O      := $(UT_C:.c=.o) header.o body.o frame.o attrs.o
 MUTATED_O := utils.o serialization.o
-NORMAL_O  := $(RL_O) $(UT_T:.in=.o) log.o
+NORMAL_O  := $(RL_O) ut.o log.o
 ALL_C     := $(CFILES) $(UT_C)
 ALL_PLIST := $(ALL_C:.c=.plist)
 
@@ -49,6 +48,7 @@ LIBCOMULTI_O := $(LIBCOMULTI_C:.c=.o)
 
 vpath %.rl $(PROJECT_DIR)/fsm
 vpath %.c $(addprefix $(PROJECT_DIR)/,. multitasking multitasking/coro)
+vpath %.t $(PROJECT_DIR)
 
 # Public targets ###############################################################
 all: frob ut
@@ -108,11 +108,11 @@ libcomulti.a: libcomulti.a($(LIBCOMULTI_O))
 	ragel -G2 -L -o $@ $<
 %.s: %.c
 	$(CC) -S -o $@ -fverbose-asm -fno-asynchronous-unwind-tables $(CFLAGS) -fno-lto $<
-%.c: %.in
+%.c: %.t
 	checkmk $< >$@
 %.plist: %.c
 	clang --analyze -o $@ $<
-clean: F += $(wildcard $(RL_C) $(RL_C:.c=.s) $(UT_O) $(UT_T:.in=.c) $(UT_T:.in=.s) $(OFILES) frob frob.s log.s tags cscope.out ut)
+clean: F += $(wildcard $(RL_C) $(RL_C:.c=.s) $(UT_O) ut.c ut.s ut.o $(OFILES) frob frob.s log.s tags cscope.out ut)
 clean: F += $(wildcard *.gcda *.gcno *.gcov)
 clean: F += $(wildcard frob.log frob.sum frob.debug mut)
 clean: F += $(wildcard $(ALL_PLIST))
