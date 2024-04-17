@@ -77,7 +77,7 @@ protocol.png: protocol.rl protocol-adjust.sed
 first_level.png: first_level.rl first_level-adjust.sed
 	ragel -p -V $(word 1,$^) | sed -Ef $(word 2,$^) | dot -Tpng -Gdpi=200 -o $@
 dir-%: | $(BUILD_DIR)/
-	+$(MAKE) -C $< $(addprefix -f ,$(abspath $(MAKEFILE_LIST))) $*
+	+$(MAKE) -C $| $(addprefix -f ,$(abspath $(MAKEFILE_LIST))) $*
 
 # Internal targets #############################################################
 tags:
