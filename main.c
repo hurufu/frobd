@@ -4,7 +4,6 @@
 #include "frob.h"
 #include <unistd.h>
 #include <signal.h>
-#include <sys/signalfd.h>
 
 enum channel {
     CHANNEL_NONE = -1,
@@ -15,14 +14,13 @@ enum channel {
     CHANNEL_CO_MASTER,
     CHANNEL_FO_MAIN,
 
-    CHANNEL_II_SIGNAL,
     CHANNEL_CI_MASTER,
     CHANNEL_NI_DEVICE,
     CHANNEL_FI_MAIN,
 
     CHANNEL_COUNT,
 
-    CHANNEL_FIRST_INPUT  = CHANNEL_II_SIGNAL,
+    CHANNEL_FIRST_INPUT  = CHANNEL_CI_SIGNAL,
     CHANNEL_FIRST_OUTPUT = CHANNEL_NO_PAYMENT,
     CHANNEL_LAST_INPUT   = CHANNEL_FI_MAIN,
     CHANNEL_LAST_OUTPUT  = CHANNEL_FO_MAIN,
@@ -41,7 +39,6 @@ static const char* channel_to_string(const enum channel o) {
         case CHANNEL_FI_MAIN:    return "MAIN (foreign input)";
         case CHANNEL_CI_MASTER:  return "MASTER (console input)";
         case CHANNEL_CO_MASTER:  return "MASTER (console output)";
-        case CHANNEL_II_SIGNAL:  return "SIGFD (internal input)";
         case CHANNEL_NONE:
         case CHANNEL_COUNT:
             break;
@@ -128,29 +125,6 @@ static void test_all_channels(const int (* const fd)[CHANNEL_COUNT]) {
             LOGE("Channel %s (fd %d) is unusable", channel_to_string(i), (*fd)[i]);
 }
 
-static int setup_signalfd(const int ch, const sigset_t blocked) {
-    if (sigprocmask(SIG_BLOCK, &blocked, NULL) != 0)
-        EXITF("Couldn't adjust signal mask");
-    const int fd = signalfd(ch, &blocked, SFD_CLOEXEC);
-    if (fd == -1)
-        EXITF("Couldn't setup sigfd for %d", ch);
-    return fd;
-}
-
-static sigset_t adjust_signal_delivery(int* const ch) {
-    static const int blocked_signals[] = {
-        SIGALRM,
-        SIGPWR,
-        SIGINT
-    };
-    sigset_t s;
-    sigemptyset(&s);
-    for (size_t i = 0; i < elementsof(blocked_signals); i++)
-        sigaddset(&s, blocked_signals[i]);
-    *ch = setup_signalfd(*ch, s);
-    return s;
-}
-
 int main() {
     init_log();
     int fds[CHANNEL_COUNT] = {
@@ -159,14 +133,12 @@ int main() {
         [CHANNEL_NO_UI] = -1,
         [CHANNEL_CO_MASTER] = -1,
         [CHANNEL_FO_MAIN] = STDOUT_FILENO,
-        [CHANNEL_II_SIGNAL] = -1,
         [CHANNEL_CI_MASTER] = -1,
         [CHANNEL_NI_DEVICE] = -1,
         [CHANNEL_FI_MAIN] = STDIN_FILENO,
     };
     ucsp_info_and_adjust_fds(&fds[CHANNEL_FI_MAIN], &fds[CHANNEL_FO_MAIN]);
     test_all_channels(&fds);
-    sigset_t sigfdset = adjust_signal_delivery(&fds[CHANNEL_II_SIGNAL]);
     struct sus_registation_form tasks[] = {
         sus_registration(fsm_wireformat, fds[CHANNEL_FI_MAIN]),
         sus_registration(fsm_frontend_foreign),
