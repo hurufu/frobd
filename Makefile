@@ -57,10 +57,8 @@ vpath %.t $(PROJECT_DIR)
 all: frob ut
 index: tags cscope.out
 test: test-unit test-functional test-random
-clean: clean-multitasking
+clean:
 	$(if $(strip $F),$(RM) -- $F)
-clean-multitasking:
-	$(MAKE) -C multitasking clean
 coverage: test | $(CFILES) $(UT_C)
 	gcov -o . $|
 clang-analyze: $(ALL_PLIST)
