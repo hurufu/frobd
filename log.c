@@ -19,6 +19,7 @@ char* to_printable(const unsigned char* const p, const unsigned char* const pe,
                                   const size_t s, char b[static const s]) {
     // TODO: Add support for regional characters, ie from 0x80 to 0xFF
     // TODO: Rewrite to_printable using libicu
+    // TODO: Experiment with https://en.wikipedia.org/wiki/ISO_2047
     unsigned char* o = (unsigned char*)b;
     for (const unsigned char* x = p; x != pe; x++) {
 
