@@ -65,7 +65,7 @@ static void ucspi_log(const char* const proto, const char* const connnum) {
 
     LOGIX("UCSPI compatible environment detected (%s)", (connnum ? "server" : "client"));
     char* p = buf;
-    p += snprintfx(p, buf + sizeof buf - p, "proto: %s;", proto);
+    p += snprintfx(p, buf + sizeof buf - p, "PROTO: %s;", proto);
     for (size_t j = 0; j < lengthof(rl); j++) {
         if (!(ed[j][0] || ed[j][1] || ed[j][2] || ed[j][3]))
             continue;
@@ -80,12 +80,19 @@ static void ucspi_log(const char* const proto, const char* const connnum) {
             p += snprintfx(p, buf + sizeof buf - p, " [%s]", ed[j][3]);
         p += snprintfx(p, buf + sizeof buf - p, ";");
     }
+    LOGDX("%s", buf);
     if (sv[0]) {
-        p += snprintfx(p, buf + sizeof buf - p, "%s %s %s %s", sv[0], sv[1], sv[3], sv[4]);
+        p = buf;
+        p += snprintfx(p, buf + sizeof buf - p, "%s: %s", sv[0], sv[1]);
         if (sv[2])
             snprintfx(p, buf + sizeof buf - p, " \"%s\"", sv[2]);
+        LOGDX("%s", buf);
+        p = buf;
+        if (!connnum) {
+            p += snprintfx(p, buf + sizeof buf - p, "HASH:%s SUBJ: %s", sv[3], sv[4]);
+            LOGDX("%s", buf);
+        }
     }
-    LOGDX("%s", buf);
 }
 
 static const char* ucspi_adjust(const char* const proto, int* restrict const in, int* restrict const out) {
