@@ -47,11 +47,13 @@ ALL_PLIST := $(ALL_C:.c=.plist)
 LIBCOMULTI_C := coro.c contextring.c eventloop.c suspendables.c
 LIBCOMULTI_O := $(LIBCOMULTI_C:.c=.o)
 
+HOSTNAME  := $(shell hostname -f)
 BUILD_DIR ?= build
 
 vpath %.rl $(PROJECT_DIR)/fsm
 vpath %.c $(addprefix $(PROJECT_DIR)/,. multitasking multitasking/coro)
 vpath %.t $(PROJECT_DIR)
+vpath %.txt $(PROJECT_DIR)
 
 # Public targets ###############################################################
 all: frob ut
@@ -66,6 +68,10 @@ tcp-server: frob | d5.txt
 	s6-tcpserver -vd -b2 0.0.0.0 5002 s6-tcpserver-access -t200 -v3 -rp -B "Welcome!\r\n" $(realpath $<) 1000 $|
 tcp-client: frob | d5.txt
 	s6-tcpclient -rv localhost 5002 rlwrap $(realpath $<) 1000 $|
+tls-server: frob server.cer server.key | d5.txt
+	env -i PATH=/bin CERTFILE=$(word 2,$^) KEYFILE=$(word 3,$^) s6-tlsserver 0.0.0.0 6666 $(realpath $<) -f $(word 1,$^)
+tls-client: frob server.cer | d5.txt
+	env -i PATH=/bin CAFILE=$(word 2,$^) s6-tlsclient 0.0.0.0 6666 $(realpath $<) -f $(word 1,$^)
 scan:
 	scan-build $(MAKE) clean frob
 graph-%: frame.rl adjust-%.sed
@@ -79,7 +85,7 @@ dir-%: | $(BUILD_DIR)/
 
 # Internal targets #############################################################
 tags:
-	ctags --kinds-C=+p -R .
+	ctags --kinds-C=+p -R . /usr/include/{sys,}/*.h
 test-random: frob
 	pv -Ss100M /dev/urandom | ./$< 1 2>/dev/null 1>/dev/null
 test-unit: ut
@@ -115,6 +121,10 @@ libcomulti.a: libcomulti.a($(LIBCOMULTI_O))
 	checkmk $< >$@
 %.plist: %.c
 	clang --analyze -o $@ $<
+%.key:
+	openssl genpkey -algorithm RSA -out $@ -pkeyopt rsa_keygen_bits:4096
+%.cer: %.key
+	openssl req -new -x509 -sha256 -key $< -out $@ -days 2 -subj '/L=$(word 2,$(subst /, ,$(TZ)))/CN=$(HOSTNAME)'
 %/:
 	mkdir -p -- $@
 clean: F += $(wildcard $(RL_C) $(RL_C:.c=.s) $(UT_O) ut.c ut.s ut.o $(OFILES) frob frob.s log.s tags cscope.out ut)
@@ -122,3 +132,4 @@ clean: F += $(wildcard *.gcda *.gcno *.gcov)
 clean: F += $(wildcard frob.log frob.sum frob.debug mut)
 clean: F += $(wildcard $(ALL_PLIST))
 clean: F += $(wildcard evloop.o evloop.debug evloop.s evloop)
+clean: F += $(wildcard *.key *.cer)
