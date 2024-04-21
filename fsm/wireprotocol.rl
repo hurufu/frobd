@@ -41,15 +41,15 @@ int fsm_wireformat(void*) {
     int cs;
     unsigned char* p = buf, * pe = p;
     %% write init;
-    set_nonblocking(STDIN_FILENO);
-    while ((bytes = sus_read(STDIN_FILENO, buf, sizeof buf)) > 0) {
-        LOGDXP(char tmp[4*bytes], "→ % 4zd %s", bytes, PRETTY(buf, buf + bytes, tmp));
-        pe = buf + bytes;
+    set_nonblocking(7);
+    while ((bytes = sus_read(7, buf, sizeof buf)) > 0) {
+        pe = (p = buf) + bytes;
+        LOGDXP(char tmp[4*bytes], "→ % 4zd %s", bytes, PRETTY(p, pe, tmp));
         %% write exec;
     }
     if (bytes < 0)
         LOGE("read");
-    close(STDIN_FILENO);
+    close(7);
     LOGIX("FSM state: current/entry/error/final %d/%d/%d/%d", cs, wireformat_en_main, wireformat_error, wireformat_first_final);
     sus_disable(0);
     return cs == wireformat_error ? -1 : 0;

@@ -43,9 +43,10 @@ static struct fdsets {
 
 static void suspend(const char* const method) {
     LOGDX("%s suspended at %s", s_current->name, method);
-    assert(s_current->visited < 10); // EDEADLK
+    assert(s_current->visited < 100); // EDEADLK
     s_current->visited++;
     coro_transfer(s_current->ctx, &s_end);
+    LOGDX("%s awaken at %s", s_current->name, method);
 }
 
 static const char* ioset_to_method(const enum ioset set) {
@@ -108,8 +109,12 @@ void sus_lend(const uint8_t id, const size_t size, void* const data) {
     assert(s_iow[id].data == NULL);
     assert(s_iow[id].size == 0);
     s_iow[id] = (struct iowork){ .data = data, .size = size };
-    while (s_iow[id].data != NULL)
+    LOGDX("[%d] = %p", id, s_iow[id].data);
+    while (s_iow[id].data != NULL) {
+        LOGDX("suspend [%d] = %p", id, s_iow[id].data);
         suspend("lend");
+    }
+    LOGDX("wakeup [%d] = %p", id, s_iow[id].data);
     assert(s_iow[id].data == NULL);
     assert(s_iow[id].size == 0);
     s_current->visited = 0;
@@ -122,13 +127,16 @@ ssize_t sus_borrow(const uint8_t id, void** const data) {
         errno = EIDRM;
         return -1;
     }
+    LOGDX("[%d] = %p", id, s_iow[id].data);
     while (s_iow[id].data == NULL) {
+        LOGDX("suspend [%d] = %p", id, s_iow[id].data);
         if (s_iow[id].disabled) {
             errno = EIDRM;
             return -1;
         }
         suspend("borrow");
     }
+    LOGDX("wakeup [%d] = %p", id, s_iow[id].data);
 #   ifndef NDEBUG
     s_iow[id].borrowed = true;
 #   endif
@@ -143,8 +151,10 @@ void sus_return(const uint8_t id, const void* const data, const size_t size) {
     assert(s_iow[id].data != NULL);
     assert(s_iow[id].data == data);
     assert(s_iow[id].size == size);
+    LOGDX("[%d] %p –> (nil)", id, s_iow[id].data);
     s_iow[id] = (struct iowork){};
     s_current->visited = 0;
+    //suspend("return");
 }
 
 // Transfer to scheduler and forget about current coroutine
@@ -172,10 +182,23 @@ int sus_ioloop(struct sus_ioloop_args* const args) {
     };
     int ret;
     do {
+again:
         s_iop = (struct fdsets){ .active = { .r = iop.set[0], .w = iop.set[1], .e = iop.set[2] }};
         suspend("iowait");
-        for (int i = 0; i < 3; i++)
+        bool ok = false;
+        for (int i = 0; i < 3; i++) {
             iop.set[i] = s_iop.scheduled.a[i];
+            for (int j = 0; j < iop.maxfd; j++) {
+                ok |= FD_ISSET(j, &iop.set[i]);
+                //LOGDX("%d:%c:%s", j, (FD_ISSET(j, &iop.set[i]) ? '+' : ' '), ioset_to_method(i));
+            }
+        }
+        if (!ok) {
+            LOGDX("continue");
+            goto again;
+        }
+        assert(ok);
+        LOGDX("Waiting for I/O...");
     } while ((ret = iowait(&iop)) > 0);
     if (ret < 0)
         LOGE("iowait failed");

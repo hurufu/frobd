@@ -149,7 +149,7 @@ int main() {
     struct sus_registation_form tasks[] = {
         sus_registration(fsm_wireformat, fds[CHANNEL_FI_MAIN]),
         sus_registration(fsm_frontend_foreign),
-        sus_registration(sus_ioloop, .timeout = 3)
+        sus_registration(sus_ioloop, .timeout = -1)
     };
 #   if 0
     if (write(3, "\n", 1) != 1 || close(3) != 0)

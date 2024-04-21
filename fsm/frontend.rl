@@ -31,11 +31,11 @@ static int cs;
         acknak = 0x15;
     }
     action Send {
-        LOGDXP(char tmp[4*1], "← % 4zd %s", 1, PRETTY(&acknak, &acknak + 1, tmp));
-        if (sus_write(STDOUT_FILENO, &acknak, 1) != 1) {
+        if (sus_write(6, &acknak, 1) != 1) {
             LOGE("write");
             fbreak;
         }
+        LOGDXP(char tmp[4*1], "← % 4zd %s", 1, PRETTY(&acknak, &acknak + 1, tmp));
     }
 
     foreign = (OK @Confirm | NAK @Reject) @Send;
@@ -66,7 +66,7 @@ static int fsm_exec(const char* p, const char* const pe) {
 __attribute__((constructor))
 void fsm_frontend_init() {
     (void)frontend_en_main, (void)frontend_error, (void)frontend_first_final;
-    set_nonblocking(STDOUT_FILENO);
+    set_nonblocking(6);
     %% write init;
 }
 
