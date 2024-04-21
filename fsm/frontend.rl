@@ -84,6 +84,7 @@ int fsm_frontend_foreign(struct fsm_frontend_foreign_args* const a) {
     }
     if (bytes < 0)
         LOGE("Closing fronted");
+    sus_disable(1);
     return -1;
 }
 

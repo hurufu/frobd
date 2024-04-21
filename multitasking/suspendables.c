@@ -184,6 +184,10 @@ int sus_ioloop(struct sus_ioloop_args* const args) {
     int ret;
     do {
 again:
+        if (s_current == s_current->next) {
+            LOGEX("No more tasks left");
+            break;
+        }
         s_iop = (struct fdsets){ .active = { .r = iop.set[0], .w = iop.set[1], .e = iop.set[2] }};
         suspend("iowait");
         bool ok = false;
