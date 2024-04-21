@@ -132,6 +132,19 @@ static void test_all_channels(const int (* const fd)[CHANNEL_COUNT]) {
             LOGE("Channel %s (fd %d) is unusable", channel_to_string(i), (*fd)[i]);
 }
 
+struct autoresponder_args {};
+
+int autoresponder(void*) {
+    ssize_t bytes;
+    const char* p;
+    while ((bytes = sus_borrow(1, (void**)&p)) >= 0) {
+        char t2[] = "1T2T";
+        sus_write(6, t2, sizeof t2);
+        LOGDXP(char tmp[4*sizeof t2], "← % 4zd %s", sizeof t2, PRETTY(t2, t2 + sizeof t2, tmp));
+        sus_return(1, p, bytes);
+    }
+}
+
 int main() {
     init_log();
     int fds[CHANNEL_COUNT] = {
@@ -147,6 +160,7 @@ int main() {
     ucsp_info_and_adjust_fds(&fds[CHANNEL_FI_MAIN], &fds[CHANNEL_FO_MAIN]);
     test_all_channels(&fds);
     struct sus_registation_form tasks[] = {
+        sus_registration(autoresponder),
         sus_registration(fsm_wireformat, fds[CHANNEL_FI_MAIN]),
         sus_registration(fsm_frontend_foreign),
         sus_registration(sus_ioloop, .timeout = -1)

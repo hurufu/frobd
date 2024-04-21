@@ -96,6 +96,7 @@ again:
         goto again;
     }
     s_current->visited = 0;
+    //FD_CLR(fd, &s_iop.scheduled.r);
     return r;
 }
 
@@ -121,13 +122,13 @@ void sus_lend(const uint8_t id, const size_t size, void* const data) {
 }
 
 ssize_t sus_borrow(const uint8_t id, void** const data) {
+    LOGDX("[%d] = %p | %p", id, s_iow[id].data, data);
     assert(data != NULL);
     assert(!s_iow[id].borrowed);
     if (s_iow[id].disabled) {
         errno = EIDRM;
         return -1;
     }
-    LOGDX("[%d] = %p", id, s_iow[id].data);
     while (s_iow[id].data == NULL) {
         LOGDX("suspend [%d] = %p", id, s_iow[id].data);
         if (s_iow[id].disabled) {

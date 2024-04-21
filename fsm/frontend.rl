@@ -37,8 +37,11 @@ static int cs;
         }
         LOGDXP(char tmp[4*1], "← % 4zd %s", 1, PRETTY(&acknak, &acknak + 1, tmp));
     }
+    action Process {
+        sus_lend(1, pe - p, p);
+    }
 
-    foreign = (OK @Confirm | NAK @Reject) @Send;
+    foreign = OK @Confirm @Send @Process | NAK @Reject @Send;
     internal = IDEMPOTENT ACK | IDEMPOTENT TIMEOUT{1,3} ACK;
 
     main := (foreign | internal)*;
