@@ -132,19 +132,6 @@ static void test_all_channels(const int (* const fd)[CHANNEL_COUNT]) {
             LOGE("Channel %s (fd %d) is unusable", channel_to_string(i), (*fd)[i]);
 }
 
-struct autoresponder_args {};
-
-int autoresponder(void*) {
-    ssize_t bytes;
-    const char* p;
-    while ((bytes = sus_borrow(1, (void**)&p)) >= 0) {
-        char t2[] = "1T2T";
-        sus_write(6, t2, sizeof t2);
-        LOGDXP(char tmp[4*sizeof t2], "← % 4zd %s", sizeof t2, PRETTY(t2, t2 + sizeof t2, tmp));
-        sus_return(1, p, bytes);
-    }
-}
-
 int main() {
     init_log();
     int fds[CHANNEL_COUNT] = {

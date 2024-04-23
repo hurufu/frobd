@@ -35,10 +35,10 @@ static int cs;
             LOGE("write");
             fbreak;
         }
-        LOGDXP(char tmp[4*1], "← % 4zd %s", 1, PRETTY(&acknak, &acknak + 1, tmp));
+        LOGDXP(char tmp[4*1], "← % 4d %s", 1, PRETTY(&acknak, &acknak + 1, tmp));
     }
     action Process {
-        sus_lend(1, pe - p, p);
+        sus_lend(1, pe - p, (char*)p);// TODO: Remove this cast
     }
 
     foreign = OK @Confirm @Send @Process | NAK @Reject @Send;
@@ -61,7 +61,7 @@ static bool is_idempotent(const char* const msg) {
 */
 
 static int fsm_exec(const char* p, const char* const pe) {
-    char acknak;
+    unsigned char acknak;
     %% write exec;
     return -1;
 }

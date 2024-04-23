@@ -299,9 +299,14 @@ struct fsm_frontend_timer_args {
     int cs;
 };
 
-struct fsm_wireformat_args {};
+struct fsm_wireformat_args {
+    const int infd;
+};
+
+struct autoresponder_args {};
 
 int fsm_wireformat(void*);
 int fsm_frontend_foreign(struct fsm_frontend_foreign_args*);
 int fsm_frontend_internal(struct fsm_frontend_internal_args*);
 int fsm_frontend_timer(struct fsm_frontend_timer_args*);
+int autoresponder(void*);

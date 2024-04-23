@@ -11,6 +11,7 @@ CPPFLAGS_clang := -D_FORTIFY_SOURCE=3
 # Some gcc builds (depends on the distro) set _FORTIFY_SOURCE by default,
 # so we need undefine it and then redefine it
 CPPFLAGS_gcc   := -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS
+CPPFLAGS_cc     = $(CPPFLAGS_gcc)
 CPPFLAGS       ?= $(CPPFLAGS_$(CC))
 CPPFLAGS       += -I$(PROJECT_DIR) -I$(PROJECT_DIR)/multitasking
 #CPPFLAGS       += -DNDEBUG
@@ -21,6 +22,7 @@ CFLAGS_gcc := -fanalyzer -fanalyzer-checker=taint -fsanitize=bounds -fsanitize-u
 CFLAGS_gcc += -Wformat -Werror=format-security -grecord-gcc-switches
 CFLAGS_gcc += -fstack-protector-all
 CFLAGS_gcc += -fstack-clash-protection
+CFLAGS_cc   = $(CFLAGS_gcc)
 CFLAGS     ?= -std=gnu11 -O$(OPTLEVEL) -ggdb3 -Wall -Wextra -flto $(CFLAGS_$(CC))
 CFLAGS     += $(call if_coverage,--coverage)
 #CFLAGS   += -fstrict-flex-arrays
@@ -35,7 +37,7 @@ LDFLAGS += $(call if_coverage,--coverage)
 # Project configuration ########################################################
 RL_C      := wireprotocol.c frontend.c
 RL_O      := $(RL_C:.c=.o)
-CFILES    := main.c log.c utils.c serialization.c
+CFILES    := main.c log.c utils.c serialization.c autoresponder.c
 OFILES    := $(RL_O) $(CFILES:.c=.o)
 UT_C      := ut.c serialization.c log.c utils.c contextring.c
 UT_O      := $(UT_C:.c=.o) header.o body.o frame.o attrs.o
@@ -67,7 +69,7 @@ clang-analyze: $(ALL_PLIST)
 tcp-server: frob | d5.txt
 	s6-tcpserver -vd -b2 0.0.0.0 5002 s6-tcpserver-access -t200 -v3 -rp -B "Welcome!\r\n" $(realpath $<) 1000 $|
 tcp-client: frob | d5.txt
-	s6-tcpclient -rv localhost 5002 rlwrap $(realpath $<) 1000 $|
+	s6-tcpclient -rv localhost 5002 rlwrap $(realpath $<) 1000 $| 2>&1 | s6-tai64n | s6-tai64nlocal
 tls-server: frob server.cer server.key | d5.txt
 	env -i PATH=/bin CERTFILE=$(word 2,$^) KEYFILE=$(word 3,$^) s6-tlsserver 0.0.0.0 6666 $(realpath $<) -f $(word 1,$^)
 tls-client: frob server.cer | d5.txt

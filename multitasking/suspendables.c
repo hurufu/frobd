@@ -3,6 +3,7 @@
 #include "contextring.h"
 #include "eventloop.h"
 #include "../log.h"
+#include "../utils.h"
 #include <assert.h>
 #include <string.h>
 #include <unistd.h>
@@ -181,7 +182,7 @@ int sus_ioloop(struct sus_ioloop_args* const args) {
         .maxfd = 10,
         .deadline = comp_deadline(args->timeout)
     };
-    int ret;
+    int ret = 0;
     do {
 again:
         if (s_current == s_current->next) {
@@ -209,8 +210,8 @@ again:
         LOGE("iowait failed");
     else if (ret == 0)
         LOGI("iowait done");
-    close(0);
-    close(1);
+    for (int i = 0; i < 10; i++)
+        close(i);
     LOGDX("surrended");
     s_io_surrended = true;
     return -1;
@@ -233,9 +234,9 @@ int sus_runall(const size_t length, struct sus_registation_form (* const h)[leng
     ret = 0;
 end:
     for (size_t i = 0; i < length; i++) {
-        coro_destroy(&stuff[i].ctx);
+        (void)coro_destroy(&stuff[i].ctx);
         coro_stack_free(&stuff[i].stack);
     }
-    coro_destroy(&s_end);
+    (void)coro_destroy(&s_end);
     return ret;
 }
