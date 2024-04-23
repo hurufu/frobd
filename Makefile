@@ -2,7 +2,7 @@
 
 OPTLEVEL := g
 
-PROJECT_DIR := $(dir $(firstword $(MAKEFILE_LIST)))
+PROJECT_DIR := $(firstword $(dir $(shell realpath --relative-to=. $(MAKEFILE_LIST))))
 
 # Compiler configuration #######################################################
 if_coverage = $(if $(findstring coverage,$(MAKECMDGOALS)),$(1),)
@@ -13,7 +13,7 @@ CPPFLAGS_clang := -D_FORTIFY_SOURCE=3
 CPPFLAGS_gcc   := -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS
 CPPFLAGS_cc     = $(CPPFLAGS_gcc)
 CPPFLAGS       ?= $(CPPFLAGS_$(CC))
-CPPFLAGS       += -I$(PROJECT_DIR) -I$(PROJECT_DIR)/multitasking
+CPPFLAGS       += -I$(PROJECT_DIR) -I$(PROJECT_DIR)multitasking
 #CPPFLAGS       += -DNDEBUG
 # Disable all logs
 #CPPFLAGS       += -DNO_LOGS_ON_STDERR
@@ -52,9 +52,9 @@ LIBCOMULTI_O := $(LIBCOMULTI_C:.c=.o)
 HOSTNAME  := $(shell hostname -f)
 BUILD_DIR ?= build
 
-vpath %.rl $(PROJECT_DIR)/fsm
-vpath %.c $(addprefix $(PROJECT_DIR)/,. multitasking multitasking/coro)
-vpath %.t $(PROJECT_DIR)
+vpath %.rl  $(PROJECT_DIR)fsm
+vpath %.c   $(PROJECT_DIR) $(addprefix $(PROJECT_DIR),multitasking multitasking/coro)
+vpath %.t   $(PROJECT_DIR)
 vpath %.txt $(PROJECT_DIR)
 
 # Public targets ###############################################################

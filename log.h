@@ -55,7 +55,7 @@
 #   define LOG_STORY(Prefix, Level, Method, Prologue, Epilogue, Fmt, ...) \
         if (LOG_##Level <= g_log_level) {\
             Prologue;\
-            Method("\x1f" Prefix "\x1f %16s\x1f% 4d\x1f %24s\x1f " Fmt "\x1e", __FILE__, __LINE__, __func__, ##__VA_ARGS__);\
+            Method("\x1f" Prefix "\x1f %32s\x1f% 4d\x1f %24s\x1f " Fmt "\x1e", __FILE__, __LINE__, __func__, ##__VA_ARGS__);\
             Epilogue;\
         }
     extern int g_log_level;
