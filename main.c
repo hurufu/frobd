@@ -4,6 +4,7 @@
 #include "frob.h"
 #include <unistd.h>
 #include <signal.h>
+#include <sys/resource.h>
 
 enum channel {
     CHANNEL_NONE = -1,
@@ -132,6 +133,17 @@ static void test_all_channels(const int (* const fd)[CHANNEL_COUNT]) {
             LOGE("Channel %s (fd %d) is unusable", channel_to_string(i), (*fd)[i]);
 }
 
+static void adjust_rlimit(void) {
+    // This will force syscalls that allocate file descriptors to fail if it
+    // doesn't fit into fd_set, so we don't have to check for that in the code.
+    struct rlimit rl;
+    if (getrlimit(RLIMIT_NOFILE, &rl) != 0)
+        ABORTF("getrlimit");
+    if (rl.rlim_cur > FD_SETSIZE)
+        if (setrlimit(RLIMIT_NOFILE, &(struct rlimit){ .rlim_cur = FD_SETSIZE, .rlim_max = rl.rlim_max }) != 0)
+            ABORTF("setrlimit");
+}
+
 int main(const int ac, const char* av[static const ac]) {
     init_log();
     if (ac != 3)
@@ -146,6 +158,7 @@ int main(const int ac, const char* av[static const ac]) {
         [CHANNEL_NI_DEVICE] = -1,
         [CHANNEL_FI_MAIN] = STDIN_FILENO,
     };
+    adjust_rlimit();
     ucsp_info_and_adjust_fds(&fds[CHANNEL_FI_MAIN], &fds[CHANNEL_FO_MAIN]);
     test_all_channels(&fds);
     struct sus_registation_form tasks[] = {
