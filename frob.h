@@ -303,10 +303,14 @@ struct fsm_wireformat_args {
     const int infd;
 };
 
-struct autoresponder_args {};
+struct autoresponder_args {
+    const char* const d5_path; // Temporary!
+    int in; // Id of input buffer
+    int out; // Output file descriptor
+};
 
 int fsm_wireformat(void*);
 int fsm_frontend_foreign(struct fsm_frontend_foreign_args*);
 int fsm_frontend_internal(struct fsm_frontend_internal_args*);
 int fsm_frontend_timer(struct fsm_frontend_timer_args*);
-int autoresponder(void*);
+int autoresponder(const struct autoresponder_args*);

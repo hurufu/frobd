@@ -132,8 +132,10 @@ static void test_all_channels(const int (* const fd)[CHANNEL_COUNT]) {
             LOGE("Channel %s (fd %d) is unusable", channel_to_string(i), (*fd)[i]);
 }
 
-int main() {
+int main(const int ac, const char* av[static const ac]) {
     init_log();
+    if (ac != 3)
+        return 1;
     int fds[CHANNEL_COUNT] = {
         [CHANNEL_NO_PAYMENT] = -1,
         [CHANNEL_NO_STORAGE] = -1,
@@ -147,10 +149,10 @@ int main() {
     ucsp_info_and_adjust_fds(&fds[CHANNEL_FI_MAIN], &fds[CHANNEL_FO_MAIN]);
     test_all_channels(&fds);
     struct sus_registation_form tasks[] = {
-        sus_registration(autoresponder),
+        sus_registration(autoresponder, av[2], 1, fds[CHANNEL_FO_MAIN]),
         sus_registration(fsm_wireformat, fds[CHANNEL_FI_MAIN]),
         sus_registration(fsm_frontend_foreign),
-        sus_registration(sus_ioloop, .timeout = -1)
+        sus_registration(sus_ioloop, .timeout = atoi(av[1]))
     };
 #   if 0
     if (write(3, "\n", 1) != 1 || close(3) != 0)
