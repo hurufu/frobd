@@ -65,7 +65,8 @@
 })
 
 #define xfprintf(...) XCALL(fprintf, __VA_ARGS__)
-#define xsigprocmask(...) XCALL(xsigprocmask, __VA_ARGS__)
+#define xsigprocmask(...) XCALL(sigprocmask, __VA_ARGS__)
+#define xsignalfd(...) XCALL(signalfd, __VA_ARGS__)
 #define xselect(M, R, W, E, Timeout) XCALL(select, M, R, W, E, Timeout)
 #define xread(...) XCALL(read, __VA_ARGS__)
 #define xrread(...) XCALL(rread, __VA_ARGS__)
