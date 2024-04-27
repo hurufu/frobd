@@ -97,6 +97,7 @@ again:
         goto again;
     }
     s_current->visited = 0;
+    FD_CLR(fd, &s_iop.active.r);
     //FD_CLR(fd, &s_iop.scheduled.r);
     return r;
 }

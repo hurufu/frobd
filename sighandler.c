@@ -34,6 +34,7 @@ static void process_signal(const struct signalfd_siginfo* const si) {
 
 int sighandler(struct sighandler_args*) {
     const int sfd = create_signalfd();
+    set_nonblocking(sfd); // TODO: Remove
     struct signalfd_siginfo inf;
     while (sus_read(sfd, &inf, sizeof inf) == sizeof inf)
         process_signal(&inf);
