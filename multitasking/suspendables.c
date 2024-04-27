@@ -43,11 +43,11 @@ static struct fdsets {
 } s_iop;
 
 static void suspend(const char* const method) {
-    LOGDX("%s suspended at %s", s_current->name, method);
+    LOGDX("suspended %s at %s", s_current->name, method);
     assert(s_current->visited < 100); // EDEADLK
     s_current->visited++;
     coro_transfer(s_current->ctx, &s_end);
-    LOGDX("%s awaken at %s", s_current->name, method);
+    LOGDX("awaken %s at %s", s_current->name, method);
 }
 
 static const char* ioset_to_method(const enum ioset set) {
@@ -111,19 +111,19 @@ void sus_lend(const uint8_t id, const size_t size, void* const data) {
     assert(s_iow[id].data == NULL);
     assert(s_iow[id].size == 0);
     s_iow[id] = (struct iowork){ .data = data, .size = size };
-    LOGDX("[%d] = %p", id, s_iow[id].data);
+    //LOGDX("[%d] = %p", id, s_iow[id].data);
     while (s_iow[id].data != NULL) {
-        LOGDX("suspend [%d] = %p", id, s_iow[id].data);
+        //LOGDX("suspend [%d] = %p", id, s_iow[id].data);
         suspend("lend");
     }
-    LOGDX("wakeup [%d] = %p", id, s_iow[id].data);
+    //LOGDX("wakeup [%d] = %p", id, s_iow[id].data);
     assert(s_iow[id].data == NULL);
     assert(s_iow[id].size == 0);
     s_current->visited = 0;
 }
 
 ssize_t sus_borrow(const uint8_t id, void** const data) {
-    LOGDX("[%d] = %p | %p", id, s_iow[id].data, data);
+    //LOGDX("[%d] = %p | %p", id, s_iow[id].data, data);
     assert(data != NULL);
     assert(!s_iow[id].borrowed);
     if (s_iow[id].disabled) {
@@ -131,14 +131,14 @@ ssize_t sus_borrow(const uint8_t id, void** const data) {
         return -1;
     }
     while (s_iow[id].data == NULL) {
-        LOGDX("suspend [%d] = %p", id, s_iow[id].data);
+        //LOGDX("suspend [%d] = %p", id, s_iow[id].data);
         if (s_iow[id].disabled) {
             errno = EIDRM;
             return -1;
         }
         suspend("borrow");
     }
-    LOGDX("wakeup [%d] = %p", id, s_iow[id].data);
+    //LOGDX("wakeup [%d] = %p", id, s_iow[id].data);
 #   ifndef NDEBUG
     s_iow[id].borrowed = true;
 #   endif
@@ -153,7 +153,7 @@ void sus_return(const uint8_t id, const void* const data, const size_t size) {
     assert(s_iow[id].data != NULL);
     assert(s_iow[id].data == data);
     assert(s_iow[id].size == size);
-    LOGDX("[%d] %p –> (nil)", id, s_iow[id].data);
+    //LOGDX("[%d] %p –> (nil)", id, s_iow[id].data);
     s_iow[id] = (struct iowork){};
     s_current->visited = 0;
     //suspend("return");
@@ -170,9 +170,9 @@ static inline void sus_exit(void) {
 
 __attribute__((noreturn))
 static void starter(struct sus_registation_form* const reg) {
-    LOGDX("%s task started", reg->name);
+    LOGDX("started task %s", reg->name);
     reg->result = reg->entry(reg->args);
-    LOGDX("%s task ended", reg->name);
+    LOGDX("ended task %s", reg->name);
     sus_exit();
 }
 
@@ -200,7 +200,7 @@ again:
             }
         }
         if (!ok) {
-            LOGDX("continue");
+            //LOGDX("continue");
             goto again;
         }
         assert(ok);
@@ -212,7 +212,7 @@ again:
         LOGI("iowait done");
     for (int i = 0; i < 10; i++)
         close(i);
-    LOGDX("surrended");
+    LOGWX("surrended");
     s_io_surrended = true;
     return -1;
 }
