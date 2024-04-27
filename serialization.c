@@ -20,7 +20,7 @@
             enum FrobTransactionStatus: serialize_integer,\
             const char*: serialize_string,\
             const unsigned char*: xsnprint_hex,\
-            bool: serialize_integer,\
+            bool: serialize_boolean,\
             unsigned char: serialize_integer,\
             unsigned short: serialize_integer,\
             unsigned long: serialize_integer\
@@ -75,6 +75,10 @@ static size_t serialize_integer(const size_t s, input_t p[static const s], size_
     if (ret <= s)
         memcpy(p, tmp, ret);
     return ret;
+}
+
+static size_t serialize_boolean(const size_t s, input_t p[static const s], size_t l, const bool v) {
+    return serialize_integer(s, p, l, v);
 }
 
 static size_t serialize_token(const size_t s, input_t p[static const s], size_t _, const unsigned int* const v) {
