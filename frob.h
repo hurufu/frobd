@@ -322,3 +322,4 @@ int fsm_frontend_timer(struct fsm_frontend_timer_args*);
 int autoresponder(const struct autoresponder_args*);
 int sighandler(struct sighandler_args*);
 int controller(struct controller_args*);
+void ucsp_info_and_adjust_fds(int* restrict in, int* restrict out);

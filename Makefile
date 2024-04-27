@@ -37,7 +37,7 @@ LDFLAGS += $(call if_coverage,--coverage)
 # Project configuration ########################################################
 RL_C      := wireprotocol.c frontend.c header.c body.c attrs.c frame.c
 RL_O      := $(RL_C:.c=.o)
-CFILES    := main.c log.c utils.c serialization.c autoresponder.c sighandler.c controller.c
+CFILES    := main.c log.c utils.c serialization.c autoresponder.c sighandler.c controller.c ucspi.c
 OFILES    := $(RL_O) $(CFILES:.c=.o)
 UT_C      := ut.c serialization.c log.c utils.c contextring.c
 UT_O      := $(UT_C:.c=.o) header.o body.o frame.o attrs.o
