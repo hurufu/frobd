@@ -165,6 +165,8 @@ int main(const int ac, const char* av[static const ac]) {
         sus_registration(autoresponder, av[2], 1, fds[CHANNEL_FO_MAIN]),
         sus_registration(fsm_wireformat, fds[CHANNEL_FI_MAIN]),
         sus_registration(fsm_frontend_foreign),
+        sus_registration(sighandler),
+        sus_registration(controller),
         sus_registration(sus_ioloop, .timeout = atoi(av[1]))
     };
 #   if 0

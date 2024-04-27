@@ -309,8 +309,16 @@ struct autoresponder_args {
     int out; // Output file descriptor
 };
 
+struct sighandler_args {
+};
+
+struct controller_args {
+};
+
 int fsm_wireformat(void*);
 int fsm_frontend_foreign(struct fsm_frontend_foreign_args*);
 int fsm_frontend_internal(struct fsm_frontend_internal_args*);
 int fsm_frontend_timer(struct fsm_frontend_timer_args*);
 int autoresponder(const struct autoresponder_args*);
+int sighandler(struct sighandler_args*);
+int controller(struct controller_args*);
