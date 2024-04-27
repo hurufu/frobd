@@ -58,21 +58,29 @@ static union frob_body construct_hardcoded_message_body(const struct config* con
 
 int autoresponder(const struct autoresponder_args* const args) {
     const struct config cfg = {
+        .supported_versions = { "160", "170" },
+        .info = {
+            .version = "170",
+            .vendor = "TEST",
+            .device_type = "SIM",
+            .device_id = "0"
+        },
         .parameters = load_d5_from_file(args->d5_path)
     };
     const unsigned char* p;
     ssize_t bytes;
     unsigned char rsp_buf[1024];
     while ((bytes = sus_borrow(args->in, (void**)&p)) >= 0) {
+        //LOGDXP(char tmp[4*bytes], "Received %zd bytes: %s", bytes, PRETTY(p, p + bytes, tmp));
         if (bytes > 1) {
             const struct frob_msg msg = xparse_message(bytes - 1, p + 1);
             const struct frob_msg response = {
                 .magic = FROB_MAGIC,
                 .header = {
                     .token = msg.header.token,
-                    .type = msg.header.type
+                    .type = msg.header.type + 1
                 },
-                .body = construct_hardcoded_message_body(&cfg, msg.header.token)
+                .body = construct_hardcoded_message_body(&cfg, msg.header.type + 1)
             };
             const ssize_t w = serialize(sizeof rsp_buf, rsp_buf, &response);
             if (w < 0) {
@@ -82,6 +90,7 @@ int autoresponder(const struct autoresponder_args* const args) {
                 LOGDXP(char tmp[4*w], "← % 4zd %s", sizeof w, PRETTY(rsp_buf, rsp_buf + w, tmp));
             }
         }
+        //LOGDX("Returning buffer");
         sus_return(args->in, p, bytes);
     }
     return -1;

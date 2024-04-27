@@ -86,6 +86,7 @@ static char class_to_char(const enum FrobMessageType m) {
         case FROB_L: return 'L';
         case FROB_B: return 'B';
     }
+    LOGE("0x%x", m);
     assert(false);
     return '?';
 }

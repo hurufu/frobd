@@ -20,13 +20,12 @@ static void ucspi_log(const char* const proto, const char* const connnum) {
     for (size_t k = 0; k < lengthof(sn); k++)
         sv[k] = getenv(sn[k]);
 
-    LOGIX("UCSPI compatible environment detected (%s)", (connnum ? "server" : "client"));
+    LOGIX("UCSPI-%s compatible environment detected (%s)", proto, (connnum ? "server" : "client"));
     char* p = buf;
-    p += snprintfx(p, buf + sizeof buf - p, "PROTO: %s;", proto);
     for (size_t j = 0; j < lengthof(rl); j++) {
         if (!(ed[j][0] || ed[j][1] || ed[j][2] || ed[j][3]))
             continue;
-        p += snprintfx(p, buf + sizeof buf - p, " %s:", rl[j]);
+        p += snprintfx(p, buf + sizeof buf - p, "%s:", rl[j]);
         if (j == 0 && connnum)
             p += snprintfx(p, buf + sizeof buf - p, " #%s", connnum);
         if (ed[j][0])
@@ -35,9 +34,9 @@ static void ucspi_log(const char* const proto, const char* const connnum) {
             p += snprintfx(p, buf + sizeof buf - p, " (%s:%s)", ed[j][1], ed[j][2]);
         if (ed[j][3])
             p += snprintfx(p, buf + sizeof buf - p, " [%s]", ed[j][3]);
-        p += snprintfx(p, buf + sizeof buf - p, ";");
+        LOGDX("%s", buf);
+        p = buf;
     }
-    LOGDX("%s", buf);
     if (sv[0]) {
         p = buf;
         p += snprintfx(p, buf + sizeof buf - p, "%s: %s", sv[0], sv[1]);

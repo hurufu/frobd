@@ -70,6 +70,13 @@ static void suspend_io(const int fd, const enum ioset set) {
     LOGDX("awaken %s at %s fd %d", s_current->name, method, fd);
 }
 
+static void suspend_io_errno(const int fd, const enum ioset set) {
+    const char* const method = ioset_to_method(set);
+    LOGD("suspended %s at %s fd %d", s_current->name, method, fd);
+    suspend();
+    LOGDX("awaken %s at %s fd %d", s_current->name, method, fd);
+}
+
 static void suspend_id(const char* const method, const int id) {
     LOGDX("suspended %s at %s id %d", s_current->name, method, id);
     suspend();
@@ -96,8 +103,7 @@ again:
     suspend_until_active(fd, IOSET_WRITE);
     const ssize_t r = write(fd, data, size);
     if (r < 0 && errno == EAGAIN) {
-        LOGD("write");
-        suspend_io(fd, IOSET_WRITE);
+        suspend_io_errno(fd, IOSET_WRITE);
         goto again;
     }
     s_current->visited = 0;
@@ -109,8 +115,7 @@ again:
     suspend_until_active(fd, IOSET_READ);
     const ssize_t r = read(fd, data, size);
     if (r < 0 && errno == EAGAIN) {
-        LOGD("read");
-        suspend_io(fd, IOSET_READ);
+        suspend_io_errno(fd, IOSET_READ);
         goto again;
     }
     s_current->visited = 0;
@@ -129,9 +134,9 @@ void sus_lend(const uint8_t id, const size_t size, void* const data) {
     assert(s_iow[id].data == NULL);
     assert(s_iow[id].size == 0);
     s_iow[id] = (struct iowork){ .data = data, .size = size };
-    //LOGDX("[%d] = %p", id, s_iow[id].data);
+    //LOGDX("s_iow[%d].data = %p, data = %p", id, s_iow[id].data, data);
     while (s_iow[id].data != NULL) {
-        //LOGDX("suspend [%d] = %p", id, s_iow[id].data);
+        //LOGDX("suspend because s_iow[%d].data (%p) != NULL", id, s_iow[id].data);
         suspend_id("lend", id);
     }
     //LOGDX("wakeup [%d] = %p", id, s_iow[id].data);
@@ -141,7 +146,7 @@ void sus_lend(const uint8_t id, const size_t size, void* const data) {
 }
 
 ssize_t sus_borrow(const uint8_t id, void** const data) {
-    //LOGDX("[%d] = %p | %p", id, s_iow[id].data, data);
+    //LOGDX("s_iow[%d].data = %p, data = %p", id, s_iow[id].data, data);
     assert(data != NULL);
     assert(!s_iow[id].borrowed);
     if (s_iow[id].disabled) {
@@ -149,7 +154,7 @@ ssize_t sus_borrow(const uint8_t id, void** const data) {
         return -1;
     }
     while (s_iow[id].data == NULL) {
-        //LOGDX("suspend [%d] = %p", id, s_iow[id].data);
+        //LOGDX("suspend because s_iow[%d].data (%p) == NULL", id, s_iow[id].data);
         if (s_iow[id].disabled) {
             errno = EIDRM;
             return -1;

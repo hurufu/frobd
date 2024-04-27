@@ -38,6 +38,7 @@ static int cs;
         LOGDXP(char tmp[4*1], "← % 4d %s", 1, PRETTY(&acknak, &acknak + 1, tmp));
     }
     action Process {
+        LOGDXP(char tmp[4*(pe-p)], "Lending %zd bytes: %s", pe - p, PRETTY((unsigned char*)p, (unsigned char*)pe, tmp));
         sus_lend(1, pe - p, (char*)p);// TODO: Remove this cast
     }
     action Forward {
@@ -84,7 +85,8 @@ int fsm_frontend_foreign(struct fsm_frontend_foreign_args* const a) {
     ssize_t bytes;
     const char* p;
     while ((bytes = sus_borrow(0, (void**)&p)) >= 0) {
-        const char* const pe = p + 1;
+        LOGDX("Received %zd bytes", bytes);
+        const char* const pe = p + bytes;
         fsm_exec(p, pe);
         sus_return(0, p, bytes);
     }
