@@ -40,6 +40,12 @@ static int cs;
     action Process {
         sus_lend(1, pe - p, (char*)p);// TODO: Remove this cast
     }
+    action Forward {
+        if (sus_write(forwarded_fd, p, pe - p) != pe - p) {
+            LOGE("write");
+            fbreak;
+        }
+    }
 
     foreign = OK @Confirm @Send @Process | NAK @Reject @Send;
     internal = IDEMPOTENT ACK | IDEMPOTENT TIMEOUT{1,3} ACK;
