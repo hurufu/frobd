@@ -42,14 +42,6 @@ static struct fdsets {
     union fdset scheduled, active;
 } s_iop;
 
-static void suspend(const char* const method) {
-    LOGDX("suspended %s at %s", s_current->name, method);
-    assert(s_current->visited < 100); // EDEADLK
-    s_current->visited++;
-    coro_transfer(s_current->ctx, &s_end);
-    LOGDX("awaken %s at %s", s_current->name, method);
-}
-
 static const char* ioset_to_method(const enum ioset set) {
     switch (set) {
         case IOSET_READ: return "read";
@@ -57,6 +49,31 @@ static const char* ioset_to_method(const enum ioset set) {
         case IOSET_OOB: return "oob";
     }
     return NULL;
+}
+
+static void suspend(void) {
+    assert(s_current->visited < 100); // EDEADLK
+    s_current->visited++;
+    coro_transfer(s_current->ctx, &s_end);
+}
+
+static void suspend_only(const char* const method) {
+    LOGDX("suspended %s at %s", s_current->name, method);
+    suspend();
+    LOGDX("awaken %s at %s", s_current->name, method);
+}
+
+static void suspend_io(const int fd, const enum ioset set) {
+    const char* const method = ioset_to_method(set);
+    LOGDX("suspended %s at %s fd %d", s_current->name, method, fd);
+    suspend();
+    LOGDX("awaken %s at %s fd %d", s_current->name, method, fd);
+}
+
+static void suspend_id(const char* const method, const int id) {
+    LOGDX("suspended %s at %s id %d", s_current->name, method, id);
+    suspend();
+    LOGDX("awaken %s at %s id %d", s_current->name, method, id);
 }
 
 static void suspend_until_active(const int fd, const enum ioset set) {
@@ -70,7 +87,7 @@ static void suspend_until_active(const int fd, const enum ioset set) {
             return;
         }
         FD_SET(fd, &s_iop.scheduled.a[set]);
-        suspend(ioset_to_method(set));
+        suspend_io(fd, set);
     }
 }
 
@@ -80,7 +97,7 @@ again:
     const ssize_t r = write(fd, data, size);
     if (r < 0 && errno == EAGAIN) {
         LOGD("write");
-        suspend(ioset_to_method(IOSET_READ));
+        suspend_io(fd, IOSET_WRITE);
         goto again;
     }
     s_current->visited = 0;
@@ -93,7 +110,7 @@ again:
     const ssize_t r = read(fd, data, size);
     if (r < 0 && errno == EAGAIN) {
         LOGD("read");
-        suspend(ioset_to_method(IOSET_READ));
+        suspend_io(fd, IOSET_READ);
         goto again;
     }
     s_current->visited = 0;
@@ -115,7 +132,7 @@ void sus_lend(const uint8_t id, const size_t size, void* const data) {
     //LOGDX("[%d] = %p", id, s_iow[id].data);
     while (s_iow[id].data != NULL) {
         //LOGDX("suspend [%d] = %p", id, s_iow[id].data);
-        suspend("lend");
+        suspend_id("lend", id);
     }
     //LOGDX("wakeup [%d] = %p", id, s_iow[id].data);
     assert(s_iow[id].data == NULL);
@@ -137,7 +154,7 @@ ssize_t sus_borrow(const uint8_t id, void** const data) {
             errno = EIDRM;
             return -1;
         }
-        suspend("borrow");
+        suspend_id("borrow", id);
     }
     //LOGDX("wakeup [%d] = %p", id, s_iow[id].data);
 #   ifndef NDEBUG
@@ -191,7 +208,7 @@ again:
             break;
         }
         s_iop = (struct fdsets){ .active = { .r = iop.set[0], .w = iop.set[1], .e = iop.set[2] }};
-        suspend("iowait");
+        suspend_only("iowait");
         bool ok = false;
         for (int i = 0; i < 3; i++) {
             iop.set[i] = s_iop.scheduled.a[i];

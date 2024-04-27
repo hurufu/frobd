@@ -25,9 +25,9 @@ int main(const int ac, const char* av[static const ac]) {
     int fd_fo_main = STDOUT_FILENO, fd_fi_main = STDIN_FILENO;
     ucsp_info_and_adjust_fds(&fd_fo_main, &fd_fi_main);
     struct sus_registation_form tasks[] = {
-        sus_registration(autoresponder, av[2], 1, fd_fo_main),
         sus_registration(fsm_wireformat, fd_fi_main),
         sus_registration(fsm_frontend_foreign),
+        sus_registration(autoresponder, av[2], 1, fd_fo_main),
         sus_registration(sighandler),
         sus_registration(s6_notify, -1),
         sus_registration(controller),
