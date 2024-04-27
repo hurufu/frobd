@@ -315,6 +315,10 @@ struct sighandler_args {
 struct controller_args {
 };
 
+struct s6_notify_args {
+    const int fd;
+};
+
 int fsm_wireformat(void*);
 int fsm_frontend_foreign(struct fsm_frontend_foreign_args*);
 int fsm_frontend_internal(struct fsm_frontend_internal_args*);
@@ -322,4 +326,6 @@ int fsm_frontend_timer(struct fsm_frontend_timer_args*);
 int autoresponder(const struct autoresponder_args*);
 int sighandler(struct sighandler_args*);
 int controller(struct controller_args*);
+int s6_notify(const struct s6_notify_args*);
+
 void ucsp_info_and_adjust_fds(int* restrict in, int* restrict out);

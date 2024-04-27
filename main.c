@@ -29,13 +29,10 @@ int main(const int ac, const char* av[static const ac]) {
         sus_registration(fsm_wireformat, fd_fi_main),
         sus_registration(fsm_frontend_foreign),
         sus_registration(sighandler),
+        sus_registration(s6_notify, -1),
         sus_registration(controller),
         sus_registration(sus_ioloop, .timeout = atoi(av[1]))
     };
-#   if 0
-    if (write(3, "\n", 1) != 1 || close(3) != 0)
-        EXITF("Readiness notification failed");
-#   endif
     if (sus_runall(lengthof(tasks), &tasks) != 0)
         EXITF("Can't start");
     int ret = 0;
