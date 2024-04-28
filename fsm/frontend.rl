@@ -120,19 +120,3 @@ int fsm_frontend_timer(struct fsm_frontend_timer_args* const a) {
     }
     return -1;
 }
-
-int n_fsm_frontend_timer() {
-/*
-    void coro(void* a) {
-        ssize_t bytes;
-        unsigned char buf[8];
-        while ((bytes = sus_read(_, buf, sizeof buf)) > 0) {
-            const char* p = (char[]){0}, * const pe = p + 1;
-            fsm_exec(p, pe);
-        }
-        return -1;
-    }
-    coro_construct(32, &coro, NULL);
-*/
-    return -1;
-}
