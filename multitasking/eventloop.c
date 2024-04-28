@@ -3,8 +3,23 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <stdio.h>
+
+static char* print_ioparams(const struct io_params* const iop, const size_t size, char buf[static const size]) {
+    FILE* const s = fmemopen(buf, size, "w");
+    assert(s);
+    for (int i = 0; i < 3; i++) {
+        xfprintf(s, "%c:", (i == 0 ? 'r' : i == 1 ? 'w' : 'e'));
+        for (unsigned short fd = 0; fd < iop->maxfd; fd++)
+            xfprintf(s, "%d", FD_ISSET(fd, &iop->set[i]));
+        xfputs(" ", s);
+    }
+    xfclose(s);
+    return buf;
+}
 
 static inline int iselect(struct io_params* const iop, struct timeval* const deadline) {
+    LOGDXP(char tmp[64], "%s", print_ioparams(iop, sizeof tmp, tmp));
     return xselect(iop->maxfd, &iop->set[0], &iop->set[1], &iop->set[2], deadline);
 }
 
