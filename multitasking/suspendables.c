@@ -1,5 +1,4 @@
 #include "sus.h"
-#include "coro/coro.h"
 #include "contextring.h"
 #include "eventloop.h"
 #include "../log.h"
@@ -9,13 +8,6 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <errno.h>
-
-enum ioset { IOSET_READ, IOSET_WRITE, IOSET_OOB };
-
-struct coro_stuff {
-    struct coro_stack stack;
-    struct coro_context ctx;
-};
 
 union fdset {
     fd_set a[3];

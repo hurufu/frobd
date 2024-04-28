@@ -46,7 +46,7 @@ NORMAL_O  := $(RL_O) ut.o log.o
 ALL_C     := $(CFILES) $(UT_C)
 ALL_PLIST := $(ALL_C:.c=.plist)
 
-LIBCOMULTI_C := coro.c contextring.c eventloop.c suspendables.c
+LIBCOMULTI_C := coro.c contextring.c eventloop.c suspendables.c sigio.c
 LIBCOMULTI_O := $(LIBCOMULTI_C:.c=.o)
 
 HOSTNAME  := $(shell hostname -f)

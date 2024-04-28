@@ -18,6 +18,10 @@ void set_nonblocking(const int fd) {
         EXITF("fcntl F_SETFL O_NONBLOCK");
 }
 
+bool is_fd_bad(const int fd) {
+    return fcntl(fd, F_GETFD) < 0;
+}
+
 input_t calculate_lrc(input_t* p, const input_t* const pe) {
     uint8_t lrc = 0;
     assert(p < pe);

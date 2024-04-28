@@ -64,6 +64,7 @@
     v;\
 })
 
+#define xsigtimedwait(...) XCALL(sigtimedwait, __VA_ARGS__)
 #define xfprintf(...) XCALL(fprintf, __VA_ARGS__)
 #define xfputs(...) XCALL(fputs, __VA_ARGS__)
 #define xfflush(...) XCALL(fflush, __VA_ARGS__)
@@ -100,6 +101,7 @@ typedef uint8_t input_t;
 
 
 void set_nonblocking(int fd);
+bool is_fd_bad(int fd);
 
 byte_t hex2nibble(char h);
 byte_t unhex(const char h[static 2]);

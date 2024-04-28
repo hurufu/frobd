@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <time.h>
+#include "coro/coro.h" // FIXME: Don't leak internal header
 
 #define sus_registration(Entry, ...) (struct sus_registation_form){\
     .name = #Entry,\
@@ -24,6 +25,13 @@ struct sus_registation_form {
 
 struct sus_ioloop_args {
     const time_t timeout;
+};
+
+enum ioset { IOSET_READ, IOSET_WRITE, IOSET_OOB };
+
+struct coro_stuff {
+    struct coro_stack stack;
+    struct coro_context ctx;
 };
 
 /** Start and schedule all tasks.
