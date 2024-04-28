@@ -27,6 +27,7 @@ int main(const int ac, const char* av[static const ac]) {
     struct sus_registation_form tasks[] = {
         sus_registration(fsm_wireformat, fd_fi_main),
         sus_registration(fsm_frontend_foreign),
+        sus_registration(fsm_frontend_timer),
         sus_registration(autoresponder, av[2], 1, fd_fo_main),
         sus_registration(sighandler),
         sus_registration(s6_notify, -1),

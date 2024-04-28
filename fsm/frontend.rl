@@ -111,15 +111,13 @@ int fsm_frontend_internal(struct fsm_frontend_internal_args* const a) {
 
 int fsm_frontend_timer(struct fsm_frontend_timer_args* const a) {
     (void)a;
-/*
     const int fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
     ssize_t bytes;
     unsigned char buf[8];
-    while ((bytes = sus_read(_, buf, sizeof buf)) > 0) {
+    while ((bytes = sus_read(fd, buf, sizeof buf)) > 0) {
         const char* p = (char[]){0}, * const pe = p + 1;
         fsm_exec(p, pe);
     }
-*/
     return -1;
 }
 
