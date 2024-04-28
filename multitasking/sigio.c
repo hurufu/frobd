@@ -29,7 +29,10 @@ static int suspend(void) {
 static int suspend_poll(const int fd, const short nevents) {
     if (is_fd_bad(fd))
         return -1;
-    assert(fcntl(fd, F_GETFL, 0) & O_NONBLOCK);
+    assert(fcntl(fd, F_GETFL) & O_NONBLOCK);
+    assert(fcntl(fd, F_GETFL) & O_ASYNC);
+    assert(fcntl(fd, F_GETOWN) == getpid());
+    //assert(fcntl(fd, F_GETSIG) == 0);
     assert(nevents & (POLLIN | POLLOUT));
     while (s_si.si_signo != SIGPOLL || s_si.si_fd != fd || s_si.si_band & nevents)
         if (suspend() < 0)

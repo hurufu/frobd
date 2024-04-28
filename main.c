@@ -32,9 +32,8 @@ int main(const int ac, const char* av[static const ac]) {
         sus_registration(sighandler),
         sus_registration(s6_notify, -1),
         sus_registration(controller),
-        sus_registration(sus_ioloop, .timeout = atoi(av[1]))
     };
-    if (sus_runall(lengthof(tasks), &tasks) != 0)
+    if (sig_runall(lengthof(tasks), &tasks) != 0)
         EXITF("Can't start");
     int ret = 0;
     for (size_t i = 0; i < lengthof(tasks); i++) {

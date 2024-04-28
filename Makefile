@@ -14,6 +14,7 @@ CPPFLAGS_gcc   := -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS
 CPPFLAGS_cc     = $(CPPFLAGS_gcc)
 CPPFLAGS       ?= $(CPPFLAGS_$(CC))
 CPPFLAGS       += -I$(PROJECT_DIR) -I$(PROJECT_DIR)multitasking
+CPPFLAGS       += -D__USE_GNU
 #CPPFLAGS       += -DNDEBUG
 # Disable all logs
 #CPPFLAGS       += -DNO_LOGS_ON_STDERR
@@ -69,7 +70,7 @@ clang-analyze: $(ALL_PLIST)
 tcp-server: frob | d5.txt
 	s6-tcpserver -vd -b2 0.0.0.0 5002 s6-tcpserver-access -t200 -v3 -rp -B "Welcome!\r\n" $(realpath $<) 1000 $|
 tcp-client: frob | d5.txt
-	s6-tcpclient -rv localhost 5002 rlwrap $(realpath $<) 1000 $| 2>&1 | s6-tai64n | s6-tai64nlocal
+	s6-tcpclient -rv localhost 5002 rlwrap ./$< 1000 $| 2>&1 | s6-tai64n | s6-tai64nlocal
 tls-server: frob server.cer server.key | d5.txt
 	env -i PATH=/bin CERTFILE=$(word 2,$^) KEYFILE=$(word 3,$^) s6-tlsserver 0.0.0.0 6666 $(realpath $<) -f $(word 1,$^)
 tls-client: frob server.cer | d5.txt
