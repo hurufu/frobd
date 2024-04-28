@@ -30,6 +30,8 @@ struct sus_ioloop_args {
  *
  *  Currently uses round-robin scheduling scheme. In well-written program order
  *  of tasks in the input array shouldn't matter.
+ *
+ *  Another idea is to reorder tasks to improve shceduling
  */
 int sus_runall(size_t s, struct sus_registation_form (* c)[s]) __attribute__((nonnull (2)));
 
