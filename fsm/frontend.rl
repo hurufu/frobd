@@ -31,7 +31,7 @@ static int cs;
         acknak = 0x15;
     }
     action Send {
-        if (sus_write(6, &acknak, 1) != 1) {
+        if (sio_write(6, &acknak, 1) != 1) {
             LOGE("write");
             fbreak;
         }
@@ -39,10 +39,10 @@ static int cs;
     }
     action Process {
         LOGDXP(char tmp[4*(pe-p)], "Lending %zd bytes: %s", pe - p, PRETTY((unsigned char*)p, (unsigned char*)pe, tmp));
-        sus_lend(1, pe - p, (char*)p);// TODO: Remove this cast
+        //sus_lend(1, pe - p, (char*)p);// TODO: Remove this cast
     }
     action Forward {
-        if (sus_write(forwarded_fd, p, pe - p) != pe - p) {
+        if (sio_write(forwarded_fd, p, pe - p) != pe - p) {
             LOGE("write");
             fbreak;
         }
@@ -84,6 +84,7 @@ int fsm_frontend_foreign(struct fsm_frontend_foreign_args* const a) {
     (void)a;
     ssize_t bytes;
     const char* p;
+    /*
     while ((bytes = sus_borrow(0, (void**)&p)) >= 0) {
         LOGDX("Received %zd bytes", bytes);
         const char* const pe = p + bytes;
@@ -93,6 +94,7 @@ int fsm_frontend_foreign(struct fsm_frontend_foreign_args* const a) {
     if (bytes < 0)
         LOGE("Closing fronted");
     sus_disable(1);
+    */
     return -1;
 }
 
@@ -110,13 +112,16 @@ int fsm_frontend_internal(struct fsm_frontend_internal_args* const a) {
 }
 
 int fsm_frontend_timer(struct fsm_frontend_timer_args* const a) {
+    /*
     (void)a;
     const int fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
+    set_nonblocking(fd);
     ssize_t bytes;
     unsigned char buf[8];
-    while ((bytes = sus_read(fd, buf, sizeof buf)) > 0) {
+    while ((bytes = sio_read(fd, buf, sizeof buf)) > 0) {
         const char* p = (char[]){0}, * const pe = p + 1;
         fsm_exec(p, pe);
     }
+    */
     return -1;
 }

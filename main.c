@@ -29,10 +29,11 @@ int main(const int ac, const char* av[static const ac]) {
         sus_registration(fsm_frontend_foreign),
         sus_registration(fsm_frontend_timer),
         sus_registration(autoresponder, av[2], 1, fd_fo_main),
-        sus_registration(sighandler),
         sus_registration(s6_notify, -1),
         sus_registration(controller),
     };
+    set_nonblocking(fd_fo_main);
+    set_nonblocking(fd_fi_main);
     if (sig_runall(lengthof(tasks), &tasks) != 0)
         EXITF("Can't start");
     int ret = 0;

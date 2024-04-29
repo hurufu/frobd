@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <inttypes.h>
 #include <assert.h>
+#include <errno.h>
 
 /* ***************************************************************** *
  * WARNING: All char arrays are NOT null-terminated, but null-padded *
@@ -15,7 +16,6 @@
 // platforms (unsigned) char may have more than 8 bit (TI C54xx 16 bit). The
 // problem is purely theoretical, because I don't target MCUs, but still...
 typedef uint8_t byte_t;
-typedef uint64_t error_t; // FIXME: Type is too big, it should be uint_least32_t
 typedef char bcd_t; // FIXME: Use a real BCD type
 typedef bcd_t amount_t[12];
 // TODO: Consider changing type to uint_least8_t, because in practice I doubt that version will go beyond 255
@@ -280,12 +280,10 @@ struct frob_msg {
     const char magic[8]; // Shall be set to FROB_MAGIC
     struct frob_header header;
     union frob_body body;
-    // FIXME: Consider removing attributes, as they are not used anywhere
-    char attr[19][3];
+    char attr[23][3];
 };
 
 static_assert(sizeof (struct frob_msg) % 16 == 0, "Message shall fit into 16-byte blocks, so output of od(1) will line up nicely");
-#pragma once
 
 struct fsm_frontend_foreign_args {
     int cs;

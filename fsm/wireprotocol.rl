@@ -18,9 +18,9 @@
     }
     action LRC_Check {
         if (lrc != fc) {
-            sus_lend(0, 1, "\x03");
+            //sus_lend(0, 1, "\x03");
         } else {
-            sus_lend(0, fpc - start, buf);
+            //sus_lend(0, fpc - start, buf);
         }
     }
     action Frame_Start {
@@ -42,7 +42,7 @@ int fsm_wireformat(void*) {
     unsigned char* p = buf, * pe = p;
     %% write init;
     set_nonblocking(7);
-    while ((bytes = sus_read(7, buf, sizeof buf)) > 0) {
+    while ((bytes = sio_read(7, buf, sizeof buf)) > 0) {
         pe = (p = buf) + bytes;
         LOGDXP(char tmp[4*bytes], "→ % 4zd %s", bytes, PRETTY(p, pe, tmp));
         %% write exec;
@@ -51,6 +51,6 @@ int fsm_wireformat(void*) {
         LOGE("read");
     close(7);
     LOGIX("FSM state: current/entry/error/final %d/%d/%d/%d", cs, wireformat_en_main, wireformat_error, wireformat_first_final);
-    sus_disable(0);
+    //sus_disable(0);
     return cs == wireformat_error ? -1 : 0;
 }

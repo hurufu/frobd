@@ -70,6 +70,7 @@ int autoresponder(const struct autoresponder_args* const args) {
     const unsigned char* p;
     ssize_t bytes;
     unsigned char rsp_buf[1024];
+    /*
     while ((bytes = sus_borrow(args->in, (void**)&p)) >= 0) {
         //LOGDXP(char tmp[4*bytes], "Received %zd bytes: %s", bytes, PRETTY(p, p + bytes, tmp));
         if (bytes > 1) {
@@ -93,5 +94,6 @@ int autoresponder(const struct autoresponder_args* const args) {
         //LOGDX("Returning buffer");
         sus_return(args->in, p, bytes);
     }
+    */
     return -1;
 }

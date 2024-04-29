@@ -14,8 +14,10 @@ void set_nonblocking(const int fd) {
     const int flags = fcntl(fd, F_GETFL, 0);
     if (flags == -1)
         EXITF("fcntl F_GETFL");
-    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
-        EXITF("fcntl F_SETFL O_NONBLOCK");
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK | O_ASYNC) == -1)
+        EXITF("fcntl F_SETFL O_NONBLOCK | O_ASYNC");
+    if (fcntl(fd, F_SETOWN, getpid()) == -1)
+        EXITF("fcntl F_SETOWN");
 }
 
 bool is_fd_bad(const int fd) {

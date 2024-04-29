@@ -45,6 +45,9 @@ int sus_runall(size_t s, struct sus_registation_form (* c)[s]) __attribute__((no
 
 int sig_runall(size_t length, struct sus_registation_form (* h)[length]) __attribute__((nonnull (2)));
 
+ssize_t sio_read(int fd, void* data, size_t size);
+ssize_t sio_write(int fd, const void* data, size_t size);
+
 ssize_t sus_read(int fd, void* data, size_t size) __attribute__((nonnull(2)));
 ssize_t sus_write(int fd, const void* data, size_t size) __attribute__((nonnull(2)));
 int sus_ioloop(struct sus_ioloop_args* args) __attribute__((nonnull(1)));
