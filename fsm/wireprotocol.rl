@@ -41,8 +41,8 @@ int fsm_wireformat(void*) {
     int cs;
     unsigned char* p = buf, * pe = p;
     %% write init;
-    set_nonblocking(7);
-    while ((bytes = sio_read(7, buf, sizeof buf)) > 0) {
+    set_nonblocking(6);
+    while ((bytes = sio_read(6, buf, sizeof buf)) > 0) {
         pe = (p = buf) + bytes;
         LOGDXP(char tmp[4*bytes], "→ % 4zd %s", bytes, PRETTY(p, pe, tmp));
         %% write exec;

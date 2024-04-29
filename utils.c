@@ -8,6 +8,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <execinfo.h>
 
 void set_nonblocking(const int fd) {
@@ -18,6 +19,8 @@ void set_nonblocking(const int fd) {
         EXITF("fcntl F_SETFL O_NONBLOCK | O_ASYNC");
     if (fcntl(fd, F_SETOWN, getpid()) == -1)
         EXITF("fcntl F_SETOWN");
+    if (fcntl(fd, F_SETSIG, SIGPOLL) == -1)
+        EXITF("fcntl F_SETSIG");
 }
 
 bool is_fd_bad(const int fd) {

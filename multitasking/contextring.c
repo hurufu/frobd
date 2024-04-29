@@ -30,8 +30,9 @@ void insert(struct coro_context_ring** const cursor, struct coro_context* const 
     *cursor = new;
 }
 
-void shrink(struct coro_context_ring** const cursor) {
+struct coro_context* shrink(struct coro_context_ring** const cursor) {
     assert(cursor && *cursor);
+    struct coro_context* const ret = (*cursor)->ctx;
     if ((*cursor)->next == (*cursor)) {
         *cursor = NULL;
     } else {
@@ -40,4 +41,5 @@ void shrink(struct coro_context_ring** const cursor) {
         *cursor = (*cursor)->next;
     }
     // FIXME: Free memory!
+    return ret;
 }

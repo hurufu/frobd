@@ -10,4 +10,4 @@ struct coro_context_ring {
 };
 
 void insert(struct coro_context_ring** cursor, struct coro_context* ctx, const char* name) __attribute__((nonnull (1,2)));
-void shrink(struct coro_context_ring** cursor) __attribute__((nonnull (1)));
+struct coro_context* shrink(struct coro_context_ring** cursor) __attribute__((nonnull (1)));
