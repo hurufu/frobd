@@ -15,7 +15,7 @@
 #   define SIGINFO SIGPWR
 #endif
 
-static struct coro_context_ring* s_current; // TODO: Renamce to s_active
+static struct coro_context_ring* s_current;
 static struct coro_context_ring* s_waiting;
 static struct coro_context s_end;
 static siginfo_t s_si;
@@ -59,7 +59,7 @@ static char* events_tostring(const size_t size, char buf[static const size], con
 }
 
 static int suspend_poll(const int fd, const short nevents) {
-    LOGDXP(char tmp[32], "fd: %d, nevents: %s", fd, events_tostring(sizeof tmp, tmp, nevents));
+    LOGDXP(char tmp[8], "fd: %d, nevents: %s", fd, events_tostring(sizeof tmp, tmp, nevents));
     if (is_fd_bad(fd))
         return -1;
     assert(fcntl(fd, F_GETFL) & O_NONBLOCK);
