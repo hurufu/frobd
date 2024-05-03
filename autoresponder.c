@@ -67,12 +67,14 @@ int autoresponder(const struct autoresponder_args* const args) {
         },
         .parameters = load_d5_from_file(args->d5_path)
     };
-    const unsigned char* p;
+    char buf[1024];
+    const unsigned char* p = buf;
     ssize_t bytes;
     unsigned char rsp_buf[1024];
-    /*
-    while ((bytes = sus_borrow(args->in, (void**)&p)) >= 0) {
-        //LOGDXP(char tmp[4*bytes], "Received %zd bytes: %s", bytes, PRETTY(p, p + bytes, tmp));
+    LOGDX("reading on %d, writting to %d", args->in, args->out);
+    while ((bytes = sio_read(args->in, buf, sizeof buf)) >= 0) {
+        p = buf;
+        LOGDXP(char tmp[4*bytes], "Received %zd bytes: %s", bytes, PRETTY(p, p + bytes, tmp));
         if (bytes > 1) {
             const struct frob_msg msg = xparse_message(bytes - 1, p + 1);
             const struct frob_msg response = {
@@ -87,13 +89,10 @@ int autoresponder(const struct autoresponder_args* const args) {
             if (w < 0) {
                 LOGEX("Message skipped");
             } else {
-                sus_write(args->out, rsp_buf, w);
+                sio_write(args->out, rsp_buf, w);
                 LOGDXP(char tmp[4*w], "← % 4zd %s", sizeof w, PRETTY(rsp_buf, rsp_buf + w, tmp));
             }
         }
-        //LOGDX("Returning buffer");
-        sus_return(args->in, p, bytes);
     }
-    */
     return -1;
 }

@@ -15,6 +15,7 @@ CPPFLAGS_cc     = $(CPPFLAGS_gcc)
 CPPFLAGS       ?= $(CPPFLAGS_$(CC))
 CPPFLAGS       += -I$(PROJECT_DIR) -I$(PROJECT_DIR)multitasking
 CPPFLAGS       += -D_GNU_SOURCE
+CPPFLAGS       += -DCORO_UCONTEXT
 #CPPFLAGS       += -DNDEBUG
 # Disable all logs
 #CPPFLAGS       += -DNO_LOGS_ON_STDERR
@@ -30,7 +31,7 @@ CFLAGS     += $(call if_coverage,--coverage)
 # TODO: Remove those warnings only for generated files
 CFLAGS     += -Wno-implicit-fallthrough -Wno-unused-const-variable -Wno-sign-compare -Wno-unused-variable -Wno-unused-parameter
 TARGET_ARCH := -mtune=native -march=native 
-LDLIBS     :=
+#LDLIBS     := -lpthread
 
 LDFLAGS ?= -flto
 LDFLAGS += $(call if_coverage,--coverage)
@@ -38,7 +39,7 @@ LDFLAGS += $(call if_coverage,--coverage)
 # Project configuration ########################################################
 RL_C      := wireprotocol.c frontend.c header.c body.c attrs.c frame.c
 RL_O      := $(RL_C:.c=.o)
-CFILES    := main.c log.c utils.c serialization.c autoresponder.c sighandler.c controller.c ucspi.c s6notify.c
+CFILES    := main.c log.c utils.c serialization.c autoresponder.c controller.c ucspi.c s6notify.c
 OFILES    := $(RL_O) $(CFILES:.c=.o)
 UT_C      := ut.c serialization.c log.c utils.c contextring.c
 UT_O      := $(UT_C:.c=.o) header.o body.o frame.o attrs.o
@@ -57,9 +58,10 @@ vpath %.rl  $(PROJECT_DIR)fsm
 vpath %.c   $(PROJECT_DIR) $(addprefix $(PROJECT_DIR),multitasking multitasking/coro)
 vpath %.t   $(PROJECT_DIR)
 vpath %.txt $(PROJECT_DIR)
+vpath %.tcl $(PROJECT_DIR)
 
 # Public targets ###############################################################
-all: frob ut
+all: dir-pipe-client dir-ut
 index: tags cscope.out
 test: test-unit test-functional test-random
 clean:
@@ -70,7 +72,9 @@ clang-analyze: $(ALL_PLIST)
 tcp-server: frob | d5.txt
 	s6-tcpserver -vd -b2 0.0.0.0 5002 s6-tcpserver-access -t200 -v3 -rp -B "Welcome!\r\n" $(realpath $<) 1000 $|
 tcp-client: frob | d5.txt
-	s6-tcpclient -rv localhost 5002 rlwrap ./$< 1000 $| 2>&1 | s6-tai64n | s6-tai64nlocal
+	s6-tcpclient -rv localhost 5002 ./$< 1000 $|
+pipe-client: frob | d5.txt gent1.tcl
+	$(word 2,$|) | ./$< 1000 $(word 1,$|)
 tls-server: frob server.cer server.key | d5.txt
 	env -i PATH=/bin CERTFILE=$(word 2,$^) KEYFILE=$(word 3,$^) s6-tlsserver 0.0.0.0 6666 $(realpath $<) -f $(word 1,$^)
 tls-client: frob server.cer | d5.txt

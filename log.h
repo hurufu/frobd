@@ -23,6 +23,7 @@
  *
  *                         PostScriptum    ,Prefix,Level  ,Method,Prologue,Epilogue,Message     */
 #define LOGDXP(P, ...) LOG(                ,"D"   ,DEBUG  ,warnx ,P       ,        ,##__VA_ARGS__)
+#define LOGDP(P, ...) LOG(                 ,"D"   ,DEBUG  ,warn  ,P       ,        ,##__VA_ARGS__)
 #define LOGDX(...)     LOG(                ,"D"   ,DEBUG  ,warnx ,        ,        ,##__VA_ARGS__)
 #define LOGD(...)      LOG(                ,"D"   ,DEBUG  ,warn  ,        ,        ,##__VA_ARGS__)
 #define LOGIX(...)     LOG(                ,"I"   ,INFO   ,warnx ,        ,        ,##__VA_ARGS__)

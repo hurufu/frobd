@@ -18,6 +18,7 @@
             enum FrobDeviceType: serialize_integer,\
             enum FrobTransactionType: serialize_trx_type,\
             enum FrobTransactionStatus: serialize_integer,\
+            enum __error_t_codes: serialize_integer,\
             const char*: serialize_string,\
             const unsigned char*: xsnprint_hex,\
             bool: serialize_boolean,\

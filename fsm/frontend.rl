@@ -3,7 +3,6 @@
 #include "log.h"
 #include "utils.h"
 #include <stdbool.h>
-#include <sys/timerfd.h>
 #include <unistd.h>
 
 static int cs;
@@ -31,15 +30,15 @@ static int cs;
         acknak = 0x15;
     }
     action Send {
-        if (sio_write(6, &acknak, 1) != 1) {
+        if (sio_write(a->foreign_out, &acknak, 1) != 1) {
             LOGE("write");
             fbreak;
         }
         LOGDXP(char tmp[4*1], "← % 4d %s", 1, PRETTY(&acknak, &acknak + 1, tmp));
     }
     action Process {
-        LOGDXP(char tmp[4*(pe-p)], "Lending %zd bytes: %s", pe - p, PRETTY((unsigned char*)p, (unsigned char*)pe, tmp));
-        //sus_lend(1, pe - p, (char*)p);// TODO: Remove this cast
+        LOGDXP(char tmp[4*(pe-p)], "to_autoresponder %zd bytes: %s", pe - p, PRETTY((unsigned char*)p, (unsigned char*)pe, tmp));
+        sio_write(a->to_autoresponder, p, pe - p);
     }
     action Forward {
         if (sio_write(forwarded_fd, p, pe - p) != pe - p) {
@@ -67,7 +66,7 @@ static bool is_idempotent(const char* const msg) {
 }
 */
 
-static int fsm_exec(const char* p, const char* const pe) {
+static int fsm_exec(struct fsm_frontend_foreign_args* const a, const char* p, const char* const pe) {
     unsigned char acknak;
     %% write exec;
     return -1;
@@ -76,25 +75,21 @@ static int fsm_exec(const char* p, const char* const pe) {
 __attribute__((constructor))
 void fsm_frontend_init() {
     (void)frontend_en_main, (void)frontend_error, (void)frontend_first_final;
-    set_nonblocking(6);
     %% write init;
 }
 
 int fsm_frontend_foreign(struct fsm_frontend_foreign_args* const a) {
     (void)a;
     ssize_t bytes;
-    const char* p;
-    /*
-    while ((bytes = sus_borrow(0, (void**)&p)) >= 0) {
+    char buf[1024];
+    const char* p = buf;
+    while ((bytes = sio_read(a->infd, buf, sizeof buf)) > 0) {
         LOGDX("Received %zd bytes", bytes);
-        const char* const pe = p + bytes;
-        fsm_exec(p, pe);
-        sus_return(0, p, bytes);
+        const char* const pe = (p = buf) + bytes;
+        fsm_exec(a, p, pe);
     }
-    if (bytes < 0)
-        LOGE("Closing fronted");
-    sus_disable(1);
-    */
+    LOGE("Closing fronted");
+    close(a->infd);
     return -1;
 }
 

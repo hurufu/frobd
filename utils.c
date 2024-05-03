@@ -17,10 +17,12 @@ void set_nonblocking(const int fd) {
         EXITF("fcntl F_GETFL");
     if (fcntl(fd, F_SETFL, flags | O_NONBLOCK | O_ASYNC) == -1)
         EXITF("fcntl F_SETFL O_NONBLOCK | O_ASYNC");
+#   if 0
     if (fcntl(fd, F_SETOWN, getpid()) == -1)
         EXITF("fcntl F_SETOWN");
     if (fcntl(fd, F_SETSIG, SIGPOLL) == -1)
         EXITF("fcntl F_SETSIG");
+#   endif
 }
 
 bool is_fd_bad(const int fd) {

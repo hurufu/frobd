@@ -235,7 +235,8 @@ again:
 int sus_runall(const size_t length, struct sus_registation_form (* const h)[length]) {
     assert(h);
     int ret = -1;
-    struct coro_stuff stuff[length] = {};
+    struct coro_stuff stuff[length];
+    memset(stuff, 0, length);
     coro_create(&s_end, NULL, NULL, NULL, 0);
     for (size_t i = 0; i < length; i++) {
         if (!coro_stack_alloc(&stuff[i].stack, (*h)[i].stack_size))

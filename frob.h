@@ -287,6 +287,9 @@ static_assert(sizeof (struct frob_msg) % 16 == 0, "Message shall fit into 16-byt
 
 struct fsm_frontend_foreign_args {
     int cs;
+    const int infd;
+    const int foreign_out;
+    const int to_autoresponder;
 };
 
 struct fsm_frontend_internal_args {
@@ -299,6 +302,7 @@ struct fsm_frontend_timer_args {
 
 struct fsm_wireformat_args {
     const int infd;
+    const int outfd;
 };
 
 struct autoresponder_args {
@@ -317,7 +321,7 @@ struct s6_notify_args {
     const int fd;
 };
 
-int fsm_wireformat(void*);
+int fsm_wireformat(const struct fsm_wireformat_args*);
 int fsm_frontend_foreign(struct fsm_frontend_foreign_args*);
 int fsm_frontend_internal(struct fsm_frontend_internal_args*);
 int fsm_frontend_timer(struct fsm_frontend_timer_args*);

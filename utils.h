@@ -66,6 +66,9 @@
 
 #define xsigtimedwait(...) XCALL(sigtimedwait, __VA_ARGS__)
 #define xfprintf(...) XCALL(fprintf, __VA_ARGS__)
+#define xlseek(...) XCALL(lseek, __VA_ARGS__)
+#define xpipe2(...) XCALL(pipe2, __VA_ARGS__)
+#define xftruncate(...) XCALL(truncate, __VA_ARGS__)
 #define xfputs(...) XCALL(fputs, __VA_ARGS__)
 #define xfflush(...) XCALL(fflush, __VA_ARGS__)
 #define xsigprocmask(...) XCALL(sigprocmask, __VA_ARGS__)

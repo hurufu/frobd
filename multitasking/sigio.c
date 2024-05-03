@@ -21,53 +21,54 @@ static struct coro_context s_end;
 static siginfo_t s_si;
 
 static char* events_tostring(const size_t size, char buf[static const size], const short e) {
+    assert(!(e & ~0x37FF));
     FILE* const s = fmemopen(buf, size, "w");
     xfprintf(s, "0x%04hx", e);
-#   ifdef _XOPEN_SOURCE
-    if (e & POLLRDNORM)
-        xfputs(" IN", s);
-    if (e & POLLWRNORM)
-        xfputs(" OUT", s);
-    if (e & POLLRDBAND)
-        xfputs(" INPRI", s);
-    if (e & POLLWRBAND)
-        xfputs(" OUTPRI", s);
-#   else
-    if (e & POLLIN)
-        xfputs(" IN", s);
-    if (e & POLLPRI)
-        xfputs(" PRI", s);
-    if (e & POLLOUT)
-        xfputs(" OUT", s);
-#   endif
-#   ifdef _GNU_SOURCE
-    if (e & POLLMSG)
-        xfputs(" MSG", s);
-    if (e & POLLREMOVE)
-        xfputs(" REMOVE", s);
+#   if 0
     if (e & POLLRDHUP)
         xfputs(" RDHUP", s);
+    if (e & POLLREMOVE)
+        xfputs(" REMOVE", s);
+    if (e & POLLMSG)
+        xfputs(" MSG", s);
 #   endif
-    if (e & POLLERR)
-        xfputs(" ERR", s);
-    if (e & POLLHUP)
-        xfputs(" HUP", s);
+#   ifdef _XOPEN_SOURCE
+    if (e & POLLWRBAND)
+        xfputs(" XOUTPRI", s);
+    if (e & POLLWRNORM)
+        xfputs(" XOUT", s);
+    if (e & POLLRDBAND)
+        xfputs(" XINPRI", s);
+    if (e & POLLRDNORM)
+        xfputs(" XIN", s);
+#   endif
     if (e & POLLNVAL)
         xfputs(" NVAL", s);
+    if (e & POLLHUP)
+        xfputs(" HUP", s);
+    if (e & POLLERR)
+        xfputs(" ERR", s);
+    if (e & POLLOUT)
+        xfputs(" OUT", s);
+    if (e & POLLPRI)
+        xfputs(" PRI", s);
+    if (e & POLLIN)
+        xfputs(" IN", s);
     xfclose(s);
     return buf;
 }
 
-static int suspend_poll(const int fd, const short nevents) {
-    LOGDXP(char tmp[8], "fd: %d, nevents: %s", fd, events_tostring(sizeof tmp, tmp, nevents));
+static int suspend_poll(const int fd, const short wants) {
+    LOGDP(char tmp[32], "fd:%d fcntl:%#x wants:%s", fd, fcntl(fd, F_GETFL), events_tostring(sizeof tmp, tmp, wants));
     if (is_fd_bad(fd))
         return -1;
     assert(fcntl(fd, F_GETFL) & O_NONBLOCK);
-    assert(fcntl(fd, F_GETFL) & O_ASYNC);
+#   if 0
     assert(fcntl(fd, F_GETOWN) == getpid());
     assert(fcntl(fd, F_GETSIG) == SIGPOLL);
-    assert(nevents & (POLLIN | POLLOUT));
-    while (s_si.si_signo != SIGPOLL || s_si.si_fd != fd || s_si.si_band & nevents) {
+    assert(fcntl(fd, F_GETFL) & O_ASYNC);
+#   endif
+    while (s_si.si_signo != SIGPOLL || /* s_si.si_fd != fd || */ !(s_si.si_band & wants)) {
         if (s_current->visited > 100)
             return errno = EDEADLK, -1;
         const char* const name = s_current->name;
@@ -79,15 +80,48 @@ static int suspend_poll(const int fd, const short nevents) {
 }
 
 ssize_t sio_read(const int fd, void* const data, const size_t size) {
-    if (suspend_poll(fd, POLLOUT) < 0)
-        return -1;
-    return read(fd, data, size);
+    LOGDX("> %s fd:%d", s_current->name, fd);
+    ssize_t res;
+    while ((res = read(fd, data, size)) < 0) {
+        switch (errno) {
+            case EINTR:
+                continue;
+            case EAGAIN:
+                if (suspend_poll(fd, POLLIN | POLLRDNORM) < 0) {
+                    return -1;
+                }
+                break;
+            default:
+                return -1;
+        }
+    }
+    LOGDX("< %s res:%zd", s_current->name, res);
+    return res;
 }
 
 ssize_t sio_write(const int fd, const void* const data, const size_t size) {
-    if (suspend_poll(fd, POLLIN) < 0)
-        return -1;
-    return write(fd, data, size);
+    LOGDX("> %s fd:%d", s_current->name, fd);
+    ssize_t res;
+    while ((res = write(fd, data, size)) < 0) {
+        switch (errno) {
+            case EINTR:
+                continue;
+            case EAGAIN:
+                if (suspend_poll(fd, POLLOUT | POLLWRNORM) < 0) {
+                    return -1;
+                }
+                break;
+            default:
+                return -1;
+        }
+    }
+    LOGDX("< %s res:%zd", s_current->name, res);
+    return res;
+}
+
+ssize_t sio_memwrite(int id, const void* const data, const size_t size) {
+    const void* const buf = xmalloc(size);
+    return -1;
 }
 
 // Transfer to scheduler and forget about current coroutine
@@ -109,9 +143,9 @@ static void starter(struct sus_registation_form* const reg) {
 
 int sig_runall(const size_t length, struct sus_registation_form (* const h)[length]) {
     assert(h);
-    close(STDIN_FILENO);
     int ret = -1;
-    struct coro_stuff stuff[length] = {};
+    struct coro_stuff stuff[length];
+    memset(stuff, 0, length);
     coro_create(&s_end, NULL, NULL, NULL, 0);
     for (size_t i = 0; i < length; i++) {
         if (!coro_stack_alloc(&stuff[i].stack, (*h)[i].stack_size))
@@ -127,14 +161,15 @@ int sig_runall(const size_t length, struct sus_registation_form (* const h)[leng
     for (size_t i = 0; i < lengthof(blocked_signals); i++)
         sigaddset(&s, blocked_signals[i]);
     xsigprocmask(SIG_BLOCK, &s, NULL);
-    const struct timespec timeout = { .tv_sec = 10, .tv_nsec = 0 };
+    const struct timespec timeout = { .tv_sec = 100, .tv_nsec = 0 };
     do {
         for (; s_current; s_current = s_current ? s_current->next : NULL)
             coro_transfer(&s_end, s_current->ctx);
+        LOGDX("waiting for I/O...");
         const int sig = xsigtimedwait(&s, &s_si, &timeout);
         if (s_si.si_signo == SIGPOLL)
-            LOGDXP(char tmp[16], "signal %02d: %s (fd: %d band: %s)",
-                    sig, strsignal(sig), s_si.si_fd, events_tostring(sizeof tmp, tmp, s_si.si_band));
+            LOGDXP(char tmp[32], "signal %02d: %s (v: %d band: %s)",
+                    sig, strsignal(sig), s_si.si_value.sival_int, events_tostring(sizeof tmp, tmp, s_si.si_band));
         else
             psiginfo(&s_si, NULL);
         s_current = s_waiting;
