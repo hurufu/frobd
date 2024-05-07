@@ -1,10 +1,24 @@
 #include "log.h"
 #include "utils.h"
-#include "multitasking/sus.h"
 #include "frob.h"
 #include <unistd.h>
 #include <signal.h>
 #include <sys/resource.h>
+#include <npth.h>
+
+struct ThreadBag {
+    npth_t handle;
+    const char* const name;
+    void* (* const entry)(void*);
+    void* const arg;
+};
+
+int npth_sigwait(const sigset_t *set, int *sig) {
+    npth_unprotect();
+    const int res = sigwait(set, sig);
+    npth_protect();
+    return res;
+}
 
 static void adjust_rlimit(void) {
     // This will force syscalls that allocate file descriptors to fail if it
@@ -18,29 +32,33 @@ static void adjust_rlimit(void) {
 }
 
 int main(const int ac, const char* av[static const ac]) {
-    init_log();
     if (ac != 3)
         return 1;
     adjust_rlimit();
     int fd_fo_main = STDOUT_FILENO, fd_fi_main = STDIN_FILENO;
     ucsp_info_and_adjust_fds(&fd_fo_main, &fd_fi_main);
-    struct sus_registation_form tasks[] = {
-        sus_registration(fsm_wireformat, fd_fi_main),
-        sus_registration(fsm_frontend_foreign),
-        sus_registration(fsm_frontend_timer),
-        sus_registration(autoresponder, av[2], 1, fd_fo_main),
-        sus_registration(sighandler),
-        sus_registration(s6_notify, -1),
-        sus_registration(controller),
-        sus_registration(sus_ioloop, .timeout = atoi(av[1]))
+    LOGDX("%d %d", fd_fo_main, fd_fi_main);
+    struct ThreadBag thr[] = {
+        { .entry = fsm_wireformat, .name = "wireprotocol", .arg = &(struct fsm_wireformat_args){fd_fi_main}}
     };
-    if (sus_runall(lengthof(tasks), &tasks) != 0)
-        EXITF("Can't start");
-    int ret = 0;
-    for (size_t i = 0; i < lengthof(tasks); i++) {
-        LOGDX("task %zu returned % 2d (%s)", i, tasks[i].result, tasks[i].name);
-        if (tasks[i].result)
-            ret = 100;
+    npth_init();
+    npth_sigev_init();
+    npth_sigev_add(SIGINT);
+    npth_sigev_fini();
+    for (size_t i = 0; i < lengthof(thr); i++) {
+        xnpth_create(&thr[i].handle, NULL, thr[i].entry, thr[i].arg);
+        xnpth_setname_np(thr[i].handle, thr[i].name);
     }
-    return ret;
+    for (;;) {
+        int sig;
+        xnpth_sigwait(npth_sigev_sigmask(), &sig);
+        switch (sig) {
+            case SIGINT:
+                LOGD("got %s", strsignal(sig));
+                break;
+            default:
+                break;
+        }
+    }
+    return 0;
 }

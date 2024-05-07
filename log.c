@@ -7,12 +7,6 @@ int g_log_level = LOG_DEBUG;
 const char* g_errname;
 #endif
 
-void init_log(void) {
-#ifdef NO_LOGS_ON_STDERR
-    xfclose(stderr);
-#endif
-}
-
 char* to_printable(const unsigned char* const p, const unsigned char* const pe,
                                   const size_t s, char b[static const s]) {
     // TODO: Add support for regional characters, ie from 0x80 to 0xFF

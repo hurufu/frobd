@@ -319,7 +319,7 @@ struct s6_notify_args {
     const int fd;
 };
 
-int fsm_wireformat(void*);
+void* fsm_wireformat(const struct fsm_wireformat_args*);
 int fsm_frontend_foreign(struct fsm_frontend_foreign_args*);
 int fsm_frontend_internal(struct fsm_frontend_internal_args*);
 int fsm_frontend_timer(struct fsm_frontend_timer_args*);

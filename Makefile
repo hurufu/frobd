@@ -29,15 +29,15 @@ CFLAGS     += $(call if_coverage,--coverage)
 # TODO: Remove those warnings only for generated files
 CFLAGS     += -Wno-implicit-fallthrough -Wno-unused-const-variable -Wno-sign-compare -Wno-unused-variable -Wno-unused-parameter
 TARGET_ARCH := -mtune=native -march=native 
-LDLIBS     :=
+LDLIBS     := -lnpth
 
 LDFLAGS ?= -flto
 LDFLAGS += $(call if_coverage,--coverage)
 
 # Project configuration ########################################################
-RL_C      := wireprotocol.c frontend.c header.c body.c attrs.c frame.c
+RL_C      := wireprotocol.c header.c body.c attrs.c frame.c
 RL_O      := $(RL_C:.c=.o)
-CFILES    := main.c log.c utils.c serialization.c autoresponder.c sighandler.c controller.c ucspi.c s6notify.c
+CFILES    := main.c log.c utils.c serialization.c ucspi.c
 OFILES    := $(RL_O) $(CFILES:.c=.o)
 UT_C      := ut.c serialization.c log.c utils.c contextring.c
 UT_O      := $(UT_C:.c=.o) header.o body.o frame.o attrs.o
@@ -45,9 +45,6 @@ MUTATED_O := utils.o serialization.o
 NORMAL_O  := $(RL_O) ut.o log.o
 ALL_C     := $(CFILES) $(UT_C)
 ALL_PLIST := $(ALL_C:.c=.plist)
-
-LIBCOMULTI_C := coro.c contextring.c eventloop.c suspendables.c
-LIBCOMULTI_O := $(LIBCOMULTI_C:.c=.o)
 
 HOSTNAME  := $(shell hostname -f)
 BUILD_DIR ?= build
@@ -69,7 +66,7 @@ clang-analyze: $(ALL_PLIST)
 tcp-server: frob | d5.txt
 	s6-tcpserver -vd -b2 0.0.0.0 5002 s6-tcpserver-access -t200 -v3 -rp -B "Welcome!\r\n" $(realpath $<) 1000 $|
 tcp-client: frob | d5.txt
-	s6-tcpclient -rv localhost 5002 rlwrap $(realpath $<) 1000 $| 2>&1 | s6-tai64n | s6-tai64nlocal
+	s6-tcpclient -rv localhost 5002 $(realpath $<) 1000 $|
 tls-server: frob server.cer server.key | d5.txt
 	env -i PATH=/bin CERTFILE=$(word 2,$^) KEYFILE=$(word 3,$^) s6-tlsserver 0.0.0.0 6666 $(realpath $<) -f $(word 1,$^)
 tls-client: frob server.cer | d5.txt
@@ -87,7 +84,7 @@ dir-%: | $(BUILD_DIR)/
 
 # Internal targets #############################################################
 tags:
-	ctags --kinds-C=+p -R . /usr/include/{sys,}/*.h
+	ctags --kinds-C=+p -R . /usr/include/{sys,bits,}/*.h /usr/local/src/npth
 test-random: frob
 	pv -Ss100M /dev/urandom | ./$< 1 2>/dev/null 1>/dev/null
 test-unit: ut
@@ -109,12 +106,11 @@ mut: $(NORMAL_O) mutated
 	$(LINK.o) -o $@ $(NORMAL_O) $(MUTATED_O) $(LDLIBS)
 mutated: CFLAGS += -fexperimental-new-pass-manager -fpass-plugin=/usr/local/lib/mull-ir-frontend-15 -grecord-command-line
 mutated: $(MUTATED_O)
-frob: $(OFILES) libcomulti.a
+frob: $(OFILES)
 	$(LINK.o) -o $@ $^ $(LDLIBS)
 	objcopy --only-keep-debug $@ $@.debug
 	strip --strip-unneeded $@
 	objcopy --add-gnu-debuglink=$@.debug $@
-libcomulti.a: libcomulti.a($(LIBCOMULTI_O))
 %.c: %.rl
 	ragel -G2 -L -o $@ $<
 %.s: %.c

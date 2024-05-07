@@ -1,3 +1,0 @@
-[submodule "coroutine"]
-	path = multitasking/coro
-	url = https://github.com/clibs/coro.git
