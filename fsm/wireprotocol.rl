@@ -18,9 +18,9 @@
     }
     action LRC_Check {
         if (lrc != fc) {
-            //sus_lend(0, 1, "\x03");
+            npth_write(args->out, "\x03", 1);
         } else {
-            //sus_lend(0, fpc - start, buf);
+            npth_write(args->out, buf, fpc - start);
         }
     }
     action Frame_Start {
@@ -41,7 +41,7 @@ void* fsm_wireformat(const struct fsm_wireformat_args* const args) {
     int cs;
     unsigned char* p = buf, * pe = p;
     %% write init;
-    while ((bytes = npth_read(args->infd, buf, sizeof buf)) > 0) {
+    while ((bytes = npth_read(args->in, buf, sizeof buf)) > 0) {
         pe = (p = buf) + bytes;
         LOGDXP(char tmp[4*bytes], "→ % 4zd %s", bytes, PRETTY(p, pe, tmp));
         %% write exec;

@@ -67,6 +67,7 @@
 #define xnpth_setname_np(...) XCALL(npth_setname_np, __VA_ARGS__)
 #define xnpth_create(...) XCALL(npth_create, __VA_ARGS__)
 #define xnpth_sigwait(...) XCALL(npth_sigwait, __VA_ARGS__)
+#define xnpth_init(...) XCALL(npth_init, __VA_ARGS__)
 #define xfprintf(...) XCALL(fprintf, __VA_ARGS__)
 #define xfputs(...) XCALL(fputs, __VA_ARGS__)
 #define xfflush(...) XCALL(fflush, __VA_ARGS__)
@@ -78,6 +79,7 @@
 #define xwrite(...) XCALL(write, __VA_ARGS__)
 #define xfclose(...) XCALL(fclose, __VA_ARGS__)
 #define xclose(...) XCALL(close, __VA_ARGS__)
+#define xpipe(...) XCALL(pipe, __VA_ARGS__)
 
 #ifdef NDEBUG
 #   define XCALL(Syscall, ...) syscall_exitf(#Syscall, Syscall(__VA_ARGS__))
@@ -102,7 +104,7 @@
 typedef uint8_t input_t;
 
 
-void set_nonblocking(int fd);
+void set_blocking(int fd);
 
 byte_t hex2nibble(char h);
 byte_t unhex(const char h[static 2]);

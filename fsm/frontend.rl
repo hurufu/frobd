@@ -1,10 +1,10 @@
-#include "multitasking/sus.h"
 #include "frob.h"
 #include "log.h"
 #include "utils.h"
 #include <stdbool.h>
 #include <sys/timerfd.h>
 #include <unistd.h>
+#include <npth.h>
 
 static int cs;
 
@@ -31,18 +31,18 @@ static int cs;
         acknak = 0x15;
     }
     action Send {
-        if (sus_write(6, &acknak, 1) != 1) {
+        LOGDXP(char tmp[4*1], "← % 4d %s", 1, PRETTY(&acknak, &acknak + 1, tmp));
+        if (npth_write(6, &acknak, 1) != 1) {
             LOGE("write");
             fbreak;
         }
-        LOGDXP(char tmp[4*1], "← % 4d %s", 1, PRETTY(&acknak, &acknak + 1, tmp));
     }
     action Process {
         LOGDXP(char tmp[4*(pe-p)], "Lending %zd bytes: %s", pe - p, PRETTY((unsigned char*)p, (unsigned char*)pe, tmp));
-        sus_lend(1, pe - p, (char*)p);// TODO: Remove this cast
+        //sus_lend(1, pe - p, (char*)p);// TODO: Remove this cast
     }
     action Forward {
-        if (sus_write(forwarded_fd, p, pe - p) != pe - p) {
+        if (npth_write(forwarded_fd, p, pe - p) != pe - p) {
             LOGE("write");
             fbreak;
         }
@@ -76,24 +76,22 @@ static int fsm_exec(const char* p, const char* const pe) {
 __attribute__((constructor))
 void fsm_frontend_init() {
     (void)frontend_en_main, (void)frontend_error, (void)frontend_first_final;
-    set_nonblocking(6);
     %% write init;
 }
 
-int fsm_frontend_foreign(struct fsm_frontend_foreign_args* const a) {
+void* fsm_frontend_foreign(struct fsm_frontend_foreign_args* const a) {
     (void)a;
     ssize_t bytes;
+    char buf[1024];
     const char* p;
-    while ((bytes = sus_borrow(0, (void**)&p)) >= 0) {
+    while ((bytes = npth_read(a->in, buf, sizeof buf)) >= 0) {
         LOGDX("Received %zd bytes", bytes);
-        const char* const pe = p + bytes;
+        const char* const pe = (p = buf) + bytes;
         fsm_exec(p, pe);
-        sus_return(0, p, bytes);
     }
     if (bytes < 0)
         LOGE("Closing fronted");
-    sus_disable(1);
-    return -1;
+    return NULL;
 }
 
 int fsm_frontend_internal(struct fsm_frontend_internal_args* const a) {
@@ -114,7 +112,7 @@ int fsm_frontend_timer(struct fsm_frontend_timer_args* const a) {
     const int fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
     ssize_t bytes;
     unsigned char buf[8];
-    while ((bytes = sus_read(fd, buf, sizeof buf)) > 0) {
+    while ((bytes = npth_read(fd, buf, sizeof buf)) > 0) {
         const char* p = (char[]){0}, * const pe = p + 1;
         fsm_exec(p, pe);
     }

@@ -10,12 +10,12 @@
 #include <fcntl.h>
 #include <execinfo.h>
 
-void set_nonblocking(const int fd) {
+void set_blocking(const int fd) {
     const int flags = fcntl(fd, F_GETFL, 0);
     if (flags == -1)
         EXITF("fcntl F_GETFL");
-    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
-        EXITF("fcntl F_SETFL O_NONBLOCK");
+    if (fcntl(fd, F_SETFL, flags & ~O_NONBLOCK) == -1)
+        EXITF("fcntl F_SETFL ~O_NONBLOCK");
 }
 
 input_t calculate_lrc(input_t* p, const input_t* const pe) {

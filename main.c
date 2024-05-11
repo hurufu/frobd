@@ -1,22 +1,10 @@
 #include "log.h"
 #include "utils.h"
 #include "frob.h"
+#include "npthfix.h"
 #include <unistd.h>
 #include <signal.h>
 #include <sys/resource.h>
-#include <npth.h>
-
-typedef void* (* const npth_entry_t)(void*);
-
-struct ThreadBag {
-    npth_t handle;
-    const char* const name;
-    npth_entry_t entry;
-    void* const arg;
-};
-
-#define npth_define(Entry, ...) \
-    { .entry = (npth_entry_t)Entry, .name = #Entry, .arg = &(struct Entry ## _args){ __VA_ARGS__ } }
 
 static void adjust_rlimit(void) {
     // This will force syscalls that allocate file descriptors to fail if it
@@ -35,10 +23,13 @@ int main(const int ac, const char* av[static const ac]) {
     adjust_rlimit();
     int fd_fo_main = STDOUT_FILENO, fd_fi_main = STDIN_FILENO;
     ucsp_info_and_adjust_fds(&fd_fo_main, &fd_fi_main);
+    int frontend_pipe[2];
+    xpipe(frontend_pipe);
     struct ThreadBag thr[] = {
-        npth_define(fsm_wireformat, .infd = fd_fi_main)
+        npth_define(fsm_wireformat, .in = fd_fi_main, .out = frontend_pipe[1]),
+        npth_define(fsm_frontend_foreign, .in = frontend_pipe[0])
     };
-    npth_init();
+    xnpth_init();
     npth_sigev_init();
     npth_sigev_add(SIGPWR);
     npth_sigev_fini();
@@ -48,7 +39,6 @@ int main(const int ac, const char* av[static const ac]) {
     }
     for (;;) {
         int sig;
-        LOGDX("Waiting for a signal...");
         xnpth_sigwait(npth_sigev_sigmask(), &sig);
         switch (sig) {
             case SIGPWR:
