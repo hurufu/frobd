@@ -26,8 +26,8 @@ int main(const int ac, const char* av[static const ac]) {
     int frontend_pipe[2];
     xpipe(frontend_pipe);
     struct ThreadBag thr[] = {
-        npth_define(fsm_wireformat, "wp", .in = fd_fi_main, .out = frontend_pipe[1]),
-        npth_define(fsm_frontend_foreign, "ff", .in = frontend_pipe[0], .forwarded_fd = -1)
+        npth_define(fsm_wireformat, "wp", .from_wire = fd_fi_main, .to_wire = fd_fo_main, .to_fronted = frontend_pipe[1]),
+        npth_define(fsm_frontend_foreign, "ff", .from_wp = frontend_pipe[0], .to_low_level_forwarding = -1)
     };
     xnpth_init();
     npth_sigev_init();

@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <syslog.h>
+#include <npth.h>
 
 // Reimplement using error_at_line(3)
 
@@ -31,8 +32,8 @@
 #define LOGW(...)      LOG(                ,"W"   ,WARNING,warn  ,        ,        ,##__VA_ARGS__)
 #define LOGEX(...)     LOG(                ,"E"   ,ERR    ,warnx ,        ,        ,##__VA_ARGS__)
 #define LOGE(...)      LOG(                ,"E"   ,ERR    ,warn  ,        ,        ,##__VA_ARGS__)
-#define EXITFX(...)    LOG(exit(ERR_UNSPEC),"A"   ,ALERT  ,ERRX  ,        ,        ,##__VA_ARGS__)
-#define EXITF(...)     LOG(exit(ERR_UNSPEC),"A"   ,ALERT  ,ERR   ,        ,        ,##__VA_ARGS__)
+#define EXITFX(...)    LOG(npth_exit(NULL) ,"A"   ,ALERT  ,ERRX  ,        ,        ,##__VA_ARGS__)
+#define EXITF(...)     LOG(npth_exit(NULL) ,"A"   ,ALERT  ,ERR   ,        ,        ,##__VA_ARGS__)
 #define ABORTFX(...)   LOG(abort()         ,"F"   ,EMERG  ,warnx ,        ,        ,##__VA_ARGS__)
 #define ABORTF(...)    LOG(abort()         ,"F"   ,EMERG  ,warn  ,        ,        ,##__VA_ARGS__)
 
@@ -55,7 +56,7 @@
 #   define LOG_STORY(Prefix, Level, Method, Prologue, Epilogue, Fmt, ...) \
         if (LOG_##Level <= g_log_level) {\
             Prologue;\
-            Method("\x1f" Prefix "\x1f %32s\x1f% 4d\x1f %24s\x1f " Fmt "\x1e", __FILE__, __LINE__, __func__, ##__VA_ARGS__);\
+            Method("\x1f" Prefix "\x1f %32s\x1f% 4d\x1f " Fmt "\x1e", __FILE__, __LINE__, ##__VA_ARGS__);\
             Epilogue;\
         }
     extern int g_log_level;

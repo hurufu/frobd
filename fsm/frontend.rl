@@ -10,7 +10,7 @@ static int cs;
 
 %%{
     machine frontend;
-    alphtype char;
+    alphtype unsigned char;
     include frob_common "common.rl";
 
     # Foreign:
@@ -24,31 +24,15 @@ static int cs;
     IDEMPOTENT = 0x0A;
     EFFECTFUL = 0x0D;
 
-    action Confirm {
-        acknak = 0x06;
-    }
-    action Reject {
-        acknak = 0x15;
-    }
-    action Send {
-        LOGDXP(char tmp[4*1], "← % 4d %s", 1, PRETTY(&acknak, &acknak + 1, tmp));
-        if (npth_write(6, &acknak, 1) != 1) {
-            LOGE("write");
-            fbreak;
-        }
-    }
     action Process {
-        LOGDXP(char tmp[4*(pe-p)], "Not lending %zd bytes: %s", pe - p, PRETTY((unsigned char*)p, (unsigned char*)pe, tmp));
+        LOGDXP(char tmp[4*(pe-p)], "Not lending %zd bytes: %s", pe - p, PRETTY(p, pe, tmp));
         //npth_write(-1, pe - p, (char*)p);// TODO: Remove this cast
     }
     action Forward {
-        if (npth_write(forwarded_fd, p, pe - p) != pe - p) {
-            LOGE("write");
-            fbreak;
-        }
+        xnpth_write(forwarded_fd, p, pe - p) != pe - p);
     }
 
-    foreign = OK @Confirm @Send @Process | NAK @Reject @Send;
+    foreign = OK @Process;
     internal = IDEMPOTENT ACK | IDEMPOTENT TIMEOUT{1,3} ACK;
 
     main := (foreign | internal)*;
@@ -68,7 +52,6 @@ static bool is_idempotent(const char* const msg) {
 */
 
 static int fsm_exec(const char* p, const char* const pe) {
-    unsigned char acknak;
     %% write exec;
     return -1;
 }
@@ -79,18 +62,10 @@ void fsm_frontend_init() {
     %% write init;
 }
 
-void* fsm_frontend_foreign(struct fsm_frontend_foreign_args* const a) {
-    (void)a;
-    ssize_t bytes;
-    char buf[1024];
-    const char* p;
-    while ((bytes = npth_read(a->in, buf, sizeof buf)) >= 0) {
-        LOGDX("Received %zd bytes", bytes);
-        const char* const pe = (p = buf) + bytes;
+void* fsm_frontend_foreign(const struct fsm_frontend_foreign_args* const a) {
+    unsigned char buf[1024], * pe, * p;
+    while ((pe = (p = buf) + xnpth_read_fancy(a->from_wp, sizeof buf, buf)) != buf)
         fsm_exec(p, pe);
-    }
-    if (bytes < 0)
-        LOGE("Closing fronted");
     return NULL;
 }
 

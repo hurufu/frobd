@@ -1,9 +1,8 @@
 #include "frob.h"
 #include "utils.h"
 #include "log.h"
+#include "npthfix.h"
 #include <unistd.h>
-#include <fcntl.h>
-#include <npth.h>
 
 %%{
     machine wireformat;
@@ -17,11 +16,9 @@
         lrc ^= fc;
     }
     action LRC_Check {
-        if (lrc != fc) {
-            npth_write(args->out, "\x03", 1);
-        } else {
-            npth_write(args->out, buf, fpc - start);
-        }
+        xnpth_write_fancy(a->to_wire, 1, (unsigned char[]){lrc == fc ? ACK : NAK});
+        if (lrc == fc)
+            xnpth_write_fancy(a->to_fronted, fpc - start, buf);
     }
     action Frame_Start {
         start = fpc;
@@ -33,23 +30,16 @@
 
 %% write data;
 
-void* fsm_wireformat(const struct fsm_wireformat_args* const args) {
-    unsigned char* start = NULL;
-    char lrc;
-    ssize_t bytes;
-    unsigned char buf[1024];
+void* fsm_wireformat(const struct fsm_wireformat_args* const a) {
     int cs;
-    unsigned char* p = buf, * pe = p;
+    ssize_t bytes;
+    unsigned char buf[1024], * start, * p, * pe, lrc = 0;
     %% write init;
-    while ((bytes = npth_read(args->in, buf, sizeof buf)) > 0) {
-        pe = (p = buf) + bytes;
-        LOGDXP(char tmp[4*bytes], "→ % 4zd %s", bytes, PRETTY(p, pe, tmp));
+    while ((pe = (p = buf) + xnpth_read_fancy(a->from_wire, sizeof buf, buf)) != buf) {
         %% write exec;
     }
-    if (bytes < 0)
-        LOGE("read");
-    close(7);
+    for (size_t i = 0; i < lengthof(a->fd); i++)
+        xclose(a->fd[i]);
     LOGIX("FSM state: current/entry/error/final %d/%d/%d/%d", cs, wireformat_en_main, wireformat_error, wireformat_first_final);
-    //sus_disable(0);
-    return cs == wireformat_error ? NULL + 1 : NULL;
+    return NULL;
 }
