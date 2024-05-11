@@ -288,7 +288,7 @@ static_assert(sizeof (struct frob_msg) % 16 == 0, "Message shall fit into 16-byt
 #pragma once
 
 struct fsm_frontend_foreign_args {
-    int in;
+    int in, forwarded_fd;
     int cs;
 };
 

@@ -38,8 +38,8 @@ static int cs;
         }
     }
     action Process {
-        LOGDXP(char tmp[4*(pe-p)], "Lending %zd bytes: %s", pe - p, PRETTY((unsigned char*)p, (unsigned char*)pe, tmp));
-        //sus_lend(1, pe - p, (char*)p);// TODO: Remove this cast
+        LOGDXP(char tmp[4*(pe-p)], "Not lending %zd bytes: %s", pe - p, PRETTY((unsigned char*)p, (unsigned char*)pe, tmp));
+        //npth_write(-1, pe - p, (char*)p);// TODO: Remove this cast
     }
     action Forward {
         if (npth_write(forwarded_fd, p, pe - p) != pe - p) {
