@@ -18,7 +18,6 @@ static void adjust_rlimit(void) {
 }
 
 int main(const int ac, const char* av[static const ac]) {
-    init_log();
     if (ac != 3)
         return 1;
     adjust_rlimit();

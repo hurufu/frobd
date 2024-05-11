@@ -61,5 +61,4 @@
     extern int g_log_level;
 #endif
 
-void init_log(void);
 char* to_printable(const unsigned char* p, const unsigned char* pe, size_t s, char b[static s]);
