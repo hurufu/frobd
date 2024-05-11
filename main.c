@@ -6,19 +6,17 @@
 #include <sys/resource.h>
 #include <npth.h>
 
+typedef void* (* const npth_entry_t)(void*);
+
 struct ThreadBag {
     npth_t handle;
     const char* const name;
-    void* (* const entry)(void*);
+    npth_entry_t entry;
     void* const arg;
 };
 
-int npth_sigwait(const sigset_t *set, int *sig) {
-    npth_unprotect();
-    const int res = sigwait(set, sig);
-    npth_protect();
-    return res;
-}
+#define npth_define(Entry, ...) \
+    { .entry = (npth_entry_t)Entry, .name = #Entry, .arg = &(struct Entry ## _args){ __VA_ARGS__ } }
 
 static void adjust_rlimit(void) {
     // This will force syscalls that allocate file descriptors to fail if it
@@ -37,13 +35,12 @@ int main(const int ac, const char* av[static const ac]) {
     adjust_rlimit();
     int fd_fo_main = STDOUT_FILENO, fd_fi_main = STDIN_FILENO;
     ucsp_info_and_adjust_fds(&fd_fo_main, &fd_fi_main);
-    LOGDX("%d %d", fd_fo_main, fd_fi_main);
     struct ThreadBag thr[] = {
-        { .entry = fsm_wireformat, .name = "wireprotocol", .arg = &(struct fsm_wireformat_args){fd_fi_main}}
+        npth_define(fsm_wireformat, .infd = fd_fi_main)
     };
     npth_init();
     npth_sigev_init();
-    npth_sigev_add(SIGINT);
+    npth_sigev_add(SIGPWR);
     npth_sigev_fini();
     for (size_t i = 0; i < lengthof(thr); i++) {
         xnpth_create(&thr[i].handle, NULL, thr[i].entry, thr[i].arg);
@@ -51,9 +48,10 @@ int main(const int ac, const char* av[static const ac]) {
     }
     for (;;) {
         int sig;
+        LOGDX("Waiting for a signal...");
         xnpth_sigwait(npth_sigev_sigmask(), &sig);
         switch (sig) {
-            case SIGINT:
+            case SIGPWR:
                 LOGD("got %s", strsignal(sig));
                 break;
             default:

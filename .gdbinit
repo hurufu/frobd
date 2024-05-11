@@ -1,11 +1,12 @@
 #source gdb.scm
 set env CK_FORK=no
-file ./demo
+set follow-exec-mode new
 set print repeats 0
-break main
+file /bin/s6-tcpclient
+#break main
 #break fsm_frontend_foreign
-break fsm_wireformat
-break starter
+#break fsm_wireformat
+#break starter
 #break sus_select
 #break sus_read
 #break sus_write
