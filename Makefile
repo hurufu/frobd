@@ -14,6 +14,7 @@ CPPFLAGS_gcc   := -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS
 CPPFLAGS_cc     = $(CPPFLAGS_gcc)
 CPPFLAGS       ?= $(CPPFLAGS_$(CC))
 CPPFLAGS       += -I$(PROJECT_DIR) -I$(PROJECT_DIR)multitasking
+CPPFLAGS       += -D_GNU_SOURCE
 #CPPFLAGS       += -DNDEBUG
 # Disable all logs
 #CPPFLAGS       += -DNO_LOGS_ON_STDERR
@@ -35,7 +36,7 @@ LDFLAGS ?= -flto
 LDFLAGS += $(call if_coverage,--coverage)
 
 # Project configuration ########################################################
-RL_C      := wireprotocol.c header.c body.c attrs.c frame.c frontend.c
+RL_C      := wireprotocol.c header.c body.c attrs.c frame.c
 RL_O      := $(RL_C:.c=.o)
 CFILES    := main.c log.c utils.c serialization.c ucspi.c npthfix.c
 OFILES    := $(RL_O) $(CFILES:.c=.o)

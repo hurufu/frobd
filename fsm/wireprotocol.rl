@@ -15,22 +15,23 @@
     action LRC_Byte {
         lrc ^= fc;
     }
-    action LRC_Check {
-        xsend_message(a->to_fronted, (lrc == fc ? start : fpc), fpc);
-    }
     action Frame_Start {
         start = fpc;
     }
+    action Frame_Accept {
+        xsend_message(a->to_fronted, (lrc != fc ? start : fpc - 1), fpc);
+    }
 
     body = any-etx;
-    frame = stx @LRC_Init (body @LRC_Byte >Frame_Start) (body @LRC_Byte)* (etx @LRC_Byte) any @LRC_Check;
+    frame = stx @LRC_Init (((body @LRC_Byte >Frame_Start) (body @LRC_Byte)* (etx @LRC_Byte) any @Frame_Accept) | etx);
     main := ((any-stx)* frame)*;
 }%%
 
 %% write data;
 
 void* fsm_wireformat(const struct fsm_wireformat_args* const a) {
-    input_t buf[1024], * start, * p, lrc = 0;
+    static input_t buf[1024];
+    input_t* start, * p, lrc = 0;
     const input_t* pe;
     int cs;
     %% write init;

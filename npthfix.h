@@ -1,6 +1,7 @@
 #pragma once
 #include <npth.h>
 #include <pthread.h>
+#include "utils.h"
 
 #define npth_define(Entry, Name, ...) \
     { .entry = (npth_entry_t)Entry, .name = (Name), .arg = &(struct Entry ## _args){ __VA_ARGS__ } }
