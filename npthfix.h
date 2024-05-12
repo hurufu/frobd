@@ -1,5 +1,6 @@
 #pragma once
 #include <npth.h>
+#include <pthread.h>
 
 #define npth_define(Entry, Name, ...) \
     { .entry = (npth_entry_t)Entry, .name = (Name), .arg = &(struct Entry ## _args){ __VA_ARGS__ } }
@@ -14,5 +15,9 @@ struct ThreadBag {
     void* const arg;
 };
 
-size_t xnpth_write_fancy(int fd, size_t size, const unsigned char buf[static size]);
-size_t xnpth_read_fancy(int fd, size_t size, unsigned char buf[static size]);
+size_t xsend_message(int fd, const input_t* p, const input_t* pe) __attribute__((nonnull(2,3)));
+size_t xrecv_message(int fd, size_t size, input_t p[static size], const input_t** pe) __attribute__((nonnull(3,4)));
+
+inline size_t xsend_message_buf(const int fd, const size_t size, const input_t buf[static const size]) {
+    return xsend_message(fd, buf, buf + size);
+}

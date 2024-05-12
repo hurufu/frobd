@@ -50,6 +50,7 @@ HOSTNAME  := $(shell hostname -f)
 BUILD_DIR ?= build
 
 vpath %.rl  $(PROJECT_DIR)fsm
+vpath %.sed $(PROJECT_DIR)fsm
 vpath %.c   $(PROJECT_DIR) $(addprefix $(PROJECT_DIR),multitasking multitasking/coro)
 vpath %.t   $(PROJECT_DIR)
 vpath %.txt $(PROJECT_DIR)
@@ -73,6 +74,12 @@ tls-client: frob server.cer | d5.txt
 	env -i PATH=/bin CAFILE=$(word 2,$^) s6-tlsclient 0.0.0.0 6666 $(realpath $<) -f $(word 1,$^)
 scan:
 	scan-build $(MAKE) clean frob
+show-%: %.png
+	feh - <$< &
+%.png: %.dot
+	dot -Tpng $< >$@
+%.dot: %.rl %.sed
+	ragel -V $< | sed -Ef $(word 2,$^) >$@
 graph-%: frame.rl adjust-%.sed
 	ragel -p -V $< | sed -Ef $(word 2,$^) | dot -Tpng | feh -
 protocol.png: protocol.rl protocol-adjust.sed

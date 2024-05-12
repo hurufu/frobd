@@ -16,26 +16,25 @@
         lrc ^= fc;
     }
     action LRC_Check {
-        xnpth_write_fancy(a->to_wire, 1, (unsigned char[]){lrc == fc ? ACK : NAK});
-        if (lrc == fc)
-            xnpth_write_fancy(a->to_fronted, fpc - start, buf);
+        xsend_message(a->to_fronted, (lrc == fc ? start : fpc), fpc);
     }
     action Frame_Start {
         start = fpc;
     }
 
-    frame = stx @LRC_Init ((any-etx) @LRC_Byte >Frame_Start) ((any-etx) @LRC_Byte )* (etx @LRC_Byte) any @LRC_Check;
+    body = any-etx;
+    frame = stx @LRC_Init (body @LRC_Byte >Frame_Start) (body @LRC_Byte)* (etx @LRC_Byte) any @LRC_Check;
     main := ((any-stx)* frame)*;
 }%%
 
 %% write data;
 
 void* fsm_wireformat(const struct fsm_wireformat_args* const a) {
+    input_t buf[1024], * start, * p, lrc = 0;
+    const input_t* pe;
     int cs;
-    ssize_t bytes;
-    unsigned char buf[1024], * start, * p, * pe, lrc = 0;
     %% write init;
-    while ((pe = (p = buf) + xnpth_read_fancy(a->from_wire, sizeof buf, buf)) != buf) {
+    while (xrecv_message(a->from_wire, sizeof buf, p = buf, &pe) > 0) {
         %% write exec;
     }
     for (size_t i = 0; i < lengthof(a->fd); i++)

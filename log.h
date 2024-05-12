@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <syslog.h>
 #include <npth.h>
+#include <pthread.h>
 
 // Reimplement using error_at_line(3)
 
@@ -24,16 +25,19 @@
  *
  *                         PostScriptum    ,Prefix,Level  ,Method,Prologue,Epilogue,Message     */
 #define LOGDXP(P, ...) LOG(                ,"D"   ,DEBUG  ,warnx ,P       ,        ,##__VA_ARGS__)
+#define LOGDP(P, ...)  LOG(                ,"D"   ,DEBUG  ,warn  ,P       ,        ,##__VA_ARGS__)
 #define LOGDX(...)     LOG(                ,"D"   ,DEBUG  ,warnx ,        ,        ,##__VA_ARGS__)
 #define LOGD(...)      LOG(                ,"D"   ,DEBUG  ,warn  ,        ,        ,##__VA_ARGS__)
 #define LOGIX(...)     LOG(                ,"I"   ,INFO   ,warnx ,        ,        ,##__VA_ARGS__)
 #define LOGI(...)      LOG(                ,"I"   ,INFO   ,warn  ,        ,        ,##__VA_ARGS__)
 #define LOGWX(...)     LOG(                ,"W"   ,WARNING,warnx ,        ,        ,##__VA_ARGS__)
 #define LOGW(...)      LOG(                ,"W"   ,WARNING,warn  ,        ,        ,##__VA_ARGS__)
+#define LOGEP(P, ...)  LOG(                ,"E"   ,ERR    ,warn  ,P       ,        ,##__VA_ARGS__)
 #define LOGEX(...)     LOG(                ,"E"   ,ERR    ,warnx ,        ,        ,##__VA_ARGS__)
 #define LOGE(...)      LOG(                ,"E"   ,ERR    ,warn  ,        ,        ,##__VA_ARGS__)
-#define EXITFX(...)    LOG(npth_exit(NULL) ,"A"   ,ALERT  ,ERRX  ,        ,        ,##__VA_ARGS__)
-#define EXITF(...)     LOG(npth_exit(NULL) ,"A"   ,ALERT  ,ERR   ,        ,        ,##__VA_ARGS__)
+#define EXITFX(...)    LOG(pthread_exit(NULL),"A" ,ALERT  ,ERRX  ,        ,        ,##__VA_ARGS__)
+#define EXITF(...)     LOG(pthread_exit(NULL),"A" ,ALERT  ,ERR   ,        ,        ,##__VA_ARGS__)
+#define EXITFP(P, ...) LOG(pthread_exit(NULL),"A" ,ALERT  ,ERR   ,P       ,        ,##__VA_ARGS__)
 #define ABORTFX(...)   LOG(abort()         ,"F"   ,EMERG  ,warnx ,        ,        ,##__VA_ARGS__)
 #define ABORTF(...)    LOG(abort()         ,"F"   ,EMERG  ,warn  ,        ,        ,##__VA_ARGS__)
 

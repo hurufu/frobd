@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <sys/resource.h>
+#include <pthread.h>
 
 static void adjust_rlimit(void) {
     // This will force syscalls that allocate file descriptors to fail if it
@@ -29,26 +30,11 @@ int main(const int ac, const char* av[static const ac]) {
         npth_define(fsm_wireformat, "wp", .from_wire = fd_fi_main, .to_wire = fd_fo_main, .to_fronted = frontend_pipe[1]),
         npth_define(fsm_frontend_foreign, "ff", .from_wp = frontend_pipe[0], .to_low_level_forwarding = -1)
     };
-    xnpth_init();
-    npth_sigev_init();
-    npth_sigev_add(SIGPWR);
-    npth_sigev_fini();
     for (size_t i = 0; i < lengthof(thr); i++) {
-        xnpth_create(&thr[i].handle, NULL, thr[i].entry, thr[i].arg);
-        xnpth_setname_np(thr[i].handle, thr[i].name);
-    }
-    for (;;) {
-        int sig;
-        xnpth_sigwait(npth_sigev_sigmask(), &sig);
-        switch (sig) {
-            case SIGPWR:
-                LOGD("got %s", strsignal(sig));
-                break;
-            default:
-                break;
-        }
+        pthread_create(&thr[i].handle, NULL, thr[i].entry, thr[i].arg);
+        pthread_setname_np(thr[i].handle, thr[i].name);
     }
     for (size_t i = 0; i < lengthof(thr); i++)
-        xnpth_join(thr[i].handle, NULL);
+        pthread_join(thr[i].handle, NULL);
     return EXIT_SUCCESS;
 }

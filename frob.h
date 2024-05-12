@@ -294,7 +294,7 @@ struct fsm_frontend_foreign_args {
             int from_wp, to_low_level_forwarding;
         };
         const int fd[2];
-    }
+    };
 };
 
 struct fsm_frontend_internal_args {
