@@ -66,7 +66,7 @@ coverage: test | $(CFILES) $(UT_C)
 	gcov -o . $|
 clang-analyze: $(ALL_PLIST)
 tcp-server: frob | d5.txt
-	s6-tcpserver -vd -b2 0.0.0.0 5002 s6-tcpserver-access -t200 -v3 -rp -B "Welcome!\r\n" $(realpath $<) 1000 $|
+	s6-tcpserver -vd -b2 0.0.0.0 5002 s6-tcpserver-access -t200 -v3 -rp -B "Welcome!\r\n" s6-softlimit -o 1024 $(realpath $<) 1000 $|
 tcp-client: frob | d5.txt
 	s6-tcpclient -rv localhost 5002 $(realpath $<) 1000 $|
 tls-server: frob server.cer server.key | d5.txt
