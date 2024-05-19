@@ -6,21 +6,9 @@
 #include <signal.h>
 #include <sys/resource.h>
 
-static void adjust_rlimit(void) {
-    // This will force syscalls that allocate file descriptors to fail if it
-    // doesn't fit into fd_set, so we don't have to check for that in the code.
-    struct rlimit rl;
-    if (getrlimit(RLIMIT_NOFILE, &rl) != 0)
-        ABORTF("getrlimit");
-    if (rl.rlim_cur > FD_SETSIZE)
-        if (setrlimit(RLIMIT_NOFILE, &(struct rlimit){ .rlim_cur = FD_SETSIZE, .rlim_max = rl.rlim_max }) != 0)
-            ABORTF("setrlimit");
-}
-
 int main(const int ac, const char* av[static const ac]) {
     if (ac != 3)
         return 1;
-    adjust_rlimit();
     int fd_fo_main = STDOUT_FILENO, fd_fi_main = STDIN_FILENO;
     ucsp_info_and_adjust_fds(&fd_fo_main, &fd_fi_main);
     struct sus_registation_form tasks[] = {
