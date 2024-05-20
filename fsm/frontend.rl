@@ -5,8 +5,10 @@
 #include <sys/timerfd.h>
 #include <unistd.h>
 #include <npth.h>
+#include <pthread.h>
 
 static int cs;
+static pthread_mutext_t s_mutex;
 
 %%{
     machine frontend;
@@ -32,7 +34,7 @@ static int cs;
         xnpth_write(forwarded_fd, p, pe - p) != pe - p);
     }
 
-    foreign = OK @Process;
+    foreign = NOK | (OK @Process);
     internal = IDEMPOTENT ACK | IDEMPOTENT TIMEOUT{1,3} ACK;
 
     main := (foreign | internal)*;

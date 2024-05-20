@@ -1,27 +1,40 @@
 #include "log.h"
 #include "utils.h"
 #include "frob.h"
-#include "npthfix.h"
+#include "tasks.h"
 #include <unistd.h>
 #include <signal.h>
 #include <sys/resource.h>
 #include <pthread.h>
 
+union iopair {
+    int fd[2];
+    struct {
+        int r, w;
+    };
+};
+
+static union iopair get_main(void) {
+    union iopair ret = { .r = STDIN_FILENO, .w = STDOUT_FILENO };
+    ucsp_info_and_adjust_fds(&ret.w, &ret.r);
+    return ret;
+}
+
+static union iopair make_pipe(void) {
+    union iopair ret;
+    xpipe(ret.fd);
+    return ret;
+}
+
 int main(const int ac, const char* av[static const ac]) {
     if (ac != 3)
         return 1;
-    int fd_fo_main = STDOUT_FILENO, fd_fi_main = STDIN_FILENO;
-    ucsp_info_and_adjust_fds(&fd_fo_main, &fd_fi_main);
-    int frontend_pipe[2];
-    xpipe(frontend_pipe);
-    struct ThreadBag thr[] = {
-        npth_define(fsm_wireformat, "wp", .from_wire = fd_fi_main, .to_wire = fd_fo_main, .to_fronted = STDOUT_FILENO)
+    const union iopair foreign = get_main(), internal[] = { make_pipe() };
+    struct task* t[] = {
+        create_task("wp", fsm_wireformat, .from_wire = foreign.r, .to_wire = foreign.w, .to_fronted = internal[0].w)
     };
-    for (size_t i = 0; i < lengthof(thr); i++) {
-        pthread_create(&thr[i].handle, NULL, thr[i].entry, thr[i].arg);
-        pthread_setname_np(thr[i].handle, thr[i].name);
-    }
-    for (size_t i = 0; i < lengthof(thr); i++)
-        pthread_join(thr[i].handle, NULL);
-    return EXIT_SUCCESS;
+    int error = 0;
+    for (size_t i = 0; i < lengthof(t); i++)
+        error |= teardown_task(t[i]);
+    return error ? EXIT_FAILURE : EXIT_SUCCESS;
 }

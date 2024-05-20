@@ -64,13 +64,9 @@
     v;\
 })
 
-#define xnpth_setname_np(...) XCALL(npth_setname_np, __VA_ARGS__)
-#define xnpth_create(...) XCALL(npth_create, __VA_ARGS__)
-#define xnpth_sigwait(...) XCALL(npth_sigwait, __VA_ARGS__)
-#define xnpth_join(...) XCALL(npth_join, __VA_ARGS__)
-#define xnpth_init(...) XCALL(npth_init, __VA_ARGS__)
-#define xnpth_read(...) XCALL(npth_read, __VA_ARGS__)
-#define xnpth_write(...) XCALL(npth_write, __VA_ARGS__)
+#define xpthread_create(...) XCALL(pthread_create, __VA_ARGS__)
+#define xpthread_join(...) XCALL(pthread_join, __VA_ARGS__)
+#define xpthread_setname_np(...) XCALL(pthread_setname_np, __VA_ARGS__)
 #define xfprintf(...) XCALL(fprintf, __VA_ARGS__)
 #define xfputs(...) XCALL(fputs, __VA_ARGS__)
 #define xfflush(...) XCALL(fflush, __VA_ARGS__)

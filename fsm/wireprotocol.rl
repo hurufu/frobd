@@ -19,6 +19,7 @@
         start = fpc;
     }
     action Frame_Accept {
+        assert(fpc - 1 >= start);
         xsend_message(a->to_fronted, (lrc != fc ? start : fpc - 1), fpc);
     }
 

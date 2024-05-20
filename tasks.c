@@ -4,9 +4,27 @@
 #include <pthread.h>
 #include <assert.h>
 
-extern size_t xsend_message_buf(int fd, size_t size, const input_t buf[static size]);
+struct task {
+    pthread_t handle;
+};
 
-size_t xsend_message(const int fd, const input_t* const p, const input_t* const pe) {
+
+extern size_t send_message_buf(int fd, size_t size, const input_t buf[static size]);
+
+struct task* create_task_(const char* const name, entry_t entry, const void* const arg) {
+    struct task* const ret = xmalloc(sizeof struct task);
+    xpthread_create(&ret->handle, NULL, entry, arg);
+    xpthread_setname_np(ret->handle, name);
+    return ret;
+}
+
+int teardown_task(struct task*) {
+    union retval ret;
+    xpthread_join(task->handle, &ret.ptr);
+    return ret.num;
+}
+
+size_t send_message(const int fd, const input_t* const p, const input_t* const pe) {
     assert(p);
     assert(pe);
     assert(pe >= p);
@@ -18,7 +36,7 @@ size_t xsend_message(const int fd, const input_t* const p, const input_t* const 
     return written;
 }
 
-size_t xrecv_message(const int fd, const size_t size, input_t p[static const size], const input_t** const pe) {
+size_t recv_message(const int fd, const size_t size, input_t p[static const size], const input_t** const pe) {
     assert(p);
     assert(pe);
     assert(*pe);
