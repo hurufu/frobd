@@ -12,6 +12,15 @@
     .args = &(struct Entry ## _args){ __VA_ARGS__ }\
 }
 
+#define sus_create(Function, ...) sus_create_(\
+    (struct sus_registation_form){\
+        .name = #Entry,\
+        .stack_size = 0,\
+        .entry = (sus_entry)Entry,\
+        .args = &(struct Entry ## _args){ __VA_ARGS__ }\
+    }\
+)
+
 typedef int (* sus_entry)(const void*);
 
 struct sus_registation_form {
@@ -25,6 +34,8 @@ struct sus_registation_form {
 struct sus_ioloop_args {
     const time_t timeout;
 };
+
+int sus_create_(struct sus_registation_form);
 
 /** Start and schedule all tasks.
  *

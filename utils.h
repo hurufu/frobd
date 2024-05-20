@@ -98,6 +98,12 @@
 // Input character type, can be changed to something else
 typedef uint8_t input_t;
 
+union iopair {
+    int fd[2];
+    struct {
+        int r, w;
+    };
+};
 
 void set_nonblocking(int fd);
 

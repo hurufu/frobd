@@ -60,8 +60,10 @@ static const char* ucspi_adjust(const char* const proto, int* restrict const in,
     return connnum;
 }
 
-void ucsp_info_and_adjust_fds(int* restrict const in, int* restrict const out) {
+union iopair ucsp_info_and_adjust_fds(void) {
+    union iopair ret = { .r = STDIN_FILENO, .w = STDOUT_FILENO };
     const char* const proto = getenv("PROTO");
     if (proto)
-        ucspi_log(proto, ucspi_adjust(proto, in, out));
+        ucspi_log(proto, ucspi_adjust(proto, &ret.r, &ret.w));
+    return ret;
 }
